@@ -31,7 +31,7 @@ impl RebasedInput {
     // According to the given alphabet, get the plaintext (or ciphertext) in a new
     // integer `base` starting from 0.
     pub fn rebase_text(input: &str, alphabet: &str) -> Result<Self, AnoError> {
-        ano_ensure!(!input.is_empty(), "Cannot rebased empty input");
+        ano_ensure!(!input.is_empty(), "Cannot rebase empty input");
         ano_ensure!(
             !alphabet.is_empty(),
             "Alphabet is empty. No FPE encryption possible"
@@ -61,12 +61,20 @@ impl RebasedInput {
         );
         // Check if FPE is usable (in a security point of view, verifying the
         // threshold as suggested in NIST standard https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38G.pdf)
+        let min_text_length =
+            ((RECOMMENDED_THRESHOLD as f32).log(alphabet.len() as f32)).ceil() as usize;
+        // println!(
+        //     "min_text_length {} - stripped_input length {}",
+        //     min_text_length,
+        //     stripped_input.len()
+        // );
         ano_ensure!(
-            alphabet.len() ^ stripped_input.len() < RECOMMENDED_THRESHOLD,
-            "Given alphabet length ({}), plaintext is too short. Plaintext length should be at \
+            stripped_input.len() >= min_text_length,
+            "Given alphabet length ({}), plaintext of size {} is too short. Plaintext length should be at \
              least {}",
             alphabet.len(),
-            (RECOMMENDED_THRESHOLD as f32).log(alphabet.len() as f32)
+            stripped_input.len(),
+            min_text_length
         );
 
         // Fill the mapping between original representation ("ABCDEFG...") and

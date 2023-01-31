@@ -113,10 +113,9 @@ impl FPE {
         alphabet: &str,
         plaintext: &str,
     ) -> Result<String, AnoError> {
-        ano_ensure!(plaintext.len() >=8, "A plaintext of {} characters is too small to ensure security, it should be at least 8 characters",plaintext.len());
         ano_ensure!(alphabet.len() >=8, "An alphabet of {} characters is too small to ensure security, it should be at least 8 characters",alphabet.len());
 
-        let rebased = RebasedInput::rebase_text(plaintext, alphabet)?;
+        let rebased = RebasedInput::rebase_text(&format!("{:>8}", plaintext), alphabet)?;
 
         let ciphertext = Self::encrypt_u16(key, tweak, rebased.radix, rebased.input.clone())?;
 
