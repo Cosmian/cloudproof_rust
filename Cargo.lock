@@ -51,6 +51,8 @@ dependencies = [
  "aes",
  "fpe",
  "itertools",
+ "num-bigint",
+ "num-integer",
  "num-traits",
  "rand",
  "rand_chacha",

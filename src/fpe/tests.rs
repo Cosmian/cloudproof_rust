@@ -1,13 +1,42 @@
 use crate::{
     error::AnoError,
     fpe::{
-        alphabets::Alphabet,
+        alphabet::{Alphabet, FpeAlphabet},
         ff1::{FPE, KEY_LENGTH},
     },
 };
 use rand::{thread_rng, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use rand_distr::Alphanumeric;
+
+// #[test]
+// fn test_rebased_string() -> Result<(), AnoError> {
+//     let alphabet = CustomAlphabet::numeric();
+//     let rebased_string = RebasedString::from_string("6842", &alphabet);
+//     assert_eq!(
+//         rebased_string.stripped_input,
+//         vec![6_u16, 8_u16, 4_u16, 2_u16]
+//     );
+//     assert!(rebased_string.non_alphabet_chars.is_empty());
+//     // with non-alphabet
+//     let input = "x68-42";
+//     let rebased_string = RebasedString::from_string(input, &alphabet);
+//     assert_eq!(
+//         rebased_string.stripped_input,
+//         vec![6_u16, 8_u16, 4_u16, 2_u16]
+//     );
+//     assert_eq!(rebased_string.non_alphabet_chars.len(), 2);
+//     assert_eq!(
+//         rebased_string.non_alphabet_chars.get(&0).cloned(),
+//         Some("x".encode_utf16().into_iter().next().unwrap())
+//     );
+//     assert_eq!(
+//         rebased_string.non_alphabet_chars.get(&3).cloned(),
+//         Some("-".encode_utf16().into_iter().next().unwrap())
+//     );
+//     assert_eq!(rebased_string.into_string(&alphabet)?, input.to_owned());
+//     Ok(())
+// }
 
 pub fn random_key() -> [u8; 32] {
     let mut rng = ChaCha20Rng::from_entropy();
@@ -16,14 +45,15 @@ pub fn random_key() -> [u8; 32] {
     key
 }
 
-fn alphabet_check(plaintext: &str, alphabet: &Alphabet, non_alphabet_chars: &str) {
+fn alphabet_check(plaintext: &str, alphabet: &dyn FpeAlphabet, non_alphabet_chars: &str) {
     let key = random_key();
     let ciphertext = alphabet.encrypt(&key, &[], plaintext).unwrap();
     println!("  {:?} -> {:?} ", &plaintext, &ciphertext);
-    assert_eq!(ciphertext.len(), plaintext.len());
+    assert_eq!(plaintext.chars().count(), ciphertext.chars().count());
     // every character of the generated string should be part of the alphabet or a - or a ' '
+    let non_alphabet_u16 = non_alphabet_chars.chars().collect::<Vec<char>>();
     for c in ciphertext.chars() {
-        assert!(non_alphabet_chars.contains(c) || alphabet.chars.contains(&c));
+        assert!(non_alphabet_u16.contains(&c) || alphabet.char_to_position(c).is_some());
     }
     let cleartext = alphabet.decrypt(&key, &[], ciphertext.as_str()).unwrap();
     assert_eq!(cleartext, plaintext);
@@ -43,29 +73,6 @@ fn test_doc_example() -> Result<(), AnoError> {
 }
 
 #[test]
-fn fpe_ff1_string_same_alphabet() -> Result<(), AnoError> {
-    let key = random_key();
-    for _ in 0..100 {
-        let plaintext_len = thread_rng().gen_range(8..128);
-        let plaintext: String = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(plaintext_len)
-            .map(char::from)
-            .collect();
-        let ciphertext = FPE::encrypt_string(&key, &[], &plaintext, &plaintext)?;
-        // cipher text size should equal that of the plain text
-        assert_eq!(ciphertext.len(), plaintext.len());
-        // every character of the generated string should be part of the alphabet of the original string
-        for c in ciphertext.chars() {
-            assert!(plaintext.contains(c));
-        }
-        let cleartext = FPE::decrypt_string(&key, &[], &plaintext, ciphertext.as_str())?;
-        assert_eq!(cleartext, plaintext);
-    }
-    Ok(())
-}
-
-#[test]
 fn fpe_ff1_credit_card_number() -> Result<(), AnoError> {
     let alphabet = Alphabet::numeric();
     [
@@ -80,18 +87,51 @@ fn fpe_ff1_credit_card_number() -> Result<(), AnoError> {
 
 #[test]
 fn fpe_ff1_names() -> Result<(), AnoError> {
-    let alphabet = Alphabet::alpha();
+    // alphanumeric test
+    let mut alphabet = Alphabet::alpha();
     ["John Doe", "Alba Martinez-Gonzalez", "MalcomX", "abcd"]
         .iter()
         .for_each(|n| alphabet_check(n, &alphabet, " -"));
-    let alphabet = alphabet.extend_with(" -");
+    // extended with space and dash
+    alphabet.extend_with(" -");
     ["John Doe", "Alba Martinez-Gonzalez", "MalcomX", "abcd"]
         .iter()
         .for_each(|n| alphabet_check(n, &alphabet, ""));
+    // lower case
     let alphabet = Alphabet::alpha_lower();
     ["John Doe", "Alba Martinez-Gonzalez", "MalcomX", "abcde"]
         .iter()
         .for_each(|n| alphabet_check(&n.to_lowercase(), &alphabet, " -"));
+    // extended with French characters
+    let mut alphabet = Alphabet::alpha();
+    alphabet.extend_with("éÉèÈàÀêÊüÜçÇûÛôÔâÂ");
+    ["Goûter", "René La Taupe", "Bérangère Aigüe", "Ça va bien"]
+        .iter()
+        .for_each(|n| alphabet_check(n, &alphabet, " -"));
+
+    let alphabet = Alphabet::utf();
+    [
+        "Bérangère Aigüe",
+        "ПРС-ТУФХЦЧШЩЪЫЬ ЭЮЯаб-вгдежз ийклмнопрст уфхцчш",
+        "吢櫬䀾羑襃￥",
+    ]
+    .iter()
+    .for_each(|n| alphabet_check(n, &alphabet, " -"));
+    Ok(())
+}
+
+#[test]
+fn fpe_ff1_string_same_alphabet() -> Result<(), AnoError> {
+    for _ in 0..100 {
+        let plaintext_len = thread_rng().gen_range(8..257);
+        let plaintext: String = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(plaintext_len)
+            .map(char::from)
+            .collect();
+        let alphabet = Alphabet::try_from(&plaintext)?;
+        alphabet_check(&plaintext, &alphabet, "");
+    }
     Ok(())
 }
 

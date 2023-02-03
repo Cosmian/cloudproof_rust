@@ -9,7 +9,9 @@ edition = "2021"
 aes = "0.8"
 fpe = { git = "https://github.com/Cosmian/cosmian_fpe" }
 itertools = "0.10"
-num-traits = "0.2"
+num-bigint = { version = "0.4", default-features = false }
+num-integer = { version = "0.1", default-features = false }
+num-traits = { version = "0.2", default-features = false }
 thiserror = "1.0"
 
 

@@ -1,4 +1,4 @@
-pub mod alphabets;
+pub mod alphabet;
 mod ff1;
 mod rebased_input;
 
