@@ -1,11 +1,8 @@
 use aes::Aes256;
 use fpe::ff1::{FF1h, FlexibleNumeralString};
 
-use crate::{ano_ensure, error::AnoError};
+use crate::{ano_ensure, error::AnoError, fpe::KEY_LENGTH};
 use std::collections::HashMap;
-
-/// The Key Length: 256 bit = 32 bytes for AES 256
-pub const KEY_LENGTH: usize = 32;
 
 /// The recommended threshold according to NIST standards
 pub const RECOMMENDED_THRESHOLD: usize = 1_000_000;
@@ -84,15 +81,13 @@ pub trait FpeAlphabet {
     /// # Examples
     ///
     /// ```
-    /// # use my_crate::{AnoError, FPE};
-    /// let alphabet = Alphabet::new("abcdefghijklmnopqrstuvwxyz");
+    /// let alphabet = Alphabet::try_from("abcdefghijklmnopqrstuvwxyz").unwrap();
     /// let alphabet = Alphabet::alpha_lower(); //same as above
     /// let key = [0_u8; 32];
     /// let tweak = b"unique tweak";
     /// let plaintext = "plaintext";
     /// let ciphertext = alphabet.encrypt(&key, tweak, plaintext)?;
     /// assert_eq!(ciphertext, "phqivnqmo");
-    /// # Ok::<(), AnoError>(())
     /// ```
     ///
     /// # Errors
@@ -131,15 +126,13 @@ pub trait FpeAlphabet {
     /// # Examples
     ///
     /// ```
-    /// # use my_crate::{AnoError, FPE};
-    /// let alphabet = Alphabet::new("abcdefghijklmnopqrstuvwxyz");
+    /// let alphabet = Alphabet::try_from("abcdefghijklmnopqrstuvwxyz").unwrap();
     /// let alphabet = Alphabet::alpha_lower(); //same as above
     /// let key = [0_u8; 32];
     /// let tweak = b"unique tweak";
     /// let ciphertext = "phqivnqmo";
     /// let cleartext = alphabet.decrypt(&key, tweak, &ciphertext)?;
     /// assert_eq!(cleartext, "plaintext");
-    /// # Ok::<(), AnoError>(())
     /// ```
     ///
     /// # Errors

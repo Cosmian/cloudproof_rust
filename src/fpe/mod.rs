@@ -1,8 +1,11 @@
-pub mod alphabet;
-mod ff1;
-mod rebased_input;
+/// The Key Length: 256 bit = 32 bytes for AES 256
+pub const KEY_LENGTH: usize = 32;
 
-pub use ff1::FPE;
+mod alphabet;
+pub use alphabet::{Alphabet, FpeAlphabet};
+
+mod numeral;
+pub use numeral::Decimal;
 
 #[cfg(test)]
 mod tests;

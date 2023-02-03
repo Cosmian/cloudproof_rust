@@ -1,42 +1,11 @@
+use super::KEY_LENGTH;
 use crate::{
     error::AnoError,
-    fpe::{
-        alphabet::{Alphabet, FpeAlphabet},
-        ff1::{FPE, KEY_LENGTH},
-    },
+    fpe::{Alphabet, Decimal, FpeAlphabet},
 };
 use rand::{thread_rng, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use rand_distr::Alphanumeric;
-
-// #[test]
-// fn test_rebased_string() -> Result<(), AnoError> {
-//     let alphabet = CustomAlphabet::numeric();
-//     let rebased_string = RebasedString::from_string("6842", &alphabet);
-//     assert_eq!(
-//         rebased_string.stripped_input,
-//         vec![6_u16, 8_u16, 4_u16, 2_u16]
-//     );
-//     assert!(rebased_string.non_alphabet_chars.is_empty());
-//     // with non-alphabet
-//     let input = "x68-42";
-//     let rebased_string = RebasedString::from_string(input, &alphabet);
-//     assert_eq!(
-//         rebased_string.stripped_input,
-//         vec![6_u16, 8_u16, 4_u16, 2_u16]
-//     );
-//     assert_eq!(rebased_string.non_alphabet_chars.len(), 2);
-//     assert_eq!(
-//         rebased_string.non_alphabet_chars.get(&0).cloned(),
-//         Some("x".encode_utf16().into_iter().next().unwrap())
-//     );
-//     assert_eq!(
-//         rebased_string.non_alphabet_chars.get(&3).cloned(),
-//         Some("-".encode_utf16().into_iter().next().unwrap())
-//     );
-//     assert_eq!(rebased_string.into_string(&alphabet)?, input.to_owned());
-//     Ok(())
-// }
 
 pub fn random_key() -> [u8; 32] {
     let mut rng = ChaCha20Rng::from_entropy();
@@ -89,22 +58,31 @@ fn fpe_ff1_credit_card_number() -> Result<(), AnoError> {
 fn fpe_ff1_names() -> Result<(), AnoError> {
     // alphanumeric test
     let mut alphabet = Alphabet::alpha();
+
     ["John Doe", "Alba Martinez-Gonzalez", "MalcomX", "abcd"]
         .iter()
         .for_each(|n| alphabet_check(n, &alphabet, " -"));
+
     // extended with space and dash
     alphabet.extend_with(" -");
     ["John Doe", "Alba Martinez-Gonzalez", "MalcomX", "abcd"]
         .iter()
         .for_each(|n| alphabet_check(n, &alphabet, ""));
+
     // lower case
     let alphabet = Alphabet::alpha_lower();
     ["John Doe", "Alba Martinez-Gonzalez", "MalcomX", "abcde"]
         .iter()
         .for_each(|n| alphabet_check(&n.to_lowercase(), &alphabet, " -"));
+
     // extended with French characters
-    let mut alphabet = Alphabet::alpha();
-    alphabet.extend_with("éÉèÈàÀêÊüÜçÇûÛôÔâÂ");
+    let alphabet = Alphabet::latin1sup();
+    ["Goûter", "René La Taupe", "Bérangère Aigüe", "Ça va bien"]
+        .iter()
+        .for_each(|n| alphabet_check(n, &alphabet, " -"));
+
+    // extended with French characters
+    let alphabet = Alphabet::latin1sup_alphanum();
     ["Goûter", "René La Taupe", "Bérangère Aigüe", "Ça va bien"]
         .iter()
         .for_each(|n| alphabet_check(n, &alphabet, " -"));
@@ -117,6 +95,16 @@ fn fpe_ff1_names() -> Result<(), AnoError> {
     ]
     .iter()
     .for_each(|n| alphabet_check(n, &alphabet, " -"));
+
+    let alphabet = Alphabet::chinese();
+    [
+        "天地玄黄 宇宙洪荒",
+        "日月盈昃 辰宿列张",
+        "寒来暑往 秋收冬藏",
+    ]
+    .iter()
+    .for_each(|n| alphabet_check(n, &alphabet, " -"));
+
     Ok(())
 }
 
@@ -136,121 +124,133 @@ fn fpe_ff1_string_same_alphabet() -> Result<(), AnoError> {
 }
 
 #[test]
-fn fpe_ff1_u16_credit_card_number() -> Result<(), AnoError> {
-    let ccn = "1234123412341234";
+fn fpe_integer() -> Result<(), AnoError> {
     let key = random_key();
-    let plaintext = ccn
-        .as_bytes()
-        .iter()
-        .map(|b| u16::from(*b))
-        .collect::<Vec<_>>();
-    let ciphertext = FPE::encrypt_u16(&key, &[], 128, plaintext.clone())?;
-    println!("{:?} -> {:?} ", &plaintext, &ciphertext);
-    let cleartext = FPE::decrypt_u16(&key, &[], 128, ciphertext)?;
-    assert_eq!(cleartext, plaintext);
-    Ok(())
-}
-
-#[test]
-fn fpe_ff1_u8_credit_card_number() -> Result<(), AnoError> {
-    let ccn = "1234-1234-1234-1234";
-    let plaintext = ccn.as_bytes().to_vec();
-    let key = random_key();
-    let ciphertext = FPE::encrypt_u8(&key, &[], 128, plaintext.clone())?;
-    let cleartext = FPE::decrypt_u8(&key, &[], 128, ciphertext)?;
-    assert_eq!(cleartext, plaintext);
-    Ok(())
-}
-
-#[test]
-fn fpe_ff1_u16_range_test() -> Result<(), AnoError> {
-    let key = random_key();
-
-    for _ in 1..100 {
-        let plaintext = vec![0_u16; 32]
-            .into_iter()
-            .map(|_| thread_rng().gen_range(0..128))
-            .collect::<Vec<_>>();
-        let ciphertext = FPE::encrypt_u16(&key, &[], 128, plaintext.clone())?;
-        let cleartext = FPE::decrypt_u16(&key, &[], 128, ciphertext)?;
-        assert_eq!(cleartext, plaintext);
+    let decimal = Decimal::from(6)?;
+    for value in [243_u64, 1, 10, 999999].iter() {
+        let ciphertext = decimal.encrypt(*value, &key, &[])?;
+        assert_eq!(decimal.decrypt(ciphertext, &key, &[])?, *value);
     }
-    Ok(())
-}
-
-#[test]
-fn fpe_ff1_digits_encryption() -> Result<(), AnoError> {
-    let key = random_key();
-
-    // Length == 0
-    let pt = "0";
-    let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt)?;
-    let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
-    assert_eq!(cleartext, pt);
-
-    // Length < 9
-    let pt: String = thread_rng().gen::<u16>().to_string();
-    let ct = FPE::encrypt_digit_string::<u32>(&key, &[], &pt)?;
-    let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
-    assert_eq!(cleartext, pt);
-
-    // Length < 9. Signed integer.
-    let pt: String = thread_rng().gen::<i16>().to_string();
-    let ct = FPE::encrypt_digit_string::<i32>(&key, &[], &pt)?;
-    let cleartext = FPE::decrypt_digits_string::<i32>(&key, &[], ct.as_str())?;
-    assert_eq!(cleartext, pt);
-
-    // Length >= 9
-    let pt = "4294967295"; // 2^32 - 1
-    let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt)?;
-    let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
-    assert_eq!(cleartext, pt);
-
-    // Length >= 9, splitted input with right string prepended with 0
-    let pt = "1111111111000222222";
-    let ct = FPE::encrypt_digit_string::<u64>(&key, &[], pt)?;
-    let cleartext = FPE::decrypt_digits_string::<u64>(&key, &[], ct.as_str())?;
-    assert_eq!(cleartext, pt);
-
-    // Length >= 9 with non-digit character. Needs to respect input format
-    let pt = "1234-1234-1234-1234-1234";
-    let ct = FPE::encrypt_string(&key, &[], "1234567890", pt)?;
-    let cleartext = FPE::decrypt_string(&key, &[], "1234567890", ct.as_str())?;
-    assert_eq!(cleartext, pt);
-
-    // Non-digits characters
-    let pt = "aaaaaaaaaaaaaa";
-    let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt);
-    assert!(ct.is_err());
-    Ok(())
-}
-
-#[test]
-fn fpe_ff1_limit_cases() -> Result<(), AnoError> {
-    let key = random_key();
-
-    let pt = "4294967295"; // 2^32 - 1
-    let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt)?;
-    let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
-    assert_eq!(cleartext, pt);
-
-    let pt = "-4294967295"; // too big
-    let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt)?;
-    let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
-    assert_eq!(cleartext, pt);
 
     Ok(())
 }
 
-#[test]
-fn fpe_ff1_digits_range_test() -> Result<(), AnoError> {
-    let key = random_key();
+// #[test]
+// fn fpe_ff1_u16_credit_card_number() -> Result<(), AnoError> {
+//     let ccn = "1234123412341234";
+//     let key = random_key();
+//     let plaintext = ccn
+//         .as_bytes()
+//         .iter()
+//         .map(|b| u16::from(*b))
+//         .collect::<Vec<_>>();
+//     let ciphertext = FPE::encrypt_u16(&key, &[], 128, plaintext.clone())?;
+//     println!("{:?} -> {:?} ", &plaintext, &ciphertext);
+//     let cleartext = FPE::decrypt_u16(&key, &[], 128, ciphertext)?;
+//     assert_eq!(cleartext, plaintext);
+//     Ok(())
+// }
 
-    for _ in 0..1000 {
-        let plaintext: String = thread_rng().gen::<i32>().to_string();
-        let ciphertext = FPE::encrypt_digit_string::<i32>(&key, &[], &plaintext)?;
-        let cleartext = FPE::decrypt_digits_string::<i32>(&key, &[], ciphertext.as_str())?;
-        assert_eq!(cleartext, plaintext);
-    }
-    Ok(())
-}
+// #[test]
+// fn fpe_ff1_u8_credit_card_number() -> Result<(), AnoError> {
+//     let ccn = "1234-1234-1234-1234";
+//     let plaintext = ccn.as_bytes().to_vec();
+//     let key = random_key();
+//     let ciphertext = FPE::encrypt_u8(&key, &[], 128, plaintext.clone())?;
+//     let cleartext = FPE::decrypt_u8(&key, &[], 128, ciphertext)?;
+//     assert_eq!(cleartext, plaintext);
+//     Ok(())
+// }
+
+// #[test]
+// fn fpe_ff1_u16_range_test() -> Result<(), AnoError> {
+//     let key = random_key();
+
+//     for _ in 1..100 {
+//         let plaintext = vec![0_u16; 32]
+//             .into_iter()
+//             .map(|_| thread_rng().gen_range(0..128))
+//             .collect::<Vec<_>>();
+//         let ciphertext = FPE::encrypt_u16(&key, &[], 128, plaintext.clone())?;
+//         let cleartext = FPE::decrypt_u16(&key, &[], 128, ciphertext)?;
+//         assert_eq!(cleartext, plaintext);
+//     }
+//     Ok(())
+// }
+
+// #[test]
+// fn fpe_ff1_digits_encryption() -> Result<(), AnoError> {
+//     let key = random_key();
+
+//     // Length == 0
+//     let pt = "0";
+//     let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt)?;
+//     let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
+//     assert_eq!(cleartext, pt);
+
+//     // Length < 9
+//     let pt: String = thread_rng().gen::<u16>().to_string();
+//     let ct = FPE::encrypt_digit_string::<u32>(&key, &[], &pt)?;
+//     let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
+//     assert_eq!(cleartext, pt);
+
+//     // Length < 9. Signed integer.
+//     let pt: String = thread_rng().gen::<i16>().to_string();
+//     let ct = FPE::encrypt_digit_string::<i32>(&key, &[], &pt)?;
+//     let cleartext = FPE::decrypt_digits_string::<i32>(&key, &[], ct.as_str())?;
+//     assert_eq!(cleartext, pt);
+
+//     // Length >= 9
+//     let pt = "4294967295"; // 2^32 - 1
+//     let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt)?;
+//     let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
+//     assert_eq!(cleartext, pt);
+
+//     // Length >= 9, splitted input with right string prepended with 0
+//     let pt = "1111111111000222222";
+//     let ct = FPE::encrypt_digit_string::<u64>(&key, &[], pt)?;
+//     let cleartext = FPE::decrypt_digits_string::<u64>(&key, &[], ct.as_str())?;
+//     assert_eq!(cleartext, pt);
+
+//     // Length >= 9 with non-digit character. Needs to respect input format
+//     let pt = "1234-1234-1234-1234-1234";
+//     let ct = FPE::encrypt_string(&key, &[], "1234567890", pt)?;
+//     let cleartext = FPE::decrypt_string(&key, &[], "1234567890", ct.as_str())?;
+//     assert_eq!(cleartext, pt);
+
+//     // Non-digits characters
+//     let pt = "aaaaaaaaaaaaaa";
+//     let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt);
+//     assert!(ct.is_err());
+//     Ok(())
+// }
+
+// #[test]
+// fn fpe_ff1_limit_cases() -> Result<(), AnoError> {
+//     let key = random_key();
+
+//     let pt = "4294967295"; // 2^32 - 1
+//     let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt)?;
+//     let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
+//     assert_eq!(cleartext, pt);
+
+//     let pt = "-4294967295"; // too big
+//     let ct = FPE::encrypt_digit_string::<u32>(&key, &[], pt)?;
+//     let cleartext = FPE::decrypt_digits_string::<u32>(&key, &[], ct.as_str())?;
+//     assert_eq!(cleartext, pt);
+
+//     Ok(())
+// }
+
+// #[test]
+// fn fpe_ff1_digits_range_test() -> Result<(), AnoError> {
+//     let key = random_key();
+
+//     for _ in 0..1000 {
+//         let plaintext: String = thread_rng().gen::<i32>().to_string();
+//         let ciphertext = FPE::encrypt_digit_string::<i32>(&key, &[], &plaintext)?;
+//         let cleartext = FPE::decrypt_digits_string::<i32>(&key, &[], ciphertext.as_str())?;
+//         assert_eq!(cleartext, plaintext);
+//     }
+//     Ok(())
+// }
