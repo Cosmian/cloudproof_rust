@@ -4,6 +4,9 @@ pub use alphabet::Alphabet;
 mod number;
 pub use number::Number;
 
+mod float;
+pub use float::Float;
+
 #[cfg(test)]
 mod tests;
 

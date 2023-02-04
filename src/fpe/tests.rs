@@ -1,4 +1,4 @@
-use super::{Number, KEY_LENGTH};
+use super::{Float, Number, KEY_LENGTH};
 use crate::{error::AnoError, fpe::Alphabet};
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
@@ -187,5 +187,19 @@ fn fpe_number_big_uint() -> Result<(), AnoError> {
         }
     }
 
+    Ok(())
+}
+
+#[test]
+fn fpe_float() -> Result<(), AnoError> {
+    let key = random_key();
+    let mut rng = thread_rng();
+    let float = Float::instantiate()?;
+    for _i in 0..1000 {
+        let value = rng.gen_range(0.0..f64::MAX);
+        let ciphertext = float.encrypt(value, &key, &[])?;
+        assert_ne!(ciphertext, value);
+        assert_eq!(float.decrypt(ciphertext, &key, &[])?, value);
+    }
     Ok(())
 }
