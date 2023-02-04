@@ -3,6 +3,8 @@ use crate::{
     error::AnoError,
     fpe::{Alphabet, Decimal, FpeAlphabet},
 };
+use num_bigint::BigUint;
+use num_traits::ToPrimitive;
 use rand::{thread_rng, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use rand_distr::Alphanumeric;
@@ -124,12 +126,38 @@ fn fpe_ff1_string_same_alphabet() -> Result<(), AnoError> {
 }
 
 #[test]
-fn fpe_integer() -> Result<(), AnoError> {
+fn fpe_decimal_u64() -> Result<(), AnoError> {
     let key = random_key();
-    let decimal = Decimal::from(6)?;
-    for value in [243_u64, 1, 10, 999999].iter() {
-        let ciphertext = decimal.encrypt(*value, &key, &[])?;
-        assert_eq!(decimal.decrypt(ciphertext, &key, &[])?, *value);
+    let mut rng = thread_rng();
+    for _i in 0..20 {
+        let digits = rng.gen_range(6..18);
+        let decimal = Decimal::from(digits)?;
+        for _j in 0..10 {
+            let value = rng.gen_range(0..decimal.max_value.to_u64().unwrap());
+            let ciphertext = decimal.encrypt(value, &key, &[])?;
+            assert!(ciphertext <= decimal.max_value().to_u64().unwrap());
+            assert_eq!(decimal.decrypt(ciphertext, &key, &[])?, value);
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
+fn fpe_decimal_big_uint() -> Result<(), AnoError> {
+    let key = random_key();
+    let mut rng = thread_rng();
+    let base = BigUint::from(10u64);
+    for _i in 0..20 {
+        let digits = rng.gen_range(24..32);
+        let decimal = Decimal::from(digits)?;
+        for _j in 0..10 {
+            let exponent = rng.gen_range(0..digits - 1);
+            let value = base.pow(exponent.to_u32().unwrap());
+            let ciphertext = decimal.encrypt_big(&value, &key, &[])?;
+            assert!(ciphertext <= decimal.max_value());
+            assert_eq!(decimal.decrypt_big(&ciphertext, &key, &[])?, value);
+        }
     }
 
     Ok(())

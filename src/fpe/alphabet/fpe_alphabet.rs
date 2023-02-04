@@ -81,12 +81,15 @@ pub trait FpeAlphabet {
     /// # Examples
     ///
     /// ```
+    /// use cosmian_anonymization::fpe::Alphabet;
+    /// use crate::cosmian_anonymization::fpe::FpeAlphabet;
+    ///
     /// let alphabet = Alphabet::try_from("abcdefghijklmnopqrstuvwxyz").unwrap();
     /// let alphabet = Alphabet::alpha_lower(); //same as above
     /// let key = [0_u8; 32];
     /// let tweak = b"unique tweak";
     /// let plaintext = "plaintext";
-    /// let ciphertext = alphabet.encrypt(&key, tweak, plaintext)?;
+    /// let ciphertext = alphabet.encrypt(&key, tweak, plaintext).unwrap();
     /// assert_eq!(ciphertext, "phqivnqmo");
     /// ```
     ///
@@ -126,12 +129,15 @@ pub trait FpeAlphabet {
     /// # Examples
     ///
     /// ```
+    /// use cosmian_anonymization::fpe::Alphabet;
+    /// use crate::cosmian_anonymization::fpe::FpeAlphabet;
+    ///
     /// let alphabet = Alphabet::try_from("abcdefghijklmnopqrstuvwxyz").unwrap();
     /// let alphabet = Alphabet::alpha_lower(); //same as above
     /// let key = [0_u8; 32];
     /// let tweak = b"unique tweak";
     /// let ciphertext = "phqivnqmo";
-    /// let cleartext = alphabet.decrypt(&key, tweak, &ciphertext)?;
+    /// let cleartext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
     /// assert_eq!(cleartext, "plaintext");
     /// ```
     ///

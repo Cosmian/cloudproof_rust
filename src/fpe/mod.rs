@@ -4,8 +4,8 @@ pub const KEY_LENGTH: usize = 32;
 mod alphabet;
 pub use alphabet::{Alphabet, FpeAlphabet};
 
-mod numeral;
-pub use numeral::Decimal;
+mod decimal;
+pub use decimal::Decimal;
 
 #[cfg(test)]
 mod tests;
