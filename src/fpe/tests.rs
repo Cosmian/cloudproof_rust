@@ -9,6 +9,8 @@ use rand::{thread_rng, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use rand_distr::Alphanumeric;
 
+/// Generate a random key using a cryptographically
+/// secure random number generator that is suitable for use with FPE
 pub fn random_key() -> [u8; 32] {
     let mut rng = ChaCha20Rng::from_entropy();
     let mut key = [0_u8; KEY_LENGTH];
