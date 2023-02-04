@@ -1,11 +1,9 @@
 use std::str::FromStr;
 
+use super::Alphabet;
+use crate::error::AnoError;
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
-
-use crate::{error::AnoError, fpe::FpeAlphabet};
-
-use super::Alphabet;
 
 pub struct Decimal {
     pub(crate) digits: usize,

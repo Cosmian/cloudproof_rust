@@ -1,7 +1,7 @@
 use super::KEY_LENGTH;
 use crate::{
     error::AnoError,
-    fpe::{Alphabet, Decimal, FpeAlphabet},
+    fpe::{Alphabet, Decimal},
 };
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
@@ -16,7 +16,7 @@ pub fn random_key() -> [u8; 32] {
     key
 }
 
-fn alphabet_check(plaintext: &str, alphabet: &dyn FpeAlphabet, non_alphabet_chars: &str) {
+fn alphabet_check(plaintext: &str, alphabet: &Alphabet, non_alphabet_chars: &str) {
     let key = random_key();
     let ciphertext = alphabet.encrypt(&key, &[], plaintext).unwrap();
     println!("  {:?} -> {:?} ", &plaintext, &ciphertext);

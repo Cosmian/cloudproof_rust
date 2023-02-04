@@ -2,7 +2,7 @@
 pub const KEY_LENGTH: usize = 32;
 
 mod alphabet;
-pub use alphabet::{Alphabet, FpeAlphabet};
+pub use alphabet::Alphabet;
 
 mod decimal;
 pub use decimal::Decimal;
