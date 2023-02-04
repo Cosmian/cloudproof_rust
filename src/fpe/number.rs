@@ -123,11 +123,11 @@ impl Number {
     /// let key = [0u8; 32];
     /// let tweak = b"tweak";
     ///
-    /// let encrypted = Number.encrypt_big(&BigUint::from(100_u64), &key, tweak).unwrap();
-    /// assert_ne!(BigUint::from(100_u64), encrypted);
+    /// let encrypted = Number.encrypt_big(&BigUint::from(0xa1_u64), &key, tweak).unwrap();
+    /// assert_ne!(BigUint::from(0xa1_u64), encrypted);
     ///
     /// let decrypted = Number.decrypt_big(&encrypted, &key, tweak).unwrap();
-    /// assert_eq!(BigUint::from(100_u64), decrypted);
+    /// assert_eq!(BigUint::from(0xa1_u64), decrypted);
     /// ```
     ///
     /// # Arguments
@@ -188,10 +188,10 @@ impl Number {
     /// let key = [0; 32];
     /// let tweak = [0];
     /// let number_radix = Number::from(16, 8).unwrap();
-    /// let ciphertext = number_radix.encrypt_big(&BigUint::from(123456_u64), &key, &tweak).unwrap();
+    /// let ciphertext = number_radix.encrypt_big(&BigUint::from(0xe2f3_u64), &key, &tweak).unwrap();
     /// let plaintext = number_radix.decrypt_big(&ciphertext, &key, &tweak).unwrap();
     ///
-    /// assert_eq!(BigUint::from(123456_u64), plaintext);
+    /// assert_eq!(BigUint::from(0xe2f3_u64), plaintext);
     /// `````
     pub fn decrypt(&self, ciphertext: u64, key: &[u8; 32], tweak: &[u8]) -> Result<u64, AnoError> {
         let plaintext = self.decrypt_big(&BigUint::from(ciphertext), key, tweak)?;

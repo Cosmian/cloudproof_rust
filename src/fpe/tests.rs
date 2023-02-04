@@ -129,12 +129,12 @@ fn fpe_number_u64_(radix: u32, min_length: usize) -> Result<(), AnoError> {
     let mut rng = thread_rng();
     for _i in 0..20 {
         let digits = rng.gen_range(min_length..min_length + 9);
-        let decimal = Number::from(radix, digits)?;
+        let number = Number::from(radix, digits)?;
         for _j in 0..10 {
-            let value = rng.gen_range(0..decimal.max_value.to_u64().unwrap());
-            let ciphertext = decimal.encrypt(value, &key, &[])?;
-            assert!(ciphertext <= decimal.max_value().to_u64().unwrap());
-            assert_eq!(decimal.decrypt(ciphertext, &key, &[])?, value);
+            let value = rng.gen_range(0..number.max_value.to_u64().unwrap());
+            let ciphertext = number.encrypt(value, &key, &[])?;
+            assert!(ciphertext <= number.max_value().to_u64().unwrap());
+            assert_eq!(number.decrypt(ciphertext, &key, &[])?, value);
         }
     }
 
