@@ -23,6 +23,7 @@ pub fn min_plaintext_length(alphabet_len: usize) -> usize {
 ///  - `Alphabet::alpha_lower()`
 ///  - `Alphabet::alpha_upper()`
 ///  - `Alphabet::numeric()`
+///  - `Alphabet::hexa_decimal()`
 ///  - `Alphabet::alpha_numeric()`
 ///  - `Alphabet::chinese()`
 ///  - `Alphabet::latin1sup()`
@@ -307,6 +308,7 @@ macro_rules! define_alphabet_constructors {
 
 define_alphabet_constructors! {
     numeric => "0123456789",
+    hexa_decimal => "0123456789abcdef",
     alpha_lower => "abcdefghijklmnopqrstuvwxyz",
     alpha_upper => "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
     alpha => "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",

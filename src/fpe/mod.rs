@@ -1,8 +1,8 @@
 mod alphabet;
 pub use alphabet::Alphabet;
 
-mod decimal;
-pub use decimal::Decimal;
+mod number;
+pub use number::Number;
 
 #[cfg(test)]
 mod tests;
@@ -12,7 +12,7 @@ pub const KEY_LENGTH: usize = 32;
 
 // avoid importing rand in WASM
 #[cfg(not(feature = "wasm"))]
-use rand::{thread_rng, Rng, RngCore, SeedableRng};
+use rand::{RngCore, SeedableRng};
 #[cfg(not(feature = "wasm"))]
 use rand_chacha::ChaCha20Rng;
 
