@@ -33,7 +33,7 @@ impl Number {
     ///
     /// # Errors
     /// If the `radix` is not between 2 and 16 inclusive or the calculation of the maximum value fails.
-    pub fn from(radix: u32, digits: usize) -> Result<Self, AnoError> {
+    pub fn instantiate(radix: u32, digits: usize) -> Result<Self, AnoError> {
         let min_digits = match radix {
             2 => 20,
             3 => 13,
@@ -101,8 +101,8 @@ impl Number {
     ///
     /// # Returns
     /// The encrypted big integer number.
-    pub fn encrypt(&self, value: u64, key: &[u8; 32], tweak: &[u8]) -> Result<u64, AnoError> {
-        let ciphertext = self.encrypt_big(&BigUint::from(value), key, tweak)?;
+    pub fn encrypt(&self, key: &[u8; 32], tweak: &[u8], value: u64) -> Result<u64, AnoError> {
+        let ciphertext = self.encrypt_big(key, tweak, &BigUint::from(value))?;
         ciphertext.to_u64().ok_or_else(|| {
             AnoError::FPE(format!(
                 "failed converting the ciphertext value: {}, to an u64",
@@ -139,9 +139,9 @@ impl Number {
     /// The encrypted big integer number.
     pub fn encrypt_big(
         &self,
-        big_value: &BigUint,
         key: &[u8; 32],
         tweak: &[u8],
+        big_value: &BigUint,
     ) -> Result<BigUint, AnoError> {
         if big_value > &self.max_value {
             return Err(AnoError::FPE(format!(
@@ -193,8 +193,8 @@ impl Number {
     ///
     /// assert_eq!(BigUint::from(0xe2f3_u64), plaintext);
     /// `````
-    pub fn decrypt(&self, ciphertext: u64, key: &[u8; 32], tweak: &[u8]) -> Result<u64, AnoError> {
-        let plaintext = self.decrypt_big(&BigUint::from(ciphertext), key, tweak)?;
+    pub fn decrypt(&self, key: &[u8; 32], tweak: &[u8], ciphertext: u64) -> Result<u64, AnoError> {
+        let plaintext = self.decrypt_big(key, tweak, &BigUint::from(ciphertext))?;
         plaintext.to_u64().ok_or_else(|| {
             AnoError::FPE(format!(
                 "failed converting the plaintext value: {}, to an u64",
@@ -238,9 +238,9 @@ impl Number {
     /// `````
     pub fn decrypt_big(
         &self,
-        big_ciphertext: &BigUint,
         key: &[u8; 32],
         tweak: &[u8],
+        big_ciphertext: &BigUint,
     ) -> Result<BigUint, AnoError> {
         if big_ciphertext > &self.max_value {
             return Err(AnoError::FPE(format!(

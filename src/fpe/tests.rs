@@ -129,12 +129,12 @@ fn fpe_number_u64_(radix: u32, min_length: usize) -> Result<(), AnoError> {
     let mut rng = thread_rng();
     for _i in 0..20 {
         let digits = rng.gen_range(min_length..min_length + 9);
-        let number = Number::from(radix, digits)?;
+        let number = Number::instantiate(radix, digits)?;
         for _j in 0..10 {
             let value = rng.gen_range(0..number.max_value.to_u64().unwrap());
-            let ciphertext = number.encrypt(value, &key, &[])?;
+            let ciphertext = number.encrypt(&key, &[], value)?;
             assert!(ciphertext <= number.max_value().to_u64().unwrap());
-            assert_eq!(number.decrypt(ciphertext, &key, &[])?, value);
+            assert_eq!(number.decrypt(&key, &[], ciphertext)?, value);
         }
     }
 
@@ -176,13 +176,13 @@ fn fpe_number_big_uint() -> Result<(), AnoError> {
         let base = BigUint::from(radix);
         for _i in 0..20 {
             let digits = rng.gen_range(24..32);
-            let number = Number::from(radix, digits)?;
+            let number = Number::instantiate(radix, digits)?;
             for _j in 0..10 {
                 let exponent = rng.gen_range(0..digits - 1);
                 let value = base.pow(exponent.to_u32().unwrap());
-                let ciphertext = number.encrypt_big(&value, &key, &[])?;
+                let ciphertext = number.encrypt_big(&key, &[], &value)?;
                 assert!(ciphertext <= number.max_value());
-                assert_eq!(number.decrypt_big(&ciphertext, &key, &[])?, value);
+                assert_eq!(number.decrypt_big(&key, &[], &ciphertext)?, value);
             }
         }
     }
@@ -197,9 +197,9 @@ fn fpe_float() -> Result<(), AnoError> {
     let float = Float::instantiate()?;
     for _i in 0..1000 {
         let value = rng.gen_range(0.0..f64::MAX);
-        let ciphertext = float.encrypt(value, &key, &[])?;
+        let ciphertext = float.encrypt(&key, &[], value)?;
         assert_ne!(ciphertext, value);
-        assert_eq!(float.decrypt(ciphertext, &key, &[])?, value);
+        assert_eq!(float.decrypt(&key, &[], ciphertext)?, value);
     }
     Ok(())
 }

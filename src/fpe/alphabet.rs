@@ -84,6 +84,19 @@ impl TryFrom<&String> for Alphabet {
 }
 
 impl Alphabet {
+    /// Tries to create an `Alphabet` from a string slice of characters.
+    ///
+    /// # Arguments
+    ///
+    /// * `alphabet` - A string slice of the characters to be used as the alphabet.
+    ///
+    /// # Returns
+    ///
+    /// An `Alphabet` if the string slice contains between 2 and 2^16 characters, otherwise returns an error.
+    pub fn instantiate(alphabet: &str) -> Result<Self, AnoError> {
+        Alphabet::try_from(alphabet)
+    }
+
     fn extend_(&mut self, additional_characters: Vec<char>) {
         self.chars.extend(additional_characters);
         // Sort the characters and remove duplicates

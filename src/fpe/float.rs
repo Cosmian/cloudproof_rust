@@ -17,7 +17,7 @@ impl Float {
     /// Returns a new instance of `Float` if successful, otherwise returns an error `AnoError`.
     pub fn instantiate() -> Result<Float, AnoError> {
         Ok(Float {
-            number: Number::from(16, 16)?,
+            number: Number::instantiate(16, 16)?,
         })
     }
 
@@ -32,11 +32,11 @@ impl Float {
     /// # Returns
     ///
     /// Returns the encrypted floating point value if successful, otherwise returns an error `AnoError`.
-    pub fn encrypt(&self, value: f64, key: &[u8; 32], tweak: &[u8]) -> Result<f64, AnoError> {
+    pub fn encrypt(&self, key: &[u8; 32], tweak: &[u8], value: f64) -> Result<f64, AnoError> {
         // Convert the floating point value to a BigUint
         let big_uint = BigUint::from(value.to_bits());
         // Encrypt the BigUint
-        let ciphertext = self.number.encrypt_big(&big_uint, key, tweak)?;
+        let ciphertext = self.number.encrypt_big(key, tweak, &big_uint)?;
         // Convert the encrypted BigUint to u64
         let num_bits = ciphertext.to_u64().ok_or_else(|| {
             AnoError::FPE(format!(
@@ -59,11 +59,11 @@ impl Float {
     /// # Returns
     ///
     /// Returns the decrypted floating point value if successful, otherwise returns an error `AnoError`.
-    pub fn decrypt(&self, value: f64, key: &[u8; 32], tweak: &[u8]) -> Result<f64, AnoError> {
+    pub fn decrypt(&self, key: &[u8; 32], tweak: &[u8], value: f64) -> Result<f64, AnoError> {
         // Convert the floating point value to a BigUint
         let big_uint = BigUint::from(value.to_bits());
         // Decrypt the BigUint
-        let ciphertext = self.number.decrypt_big(&big_uint, key, tweak)?;
+        let ciphertext = self.number.decrypt_big(key, tweak, &big_uint)?;
         // Convert the decrypted BigUint to u64
         let num_bits = ciphertext.to_u64().ok_or_else(|| {
             AnoError::FPE(format!(
