@@ -16,7 +16,7 @@ impl Integer {
     ///
     /// # Example
     /// ```
-    /// use cosmian_anonymization::fpe::Integer;
+    /// use cloudproof_rust::fpe::Integer;
     /// use num_bigint::BigUint;
     ///
     /// let number = Integer::instantiate(8, 7).unwrap();
@@ -81,7 +81,7 @@ impl Integer {
     ///
     /// # Example
     /// ```
-    /// use cosmian_anonymization::fpe::Integer;
+    /// use cloudproof_rust::fpe::Integer;
     ///
     /// let Integer = Integer::instantiate(10, 8).unwrap();
     /// let key = [0u8; 32];
@@ -116,7 +116,7 @@ impl Integer {
     ///
     /// # Example
     /// ```
-    /// use cosmian_anonymization::fpe::Integer;
+    /// use cloudproof_rust::fpe::Integer;
     /// use num_bigint::BigUint;
     ///
     /// let Integer = Integer::instantiate(16, 8).unwrap();
@@ -182,7 +182,7 @@ impl Integer {
     /// # Example
     ///
     /// ```
-    /// use cosmian_anonymization::fpe::Integer;
+    /// use cloudproof_rust::fpe::Integer;
     /// use num_bigint::BigUint;
     ///
     /// let key = [0; 32];
@@ -225,7 +225,7 @@ impl Integer {
     /// # Example
     ///
     /// ```
-    /// use cosmian_anonymization::fpe::Integer;
+    /// use cloudproof_rust::fpe::Integer;
     /// use num_bigint::BigUint;
     ///
     /// let key = [0; 32];

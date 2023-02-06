@@ -220,7 +220,7 @@ impl Alphabet {
     /// # Examples
     ///
     /// ```
-    /// use cosmian_anonymization::fpe::Alphabet;
+    /// use cloudproof_rust::fpe::Alphabet;
     ///
     /// let alphabet = Alphabet::try_from("abcdefghijklmnopqrstuvwxyz").unwrap();
     /// let alphabet = Alphabet::alpha_lower(); //same as above
@@ -267,7 +267,7 @@ impl Alphabet {
     /// # Examples
     ///
     /// ```
-    /// use cosmian_anonymization::fpe::Alphabet;
+    /// use cloudproof_rust::fpe::Alphabet;
     ///
     /// let alphabet = Alphabet::try_from("abcdefghijklmnopqrstuvwxyz").unwrap();
     /// let alphabet = Alphabet::alpha_lower(); //same as above
