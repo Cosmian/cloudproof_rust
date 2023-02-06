@@ -18,7 +18,7 @@ The primitives offered, from least to most secure, are:
   - [Implementation](#-implementation)
   - [Using FPE](#-using-fpe)
     - [Encrypting Text](#-encrypting-text)
-      - [Encrypting and decrypting an alpha numeric text](#-encrypting-and-decrypting-an-alpha-numeric-text)
+      - [Encrypting and decrypting an alphanumeric text](#-encrypting-and-decrypting-an-alpha-numeric-text)
       - [Encrypting and decrypting a credit card number](#-encrypting-and-decrypting-a-credit-card-number)
       - [Encrypting and decrypting a Chinese text with spaces](#-encrypting-and-decrypting-a-chinese-text-with-spaces)
     - [Encrypting Integers](#-encrypting-integers)
@@ -196,7 +196,7 @@ assert_eq!(
 
 ### Encrypting Floats
 
-The `fpe::Float` structure provides support to encrypting floats of type `f64`:
+The `fpe::Float` structure provides support for encrypting floats of type `f64`:
 
 ```rust
 let key = [0_u8; 32];
