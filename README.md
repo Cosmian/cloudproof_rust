@@ -37,7 +37,7 @@ FPE aims to encrypt plaintext while retaining its format (alphabet). FPE-FF1 is 
 
 The FPE implementation follows NIST specifications for FF1 (found in the [NIST SP 800-38G specification](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38G.pdf#page=19&zoom=100,0,0)).
 
-The code is based on the cosmian_fpe directory found on [GitHub](https://github.com/Cosmian/cosmian_fpe), which is based on str4d/fpe. The number of Feistel rounds has been increased to 18 following the recommendations of this [cryptanalysis paper](https://eprint.iacr.org/2020/1311.pdf).
+The code is based on the `cosmian_fpe` directory found on [GitHub](https://github.com/Cosmian/cosmian_fpe), which is based on `str4d/fpe`. The number of Feistel rounds has been increased to 18 following the recommendations of this [cryptanalysis paper](https://eprint.iacr.org/2020/1311.pdf).
 
 The implementation also enforces the requirement that `radix^min_len > 1_000_000`. For the `Alphabet` and `Integer` FPE facilities, this requirement is met with the following parameters:
 
@@ -58,15 +58,15 @@ Cosmian FPE proposes 3 structures:
 ### Encrypting Text
 
 The `fpe::Alphabet` structure provides the ability to encrypt a plaintext using an `alphabet`.
-Characters of the plaintext that belong to the alphabet are encrypted while the others are left unchanged and at their original location in the ciphertext.
+Characters of the plaintext that belong to the alphabet are encrypted while the others are left unchanged at their original location in the ciphertext.
 
-The alphabet can be specified using the `instantiate` method:
+An alphabet can be instantiated using the `Alphabet::instantiate()` method:
 
 ```rust
 let hexadecimal_alphabet = Alphabet::instantiate("01234567890abcdef").unwrap();
 ```
 
-However multiple pre-defined alphabets are available:
+There are multiple pre-defined alphabets available:
 
 - `Alphabet::alpha()`
 - `Alphabet::alpha_lower()`
@@ -87,17 +87,18 @@ let mut alphabet = Alphabet::alphanumeric();
 alphabet.extend_with(" ");
 ```
 
-#### Encrypting and decrypting an alpha numeric text
+#### Encrypting and decrypting an alphanumeric text
 
 ```rust
 let key = [0_u8; 32];
 let tweak = b"unique tweak";
 
 let alphabet = Alphabet::alpha_numeric(); //0-9a-zA-Z
+
 let ciphertext = alphabet.encrypt(&key, tweak, "alphanumeric").unwrap();
-// ciphertext -> jraqSuFWZmdH  (same length, same alphabet)
+assert_eq!("jraqSuFWZmdH", ciphertext);
+
 let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
-assert_ne!("jraqSuFWZmdH", ciphertext);
 assert_eq!("alphanumeric", plaintext);
 ```
 
@@ -108,16 +109,17 @@ let key = [0_u8; 32];
 let tweak = b"unique tweak";
 
 let alphabet = Alphabet::numeric(); //0-9
+
 let ciphertext = alphabet
    .encrypt(&key, tweak, "1234-1234-1234-1234")
    .unwrap();
-// ciphertext -> 1415-4650-5562-7272
-let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
 assert_eq!("1415-4650-5562-7272", ciphertext);
+
+let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
 assert_eq!("1234-1234-1234-1234", plaintext);
 ```
 
-Since the `-` character is not part of the alphabet it is preserved during encryption and decryption.
+_Note_: since the `-` character is not part of the alphabet it is preserved during encryption and decryption.
 
 #### Encrypting and decrypting a Chinese text with spaces
 
@@ -128,17 +130,19 @@ let tweak = b"unique tweak";
 let mut alphabet = Alphabet::chinese();
 // add the space character to the alphabet
 alphabet.extend_with(" ");
+
 let ciphertext = alphabet.encrypt(&key, tweak, "天地玄黄 宇宙洪荒").unwrap();
-let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
 assert_eq!("儖濣鈍媺惐墷礿截媃", ciphertext);
+
+let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
 assert_eq!("天地玄黄 宇宙洪荒", plaintext);
 ```
 
-Since the space character was added to the alphabet, it is also encrypted.
+_Note_: since the space character was added to the alphabet, it is also encrypted.
 
 ### Encrypting Integers
 
-The `fpe::Integer` structure offers the ability to encrypt integers with a radix between 2 (binary) and 16 (hexadecimal) and up to maximum power of this radix.
+The `fpe::Integer` structure offers the ability to encrypt integers with a radix between 2 (binary) and 16 (hexadecimal) and up to a maximum power of this radix.
 
 To encrypt decimal integers up to u64::MAX, use:
 
@@ -153,10 +157,11 @@ let radix = 10_u32;
 let digits = 6;
 
 let itg = Integer::instantiate(radix, digits).unwrap();
-let ciphertext = itg.encrypt(&key, tweak, 123_456_u64).unwrap();
-let plaintext = itg.decrypt(&key, tweak, ciphertext).unwrap();
 
+let ciphertext = itg.encrypt(&key, tweak, 123_456_u64).unwrap();
 assert_eq!(110_655_u64, ciphertext);
+
+let plaintext = itg.decrypt(&key, tweak, ciphertext).unwrap();
 assert_eq!(123_456_u64, plaintext);
 ```
 
@@ -168,21 +173,21 @@ let tweak = b"unique tweak";
 
 // decimal number with digits 0-9
 let radix = 10_u32;
-// the number of digits of the greatest number = radix^digits -1
-// In this case 6 decimal digits -> 999_999
+// the number of digits of the greatest number = radix^digits -1 = 10^20-1
 let digits = 20;
 
 // the value to encrypt: 10^17
 let value = BigUint::from_str_radix("100000000000000000", radix).unwrap();
 
 let itg = Integer::instantiate(radix, digits).unwrap();
-let ciphertext = itg.encrypt_big(&key, tweak, &value).unwrap();
-let plaintext = itg.decrypt_big(&key, tweak, &ciphertext).unwrap();
 
+let ciphertext = itg.encrypt_big(&key, tweak, &value).unwrap();
 assert_eq!(
    BigUint::from_str_radix("65348521845006160218", radix).unwrap(),
    ciphertext
 );
+
+let plaintext = itg.decrypt_big(&key, tweak, &ciphertext).unwrap();
 assert_eq!(
    BigUint::from_str_radix("100000000000000000", radix).unwrap(),
    plaintext
@@ -199,9 +204,9 @@ let tweak = b"unique tweak";
 
 let flt = Float::instantiate().unwrap();
 let ciphertext = flt.encrypt(&key, tweak, 123_456.789_f64).unwrap();
-let plaintext = flt.decrypt(&key, tweak, ciphertext).unwrap();
-
 assert_eq!(1.170438892319619e91_f64, ciphertext);
+
+let plaintext = flt.decrypt(&key, tweak, ciphertext).unwrap();
 assert_eq!(123_456.789_f64, plaintext);
 ```
 
