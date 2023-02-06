@@ -2,11 +2,11 @@ use crate::error::AnoError;
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 
-use super::Number;
+use super::Integer;
 
 /// Struct representing a floating point number.
 pub struct Float {
-    number: Number,
+    number: Integer,
 }
 
 impl Float {
@@ -17,7 +17,7 @@ impl Float {
     /// Returns a new instance of `Float` if successful, otherwise returns an error `AnoError`.
     pub fn instantiate() -> Result<Float, AnoError> {
         Ok(Float {
-            number: Number::instantiate(16, 16)?,
+            number: Integer::instantiate(16, 16)?,
         })
     }
 

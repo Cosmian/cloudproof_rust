@@ -3,23 +3,23 @@ use crate::error::AnoError;
 use num_bigint::BigUint;
 use num_traits::{Num, One, ToPrimitive};
 
-pub struct Number {
+pub struct Integer {
     pub(crate) radix: u32,
     pub(crate) digits: usize,
     pub(crate) max_value: BigUint,
     pub(crate) numeric_alphabet: Alphabet,
 }
 
-impl Number {
-    /// Creates a new instance of the `Number` representation.
+impl Integer {
+    /// Creates a new instance of the `Integer` representation.
     /// It calculates the `max_value` as the number of `digits` raised to the power of `radix`.
     ///
     /// # Example
     /// ```
-    /// use cosmian_anonymization::fpe::Number;
+    /// use cosmian_anonymization::fpe::Integer;
     /// use num_bigint::BigUint;
     ///
-    /// let number = Number::from(8, 7).unwrap();
+    /// let number = Integer::instantiate(8, 7).unwrap();
     /// assert_eq!(number.digits(), 7);
     /// assert_eq!(number.max_value(), BigUint::from(2097151_u64));
     /// ```
@@ -29,7 +29,7 @@ impl Number {
     /// `digits` - The number of digits in the representation.
     ///
     /// # Returns
-    /// A new instance of `Number` representation.
+    /// A new instance of `Integer` representation.
     ///
     /// # Errors
     /// If the `radix` is not between 2 and 16 inclusive or the calculation of the maximum value fails.
@@ -60,7 +60,7 @@ impl Number {
 
         if digits < min_digits {
             return Err(AnoError::FPE(format!(
-                "Number of digits must be at least {}, got {}",
+                "Integer of digits must be at least {}, got {}",
                 min_digits, digits
             )));
         }
@@ -68,7 +68,7 @@ impl Number {
         let max_value = BigUint::from(radix).pow(digits as u32) - BigUint::one();
         let alphabet = &"0123456789abcdef"[0..radix as usize];
 
-        Ok(Number {
+        Ok(Integer {
             radix,
             digits,
             max_value,
@@ -77,20 +77,20 @@ impl Number {
     }
 
     /// Encrypts a given `value` using the FPE method.
-    /// The value must be lower or equal to the `max_value` of the Number representation.
+    /// The value must be lower or equal to the `max_value` of the Integer representation.
     ///
     /// # Example
     /// ```
-    /// use cosmian_anonymization::fpe::Number;
+    /// use cosmian_anonymization::fpe::Integer;
     ///
-    /// let Number = Number::from(10, 8).unwrap();
+    /// let Integer = Integer::instantiate(10, 8).unwrap();
     /// let key = [0u8; 32];
     /// let tweak = b"tweak";
     ///
-    /// let encrypted = Number.encrypt(100, &key, tweak).unwrap();
+    /// let encrypted = Integer.encrypt(&key, tweak, 100).unwrap();
     /// assert_ne!(100, encrypted);
     ///
-    /// let decrypted = Number.decrypt(encrypted, &key, tweak).unwrap();
+    /// let decrypted = Integer.decrypt(&key, tweak, encrypted).unwrap();
     /// assert_eq!(100, decrypted);
     /// ```
     ///
@@ -112,21 +112,21 @@ impl Number {
     }
 
     /// Encrypts a given `value` using the FPE method.
-    /// The value must be lower or equal to the `max_value` of the Number representation.
+    /// The value must be lower or equal to the `max_value` of the Integer representation.
     ///
     /// # Example
     /// ```
-    /// use cosmian_anonymization::fpe::Number;
+    /// use cosmian_anonymization::fpe::Integer;
     /// use num_bigint::BigUint;
     ///
-    /// let Number = Number::from(16, 8).unwrap();
+    /// let Integer = Integer::instantiate(16, 8).unwrap();
     /// let key = [0u8; 32];
     /// let tweak = b"tweak";
     ///
-    /// let encrypted = Number.encrypt_big(&BigUint::from(0xa1_u64), &key, tweak).unwrap();
+    /// let encrypted = Integer.encrypt_big(&key, tweak, &BigUint::from(0xa1_u64)).unwrap();
     /// assert_ne!(BigUint::from(0xa1_u64), encrypted);
     ///
-    /// let decrypted = Number.decrypt_big(&encrypted, &key, tweak).unwrap();
+    /// let decrypted = Integer.decrypt_big(&key, tweak, &encrypted).unwrap();
     /// assert_eq!(BigUint::from(0xa1_u64), decrypted);
     /// ```
     ///
@@ -175,21 +175,21 @@ impl Number {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - If the ciphertext is greater than the maximum value set for the Number struct.
+    /// - If the ciphertext is greater than the maximum value set for the Integer struct.
     /// - If the plaintext could not be generated from the ciphertext.
     /// - If the plaintext value could not be converted to a u64.
     ///
     /// # Example
     ///
     /// ```
-    /// use cosmian_anonymization::fpe::Number;
+    /// use cosmian_anonymization::fpe::Integer;
     /// use num_bigint::BigUint;
     ///
     /// let key = [0; 32];
     /// let tweak = [0];
-    /// let number_radix = Number::from(16, 8).unwrap();
-    /// let ciphertext = number_radix.encrypt_big(&BigUint::from(0xe2f3_u64), &key, &tweak).unwrap();
-    /// let plaintext = number_radix.decrypt_big(&ciphertext, &key, &tweak).unwrap();
+    /// let number_radix = Integer::instantiate(16, 8).unwrap();
+    /// let ciphertext = number_radix.encrypt_big(&key, &tweak, &BigUint::from(0xe2f3_u64)).unwrap();
+    /// let plaintext = number_radix.decrypt_big(&key, &tweak, &ciphertext).unwrap();
     ///
     /// assert_eq!(BigUint::from(0xe2f3_u64), plaintext);
     /// `````
@@ -218,21 +218,21 @@ impl Number {
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - If the ciphertext is greater than the maximum value set for the Number struct.
+    /// - If the ciphertext is greater than the maximum value set for the Integer struct.
     /// - If the plaintext could not be generated from the ciphertext.
     /// - If the plaintext value could not be converted to a BigUint.
     ///
     /// # Example
     ///
     /// ```
-    /// use cosmian_anonymization::fpe::Number;
+    /// use cosmian_anonymization::fpe::Integer;
     /// use num_bigint::BigUint;
     ///
     /// let key = [0; 32];
     /// let tweak = [0];
-    /// let number_radix = Number::from(10, 8).unwrap();
-    /// let ciphertext = number_radix.encrypt_big(&BigUint::from(123456_u64), &key, &tweak).unwrap();
-    /// let plaintext = number_radix.decrypt_big(&ciphertext, &key, &tweak).unwrap();
+    /// let number_radix = Integer::instantiate(10, 8).unwrap();
+    /// let ciphertext = number_radix.encrypt_big(&key, &tweak, &BigUint::from(123456_u64)).unwrap();
+    /// let plaintext = number_radix.decrypt_big(&key, &tweak, &ciphertext).unwrap();
     ///
     /// assert_eq!(BigUint::from(123456_u64), plaintext);
     /// `````
@@ -256,7 +256,7 @@ impl Number {
             .map_err(|e| AnoError::FPE(format!("failed generating the plaintext value {}", e)))
     }
 
-    /// The maximum value supported by this Number
+    /// The maximum value supported by this Integer
     pub fn max_value(&self) -> BigUint {
         self.max_value.clone()
     }

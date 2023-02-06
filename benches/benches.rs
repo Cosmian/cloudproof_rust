@@ -1,6 +1,6 @@
 use cosmian_anonymization::fpe::Alphabet;
 use cosmian_anonymization::fpe::Float;
-use cosmian_anonymization::fpe::Number;
+use cosmian_anonymization::fpe::Integer;
 use cosmian_anonymization::fpe::KEY_LENGTH;
 use criterion::{criterion_group, criterion_main, Criterion};
 use num_bigint::BigUint;
@@ -38,7 +38,7 @@ fn bench_fpe_credit_card(c: &mut Criterion) {
 fn bench_fpe_decimal(c: &mut Criterion) {
     let key = random_key();
 
-    let decimal = Number::instantiate(10, 9).unwrap();
+    let decimal = Integer::instantiate(10, 9).unwrap();
     let num = 123456789_u64;
     c.bench_function("FPE/encryption/decimal_u64", |b| {
         b.iter(|| {
@@ -52,7 +52,7 @@ fn bench_fpe_decimal(c: &mut Criterion) {
         });
     });
 
-    let decimal = Number::instantiate(10, 20).unwrap();
+    let decimal = Integer::instantiate(10, 20).unwrap();
     let num = BigUint::from(10_u32).pow(19_u32);
     c.bench_function("FPE/encryption/decimal_big_uint", |b| {
         b.iter(|| {
@@ -71,7 +71,7 @@ fn bench_fpe_decimal(c: &mut Criterion) {
 fn bench_fpe_hexadecimal(c: &mut Criterion) {
     let key = random_key();
 
-    let hexadecimal = Number::instantiate(16, 9).unwrap();
+    let hexadecimal = Integer::instantiate(16, 9).unwrap();
     let num = 123456789_u64;
     c.bench_function("FPE/encryption/hexadecimal_u64", |b| {
         b.iter(|| {
@@ -85,7 +85,7 @@ fn bench_fpe_hexadecimal(c: &mut Criterion) {
         });
     });
 
-    let hexadecimal = Number::instantiate(16, 20).unwrap();
+    let hexadecimal = Integer::instantiate(16, 20).unwrap();
     let num = BigUint::from(10_u32).pow(19_u32);
     c.bench_function("FPE/encryption/hexadecimal_big_uint", |b| {
         b.iter(|| {

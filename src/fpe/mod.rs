@@ -1,8 +1,8 @@
 mod alphabet;
 pub use alphabet::Alphabet;
 
-mod number;
-pub use number::Number;
+mod integer;
+pub use integer::Integer;
 
 mod float;
 pub use float::Float;

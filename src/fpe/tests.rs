@@ -1,7 +1,7 @@
-use super::{Float, Number, KEY_LENGTH};
+use super::{Float, Integer, KEY_LENGTH};
 use crate::{error::AnoError, fpe::Alphabet};
 use num_bigint::BigUint;
-use num_traits::ToPrimitive;
+use num_traits::{Num, ToPrimitive};
 use rand::{thread_rng, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use rand_distr::Alphanumeric;
@@ -39,6 +39,119 @@ fn test_doc_example() -> Result<(), AnoError> {
     assert_eq!(ciphertext, "phqivnqmo");
     let cleartext = alphabet.decrypt(&key, tweak, &ciphertext)?;
     assert_eq!(cleartext, plaintext);
+    Ok(())
+}
+
+#[test]
+fn test_readme_examples() -> Result<(), AnoError> {
+    {
+        let key = [0_u8; 32];
+        let tweak = b"unique tweak";
+
+        let alphabet = Alphabet::alpha_numeric(); //0-9a-zA-Z
+        let ciphertext = alphabet.encrypt(&key, tweak, "alphanumeric").unwrap();
+        let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
+        assert_eq!("jraqSuFWZmdH", ciphertext);
+        assert_eq!("alphanumeric", plaintext);
+    }
+    {
+        let key = [0_u8; 32];
+        let tweak = b"unique tweak";
+
+        let alphabet = Alphabet::numeric(); //0-9
+        let ciphertext = alphabet
+            .encrypt(&key, tweak, "1234-1234-1234-1234")
+            .unwrap();
+        let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
+        assert_eq!("1415-4650-5562-7272", ciphertext);
+        assert_eq!("1234-1234-1234-1234", plaintext);
+    }
+    {
+        let key = [0_u8; 32];
+        let tweak = b"unique tweak";
+
+        let mut alphabet = Alphabet::chinese();
+        // add the space character to the alphabet
+        alphabet.extend_with(" ");
+        let ciphertext = alphabet.encrypt(&key, tweak, "天地玄黄 宇宙洪荒").unwrap();
+        let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
+        assert_eq!("儖濣鈍媺惐墷礿截媃", ciphertext);
+        assert_eq!("天地玄黄 宇宙洪荒", plaintext);
+    }
+    {
+        let key = [0_u8; 32];
+        let tweak = b"unique tweak";
+
+        // decimal number with digits 0-9
+        let radix = 10_u32;
+        // the number of digits of the greatest number = radix^digits -1
+        // In this case 6 decimal digits -> 999_999
+        let digits = 6;
+
+        let itg = Integer::instantiate(radix, digits).unwrap();
+        let ciphertext = itg.encrypt(&key, tweak, 123_456_u64).unwrap();
+        let plaintext = itg.decrypt(&key, tweak, ciphertext).unwrap();
+
+        assert_eq!(110_655_u64, ciphertext);
+        assert_eq!(123_456_u64, plaintext);
+    }
+
+    {
+        let key = [0_u8; 32];
+        let tweak = b"unique tweak";
+
+        // decimal number with digits 0-9
+        let radix = 10_u32;
+        // the number of digits of the greatest number = radix^digits -1
+        // In this case 6 decimal digits -> 999_999
+        let digits = 6;
+
+        let itg = Integer::instantiate(radix, digits).unwrap();
+        let ciphertext = itg.encrypt(&key, tweak, 123_456_u64).unwrap();
+        let plaintext = itg.decrypt(&key, tweak, ciphertext).unwrap();
+
+        assert_eq!(110_655_u64, ciphertext);
+        assert_eq!(123_456_u64, plaintext);
+    }
+
+    {
+        let key = [0_u8; 32];
+        let tweak = b"unique tweak";
+
+        // decimal number with digits 0-9
+        let radix = 10_u32;
+        // the number of digits of the greatest number = radix^digits -1
+        // In this case 6 decimal digits -> 999_999
+        let digits = 20;
+
+        // the value to encrypt: 10^17
+        let value = BigUint::from_str_radix("100000000000000000", radix).unwrap();
+
+        let itg = Integer::instantiate(radix, digits).unwrap();
+        let ciphertext = itg.encrypt_big(&key, tweak, &value).unwrap();
+        let plaintext = itg.decrypt_big(&key, tweak, &ciphertext).unwrap();
+
+        assert_eq!(
+            BigUint::from_str_radix("65348521845006160218", radix).unwrap(),
+            ciphertext
+        );
+        assert_eq!(
+            BigUint::from_str_radix("100000000000000000", radix).unwrap(),
+            plaintext
+        );
+    }
+    {
+        let key = [0_u8; 32];
+        let tweak = b"unique tweak";
+
+        let flt = Float::instantiate().unwrap();
+        let ciphertext = flt.encrypt(&key, tweak, 123_456.789_f64).unwrap();
+        let plaintext = flt.decrypt(&key, tweak, ciphertext).unwrap();
+
+        assert_eq!(1.170438892319619e91_f64, ciphertext);
+        assert_eq!(123_456.789_f64, plaintext);
+    }
+
     Ok(())
 }
 
@@ -129,12 +242,12 @@ fn fpe_number_u64_(radix: u32, min_length: usize) -> Result<(), AnoError> {
     let mut rng = thread_rng();
     for _i in 0..20 {
         let digits = rng.gen_range(min_length..min_length + 9);
-        let number = Number::instantiate(radix, digits)?;
+        let itg = Integer::instantiate(radix, digits)?;
         for _j in 0..10 {
-            let value = rng.gen_range(0..number.max_value.to_u64().unwrap());
-            let ciphertext = number.encrypt(&key, &[], value)?;
-            assert!(ciphertext <= number.max_value().to_u64().unwrap());
-            assert_eq!(number.decrypt(&key, &[], ciphertext)?, value);
+            let value = rng.gen_range(0..itg.max_value.to_u64().unwrap());
+            let ciphertext = itg.encrypt(&key, &[], value)?;
+            assert!(ciphertext <= itg.max_value().to_u64().unwrap());
+            assert_eq!(itg.decrypt(&key, &[], ciphertext)?, value);
         }
     }
 
@@ -176,7 +289,7 @@ fn fpe_number_big_uint() -> Result<(), AnoError> {
         let base = BigUint::from(radix);
         for _i in 0..20 {
             let digits = rng.gen_range(24..32);
-            let number = Number::instantiate(radix, digits)?;
+            let number = Integer::instantiate(radix, digits)?;
             for _j in 0..10 {
                 let exponent = rng.gen_range(0..digits - 1);
                 let value = base.pow(exponent.to_u32().unwrap());
