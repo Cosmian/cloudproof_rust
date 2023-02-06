@@ -1,4 +1,4 @@
-<h1>Cosmian Cloudproof Data Protection Library</h1>
+# Cosmian Cloudproof Data Protection Library
 
 This library provides multiple data protection techniques for use in a zero-trust environment. The techniques range from simple, less secure modifications of plaintext to quantum-resistant encryption for the best protection.
 
@@ -10,30 +10,28 @@ The primitives offered, from least to most secure, are:
 - Hashing: deterministic hashing of a value
 - CoverCrypt: post-quantum encryption with embedded access policies
 
-<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+<!-- toc -->
 
-<!-- code_chunk_output -->
+- [Format Preserving Encryption (FPE)](#format-preserving-encryption-fpe)
+  - [Implementation](#implementation)
+  - [Using FPE](#using-fpe)
+    - [Encrypting Text](#encrypting-text)
+      - [Encrypting and decrypting an alphanumeric text](#encrypting-and-decrypting-an-alphanumeric-text)
+      - [Encrypting and decrypting a credit card number](#encrypting-and-decrypting-a-credit-card-number)
+      - [Encrypting and decrypting a Chinese text with spaces](#encrypting-and-decrypting-a-chinese-text-with-spaces)
+    - [Encrypting Integers](#encrypting-integers)
+    - [Encrypting Floats](#encrypting-floats)
+- [Benchmarks](#benchmarks)
+  - [Run quick start](#run-quick-start)
+  - [Run detailed report (Linux, MacOS)](#run-detailed-report-linux-macos)
 
-- [Format Preserving Encryption (FPE)](#-format-preserving-encryption-fpe)
-  - [Implementation](#-implementation)
-  - [Using FPE](#-using-fpe)
-    - [Encrypting Text](#-encrypting-text)
-      - [Encrypting and decrypting an alphanumeric text](#-encrypting-and-decrypting-an-alpha-numeric-text)
-      - [Encrypting and decrypting a credit card number](#-encrypting-and-decrypting-a-credit-card-number)
-      - [Encrypting and decrypting a Chinese text with spaces](#-encrypting-and-decrypting-a-chinese-text-with-spaces)
-    - [Encrypting Integers](#-encrypting-integers)
-    - [Encrypting Floats](#-encrypting-floats)
-- [Benchmarks](#-benchmarks)
-  - [Run quick start](#-run-quick-start)
-  - [Run detailed report (Linux, MacOS)](#-run-detailed-report-linux-macos)
+<!-- tocstop -->
 
-<!-- /code_chunk_output -->
-
-# Format Preserving Encryption (FPE)
+## Format Preserving Encryption (FPE)
 
 FPE aims to encrypt plaintext while retaining its format (alphabet). FPE-FF1 is a normalized algorithm that uses symmetric encryption, but it's not as fast or secure as standardized symmetric (or public key) encryption methods like AES or ChaCha. It should only be used where the format of the ciphertext container is constrained (e.g., a fixed database schema that cannot be changed).
 
-## Implementation
+### Implementation
 
 The FPE implementation follows NIST specifications for FF1 (found in the [NIST SP 800-38G specification](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38G.pdf#page=19&zoom=100,0,0)).
 
@@ -47,7 +45,7 @@ The implementation also enforces the requirement that `radix^min_len > 1_000_000
 | 10    | "01234567890"       | 6            |
 | 16    | "01234567890abcdef" | 5            |
 
-## Using FPE
+### Using FPE
 
 Cosmian FPE proposes 3 structures:
 
@@ -55,7 +53,7 @@ Cosmian FPE proposes 3 structures:
 - `fpe::Integer` to encrypt integers with various radixes
 - `fpe::Float` to encrypt floating numbers
 
-### Encrypting Text
+#### Encrypting Text
 
 The `fpe::Alphabet` structure provides the ability to encrypt a plaintext using an `alphabet`.
 Characters of the plaintext that belong to the alphabet are encrypted while the others are left unchanged at their original location in the ciphertext.
@@ -87,7 +85,7 @@ let mut alphabet = Alphabet::alphanumeric();
 alphabet.extend_with(" ");
 ```
 
-#### Encrypting and decrypting an alphanumeric text
+##### Encrypting and decrypting an alphanumeric text
 
 ```rust
 let key = [0_u8; 32];
@@ -102,7 +100,7 @@ let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
 assert_eq!("alphanumeric", plaintext);
 ```
 
-#### Encrypting and decrypting a credit card number
+##### Encrypting and decrypting a credit card number
 
 ```rust
 let key = [0_u8; 32];
@@ -121,7 +119,7 @@ assert_eq!("1234-1234-1234-1234", plaintext);
 
 _Note_: since the `-` character is not part of the alphabet it is preserved during encryption and decryption.
 
-#### Encrypting and decrypting a Chinese text with spaces
+##### Encrypting and decrypting a Chinese text with spaces
 
 ```rust
 let key = [0_u8; 32];
@@ -140,7 +138,7 @@ assert_eq!("天地玄黄 宇宙洪荒", plaintext);
 
 _Note_: since the space character was added to the alphabet, it is also encrypted.
 
-### Encrypting Integers
+#### Encrypting Integers
 
 The `fpe::Integer` structure offers the ability to encrypt integers with a radix between 2 (binary) and 16 (hexadecimal) and up to a maximum power of this radix.
 
@@ -194,7 +192,7 @@ assert_eq!(
 );
 ```
 
-### Encrypting Floats
+#### Encrypting Floats
 
 The `fpe::Float` structure provides support for encrypting floats of type `f64`:
 
@@ -210,13 +208,13 @@ let plaintext = flt.decrypt(&key, tweak, ciphertext).unwrap();
 assert_eq!(123_456.789_f64, plaintext);
 ```
 
-# Benchmarks
+## Benchmarks
 
-## Run quick start
+### Run quick start
 
 Run `cargo bench` from the root directory
 
-## Run detailed report (Linux, MacOS)
+### Run detailed report (Linux, MacOS)
 
 1. Install criterion and criterion-table
 
