@@ -4,13 +4,11 @@ use std::{
 };
 
 use cosmian_crypto_core::{reexport::rand_core::SeedableRng, CsRng};
-use cosmian_findex::core::{
-    IndexedValue as IndexedValueRust, KeyingMaterial as KeyingMaterialRust, Keyword,
-    Label as LabelRust, Location,
+use cosmian_findex::{
+    parameters::MASTER_KEY_LENGTH, IndexedValue as IndexedValueRust,
+    KeyingMaterial as KeyingMaterialRust, Keyword, Label as LabelRust, Location,
 };
 use pyo3::{prelude::*, pyclass::CompareOp, types::PyBytes};
-
-use crate::generic_parameters::MASTER_KEY_LENGTH;
 
 /// The value indexed by a `Keyword`. It can be either a `Location` or another
 /// `Keyword` in case the searched `Keyword` was a tree node.

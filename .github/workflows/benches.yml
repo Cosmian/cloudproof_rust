@@ -6,7 +6,13 @@ on: workflow_dispatch
 
 jobs:
   bench:
+<<<<<<< HEAD
     uses: Cosmian/reusable_workflows/.github/workflows/cargo-bench.yml@develop
     with:
       toolchain: nightly-2022-10-28
+=======
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-bench.yml@main
+    with:
+      toolchain: stable
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
       force: true

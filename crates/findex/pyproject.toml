@@ -3,6 +3,10 @@ requires = ["maturin>=0.13,<0.15"]
 build-backend = "maturin"
 
 [tool.maturin]
+<<<<<<< HEAD
+=======
+# add files from `python/cosmian_findex` to the python package
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
 python-source = "python"
 
 [project]

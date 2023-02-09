@@ -13,36 +13,24 @@ crate-type = ["cdylib", "rlib"]
 name = "cloudproof_findex"
 
 [features]
-cloud = ["serde", "reqwest"]
-ffi = ["serde", "serde_json", "cloud", "cosmian_ffi", "tokio"]
-python = ["pyo3"]
-sqlite = ["rusqlite", "faker_rand", "serde", "serde_json"]
-wasm_bindgen = ["js-sys", "wasm-bindgen", "wasm-bindgen-futures", "cloud"]
+cloud = ["reqwest", "base64"]
+ffi = ["cosmian_ffi_utils", "base64", "serde_json", "tokio/rt-multi-thread"]
+python = ["pyo3", "futures"]
+wasm = ["js-sys", "hex", "wasm-bindgen", "wasm-bindgen-futures"]
 
 [dependencies]
-async-recursion = "1.0.0"
-base64 = { workspace = true }
-cosmian_crypto_core = "6.0"
-cosmian_ffi = { path = "../ffi_utils", optional = true }
-cosmian_findex = { git = "https://github.com/Cosmian/findex.git", branch = "develop", features = ["interfaces"] }
-faker_rand = { version = "0.1", optional = true }
-futures = { version = "0.3" }
-hex = { workspace = true }
-js-sys = { workspace = true, optional = true }
-leb128 = { workspace = true }
-pyo3 = { workspace = true, optional = true }
-rand = "0.8"
-reqwest = { version = "0.11.14", features = ["rustls-tls"], default-features = false, optional = true }
-rusqlite = { version = "0.28", features = ["bundled"], optional = true }
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
-sha3 = { workspace = true }
-thiserror = { workspace = true }
-tiny-keccak = { version = "2.0.2", features = ["kmac"] }
-tokio = { version = "1.25.0", features = ["rt-multi-thread"], optional = true }
-wasm-bindgen = { workspace = true, optional = true }
-wasm-bindgen-futures = { version = "0.4", optional = true }
-zeroize = { workspace = true }
+cosmian_crypto_core.workspace = true
+cosmian_findex = { git = "https://github.com/Cosmian/findex.git", branch = "feature/cloudproof_rust" }
 
-[dev-dependencies]
-actix-rt = "2"
+# Optional dependencies
+base64 = { version = "0.21.0", optional = true }
+cosmian_ffi_utils = { path = "../ffi_utils", optional = true }
+futures = { version = "0.3.26", optional = true }
+hex = { version = "0.4.3", optional = true }
+js-sys = { version = "0.3.61", optional = true }
+pyo3 = { version = "0.18.1", features = ["extension-module"], optional = true }
+serde_json = { version = "1.0.93", optional = true }
+tokio = { version = "1.25.0", optional = true }
+wasm-bindgen = { version = "0.2.84", optional = true }
+wasm-bindgen-futures = { version = "0.4.34", optional = true }
+reqwest = { version = "0.11.14", optional = true }

@@ -1,11 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use cosmian_findex::{
-    core::{
-        EncryptedTable, FindexCallbacks, FindexSearch, FindexUpsert, IndexedValue, Keyword, Uid,
-        UpsertData,
+    parameters::{
+        DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
+        MASTER_KEY_LENGTH, TABLE_WIDTH, UID_LENGTH,
     },
-    error::FindexErr,
+    EncryptedTable, FindexCallbacks, FindexSearch, FindexUpsert, IndexedValue, Keyword, Location,
+    Uid, UpsertData,
 };
 use js_sys::{Array, Object};
 
@@ -17,22 +18,18 @@ use super::{
     },
     FindexUser,
 };
-use crate::generic_parameters::{
-    DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
-    MASTER_KEY_LENGTH, TABLE_WIDTH, UID_LENGTH,
-};
+use crate::wasm_bindgen::FindexWasmError;
 
-impl FindexCallbacks<UID_LENGTH> for FindexUser {
+impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
     async fn progress(
         &self,
         results: &HashMap<Keyword, HashSet<IndexedValue>>,
-    ) -> Result<bool, FindexErr> {
+    ) -> Result<bool, FindexWasmError> {
         let progress = unwrap_callback!(self, progress);
-        let results = progress_results_to_js(results)
-            .map_err(|e| FindexErr::CallBack(format!("While progress callback, {e:?}")))?;
+        let results = progress_results_to_js(results)?;
         let output = callback!(progress, results);
         output.as_bool().ok_or_else(|| {
-            FindexErr::CallBack(format!(
+            FindexWasmError::Callback(format!(
                 "Progress callback does not return a boolean value: {output:?}"
             ))
         })
@@ -41,7 +38,7 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
     async fn fetch_entry_table(
         &self,
         entry_table_uids: &HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexErr> {
+    ) -> Result<EncryptedTable<UID_LENGTH>, FindexWasmError> {
         let fetch_entry = unwrap_callback!(self, fetch_entry);
         fetch_uids(
             &entry_table_uids.iter().cloned().collect(),
@@ -54,7 +51,7 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
     async fn fetch_chain_table(
         &self,
         chain_table_uids: &HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexErr> {
+    ) -> Result<EncryptedTable<UID_LENGTH>, FindexWasmError> {
         let fetch_chain = unwrap_callback!(self, fetch_chain);
         fetch_uids(chain_table_uids, fetch_chain, "fetchChains").await
     }
@@ -62,7 +59,7 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
     async fn upsert_entry_table(
         &mut self,
         items: &UpsertData<UID_LENGTH>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexErr> {
+    ) -> Result<EncryptedTable<UID_LENGTH>, FindexWasmError> {
         let upsert_entry = unwrap_callback!(self, upsert_entry);
 
         // Convert input to JS format
@@ -70,17 +67,17 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
         for (index, (uid, (old_value, new_value))) in items.iter().enumerate() {
             let obj = Object::new();
             set_bytes_in_object_property(&obj, "uid", Some(uid)).map_err(|e| {
-                FindexErr::CallBack(format!(
+                FindexWasmError::Callback(format!(
                     "Cannot convert UID bytes into object property: {e:?}"
                 ))
             })?;
             set_bytes_in_object_property(&obj, "oldValue", old_value.as_deref()).map_err(|e| {
-                FindexErr::CallBack(format!(
+                FindexWasmError::Callback(format!(
                     "Cannot convert old value bytes into object property: {e:?}"
                 ))
             })?;
             set_bytes_in_object_property(&obj, "newValue", Some(new_value)).map_err(|e| {
-                FindexErr::CallBack(format!(
+                FindexWasmError::Callback(format!(
                     "Cannot convert new value bytes into object property: {e:?}"
                 ))
             })?;
@@ -88,16 +85,16 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
         }
 
         let result = callback!(upsert_entry, inputs);
-        js_value_to_encrypted_table(&result, "upsertEntries")
+        js_value_to_encrypted_table(&result, "upsertEntries").map_err(FindexWasmError::from)
     }
 
     async fn insert_chain_table(
         &mut self,
         items: &EncryptedTable<UID_LENGTH>,
-    ) -> Result<(), FindexErr> {
+    ) -> Result<(), FindexWasmError> {
         let insert_chain = unwrap_callback!(self, insert_chain);
         let input = encrypted_table_to_js_value(items).map_err(|e| {
-            FindexErr::CallBack(format!(
+            FindexWasmError::Callback(format!(
                 "Failed to convert Encrypted Table into a JS array: {e:?}"
             ))
         })?;
@@ -111,18 +108,20 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
         _chain_table_uids_to_remove: HashSet<Uid<UID_LENGTH>>,
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
-    ) -> Result<(), FindexErr> {
+    ) -> Result<(), FindexWasmError> {
         todo!("update lines not implemented in WASM")
     }
 
     fn list_removed_locations(
         &self,
-        _locations: &HashSet<cosmian_findex::core::Location>,
-    ) -> Result<HashSet<cosmian_findex::core::Location>, FindexErr> {
+        _locations: &HashSet<Location>,
+    ) -> Result<HashSet<Location>, FindexWasmError> {
         todo!("list removed locations not implemented in WASM")
     }
 
-    async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, FindexErr> {
+    async fn fetch_all_entry_table_uids(
+        &self,
+    ) -> Result<HashSet<Uid<UID_LENGTH>>, FindexWasmError> {
         todo!("fetch all entry table uids not implemented in WASM")
     }
 }
@@ -138,6 +137,7 @@ impl
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        FindexWasmError,
     > for FindexUser
 {
 }
@@ -153,6 +153,7 @@ impl
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        FindexWasmError,
     > for FindexUser
 {
 }

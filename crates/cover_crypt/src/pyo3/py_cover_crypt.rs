@@ -13,6 +13,7 @@ use cosmian_crypto_core::{
 use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes};
 
 use crate::pyo3::py_abe_policy::Policy;
+
 // Pyo3 doc on classes
 // https://pyo3.rs/v0.16.2/class.html
 

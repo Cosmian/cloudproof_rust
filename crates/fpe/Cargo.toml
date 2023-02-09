@@ -22,11 +22,9 @@ itertools = { version = "0.10" }
 num-bigint = { version = "0.4", default-features = false }
 num-integer = { version = "0.1", default-features = false }
 num-traits = { version = "0.2", default-features = false }
-rand = { version = "0.8" }
-rand_chacha = { version = "0.3" }
 
 [dev-dependencies]
 criterion = "0.4.0"
-rand = "0.8"
-rand_chacha = "0.3"
-rand_distr = "0.4"
+rand =  "0.8"
+rand_chacha =  "0.3"
+rand_distr =  "0.4"

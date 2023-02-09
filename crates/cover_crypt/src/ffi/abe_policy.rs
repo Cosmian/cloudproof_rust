@@ -1,7 +1,7 @@
 use std::ffi::{c_char, c_int};
 
 use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, Policy};
-use cosmian_ffi::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
+use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
 
 /// # Safety
 #[no_mangle]
@@ -111,7 +111,7 @@ mod tests {
     use std::ffi::{CStr, CString};
 
     use cosmian_cover_crypt::test_utils::policy;
-    use cosmian_ffi::error::h_get_error;
+    use cosmian_ffi_utils::error::h_get_error;
 
     use super::*;
 

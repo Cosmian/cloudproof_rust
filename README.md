@@ -1,15 +1,21 @@
+<<<<<<< HEAD
 # Cosmian Cloudproof Data Protection Library
+=======
+## CloudproofRust
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
 
-This library provides multiple data protection techniques for use in a zero-trust environment. The techniques range from simple, less secure modifications of plaintext to quantum-resistant encryption for the best protection.
+![Build status](https://github.com/Cosmian/crypto_core/actions/workflows/ci.yml/badge.svg)
+![Build status](https://github.com/Cosmian/crypto_core/actions/workflows/audit.yml/badge.svg)
+![latest version](<https://img.shields.io/crates/v/cosmian_crypto_core.svg>)
 
-The primitives offered, from least to most secure, are:
+This crate implements the WASM, FFI and python interfaces to the cryptographic
+libraries used in Cosmian Cloudproof libraries for other languages:
 
-- Aggregation: replaces data with a numerical interval
-- Differential privacy: adds noise to numerical data
-- Format preserving encryption: encryption that preserves the format of the plaintext
-- Hashing: deterministic hashing of a value
-- CoverCrypt: post-quantum encryption with embedded access policies
+- CoverCrypt;
+- Findex;
+- FPE;
 
+<<<<<<< HEAD
 <!-- toc -->
 
 - [Format Preserving Encryption (FPE)](#format-preserving-encryption-fpe)
@@ -28,23 +34,49 @@ The primitives offered, from least to most secure, are:
 <!-- tocstop -->
 
 ## Format Preserving Encryption (FPE)
+=======
 
-FPE aims to encrypt plaintext while retaining its format (alphabet). FPE-FF1 is a normalized algorithm that uses symmetric encryption, but it's not as fast or secure as standardized symmetric (or public key) encryption methods like AES or ChaCha. It should only be used where the format of the ciphertext container is constrained (e.g., a fixed database schema that cannot be changed).
+<!-- toc -->
 
+- [Getting started](#getting-started)
+- [Building and Testing](#building-and-testing)
+  - [Build](#build)
+  - [Use](#use)
+  - [Run tests and benchmarks](#run-tests-and-benchmarks)
+- [Features and Benchmarks](#features-and-benchmarks)
+  - [Asymmetric Crypto](#asymmetric-crypto)
+  - [Symmetric Crypto](#symmetric-crypto)
+  - [Random Number Generator (RNG)](#random-number-generator-rng)
+  - [Key Derivation Function (KDF)](#key-derivation-function-kdf)
+- [Documentation](#documentation)
+
+<!-- tocstop -->
+
+## Building and Testing
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
+
+### Features
+
+<<<<<<< HEAD
 ### Implementation
+=======
+Sub-crates are used for each of cryptographic libraries and features are used
+to select the proper interface. The available features are:
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
 
-The FPE implementation follows NIST specifications for FF1 (found in the [NIST SP 800-38G specification](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38G.pdf#page=19&zoom=100,0,0)).
+| wasm	 | selects code for the WASM interface 	 |
+| ffi	 | selects code for the FFI interface	 |
+| python | selects code for the Python interface |
 
-The code is based on the `cosmian_fpe` directory found on [GitHub](https://github.com/Cosmian/cosmian_fpe), which is based on `str4d/fpe`. The number of Feistel rounds has been increased to 18 following the recommendations of this [cryptanalysis paper](https://eprint.iacr.org/2020/1311.pdf).
+The `cloudproof_findex` subcrate has an additional `cloud` feature used to
+select the code to generate Findex Cloud interfaces. It should be combine with
+one of the above features in order to generate an actual interface.
 
-The implementation also enforces the requirement that `radix^min_len > 1_000_000`. For the `Alphabet` and `Integer` FPE facilities, this requirement is met with the following parameters:
+### Build
 
-| radix | example alphabet    | min text len |
-| ----- | ------------------- | ------------ |
-| 2     | "01"                | 20           |
-| 10    | "01234567890"       | 6            |
-| 16    | "01234567890abcdef" | 5            |
+To install and build CloudproofRust, clone the repo:
 
+<<<<<<< HEAD
 ### Using FPE
 
 Cosmian FPE proposes 3 structures:
@@ -62,136 +94,137 @@ An alphabet can be instantiated using the `Alphabet::instantiate()` method:
 
 ```rust
 let hexadecimal_alphabet = Alphabet::instantiate("01234567890abcdef").unwrap();
+=======
+```bash
+git clone https://github.com/Cosmian/crypto_core.git
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
 ```
 
-There are multiple pre-defined alphabets available:
+In all the following commands, the `cloud` feature can be added in order to
+build the cloud interface of Findex, e.g.: `--features cloud,wasm`.
 
-- `Alphabet::alpha()`
-- `Alphabet::alpha_lower()`
-- `Alphabet::alpha_upper()`
-- `Alphabet::numeric()`
-- `Alphabet::hexa_decimal()`
-- `Alphabet::alpha_numeric()`
-- `Alphabet::chinese()`
-- `Alphabet::latin1sup()`
-- `Alphabet::latin1sup_alphanum()`
+**FFI**:
 
-These alphabets can easily be extended using the `extend_with` method
+To build the FFI interface, run:
+```bash
+cargo build --release --features ffi
+```
+The `.so` libraries can then be found in `target/release/`.
 
-```rust
-//0-9a-zA-Z
-let mut alphabet = Alphabet::alphanumeric();
-// add the space character
-alphabet.extend_with(" ");
+**WASM**:
+
+To build the WASM interface, run (replace `[library path]` by `findex` or
+`cover_crypt`):
+```bash
+wasm-pack build --release [library path] --features wasm
+```
+The `.wasm` libraries can then be found in `[library path]/pkg/`.
+
+**Python**:
+
+To build the Python interface, run (replace `[library path]` by `findex` or
+`cover_crypt`):
+```bash
+maturin build --release --manifest-path [library path]/Cargo.toml --features python
+```
+The `.whl` libraries can then be found in `target/wheels/`.
+
+### Run tests and benchmarks
+
+Tests can be run with:
+
+```bash
+cargo test --release --all-features
 ```
 
+<<<<<<< HEAD
 ##### Encrypting and decrypting an alphanumeric text
+=======
+The benchmarks are available in the cryptographic libraries.
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
 
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
+## Features and Benchmarks
 
-let alphabet = Alphabet::alpha_numeric(); //0-9a-zA-Z
+The benchmarks given below are run on a Intel(R) Core(TM) i7-10750H CPU @ 3.20GHz.
 
-let ciphertext = alphabet.encrypt(&key, tweak, "alphanumeric").unwrap();
-assert_eq!("jraqSuFWZmdH", ciphertext);
+### Asymmetric Crypto
 
-let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
-assert_eq!("alphanumeric", plaintext);
+This crate implements a Diffie-Hellman asymmetric key pair based on the
+Curve25519. This is one of the fastest elliptic curves known at this time and
+it offers 128 bits of security.
+
+It uses the [Dalek](https://github.com/dalek-cryptography/curve25519-dalek)
+implementation, which offers an implementation of the Ristretto technique to
+construct a prime order group on the curve. This group is used to implement
+the public key.
+
+```c
+Bench the Group-Scalar multiplication on which is based the Diffie-Helman key exchange
+                        time:   [59.932 µs 60.131 µs 60.364 µs]
 ```
 
+<<<<<<< HEAD
 ##### Encrypting and decrypting a credit card number
+=======
+### Symmetric Crypto
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
 
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
+This crate implements a Data Encryption Method (DEM) based on the AES256-GCM
+algorithm, as described in the [ISO 2004](https://www.shoup.net/iso/std6.pdf).
+This implementation is 128-bits secure in both the classic and the post-quantum
+models.
 
-let alphabet = Alphabet::numeric(); //0-9
+It uses the [`aes_gcm`](https://docs.rs/aes-gcm/latest/aes_gcm/index.html)
+implementation of the AES GCM algorithm. This implementation makes use of the
+AES instruction set when available, which allows for a high encryption speed.
 
-let ciphertext = alphabet
-   .encrypt(&key, tweak, "1234-1234-1234-1234")
-   .unwrap();
-assert_eq!("1415-4650-5562-7272", ciphertext);
+```c
+Bench the DEM encryption of a 2048-bytes message without additional data
+                        time:   [2.7910 µs 2.7911 µs 2.7914 µs]
 
-let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
-assert_eq!("1234-1234-1234-1234", plaintext);
+Bench the DEM decryption of a 2048-bytes message without additional data
+                        time:   [2.7074 µs 2.7079 µs 2.7085 µs]
 ```
 
-_Note_: since the `-` character is not part of the alphabet it is preserved during encryption and decryption.
+### Random Number Generator (RNG)
 
+<<<<<<< HEAD
 ##### Encrypting and decrypting a Chinese text with spaces
+=======
+This crate uses the implementation of the CHACHA algorithm with 12 rounds from
+the [`rand_chacha`](https://rust-random.github.io/rand/rand_chacha/index.html)
+crate to construct our RNG. It is therefore 128-bits secure.
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
 
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
-
-let mut alphabet = Alphabet::chinese();
-// add the space character to the alphabet
-alphabet.extend_with(" ");
-
-let ciphertext = alphabet.encrypt(&key, tweak, "天地玄黄 宇宙洪荒").unwrap();
-assert_eq!("儖濣鈍媺惐墷礿截媃", ciphertext);
-
-let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
-assert_eq!("天地玄黄 宇宙洪荒", plaintext);
+```c
+Bench the generation of a cryptographic RNG
+                        time:   [353.84 ns 353.96 ns 354.10 ns]
 ```
 
-_Note_: since the space character was added to the alphabet, it is also encrypted.
+### Key Derivation Function (KDF)
 
+<<<<<<< HEAD
 #### Encrypting Integers
+=======
+This crate uses the pure rust implementation of the SHAKE128 algorithm from the
+[sha3](https://docs.rs/sha3/latest/sha3) crate. This allows implementing a KDF
+which 128-bits secure for input sizes of at least 256 bits (32 bytes).
+>>>>>>> c8dba97 (feat: get callback errors from Findex)
 
-The `fpe::Integer` structure offers the ability to encrypt integers with a radix between 2 (binary) and 16 (hexadecimal) and up to a maximum power of this radix.
-
-To encrypt decimal integers up to u64::MAX, use:
-
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
-
-// decimal number with digits 0-9
-let radix = 10_u32;
-// the number of digits of the biggest number = radix^digits -1
-// In this case 6 decimal digits -> 999_999
-let digits = 6;
-
-let itg = Integer::instantiate(radix, digits).unwrap();
-
-let ciphertext = itg.encrypt(&key, tweak, 123_456_u64).unwrap();
-assert_eq!(110_655_u64, ciphertext);
-
-let plaintext = itg.decrypt(&key, tweak, ciphertext).unwrap();
-assert_eq!(123_456_u64, plaintext);
+```c
+bench the KDF derivation of a 32-bytes IKM into a 64-bytes key
+                        time:   [1.1065 µs 1.1067 µs 1.1070 µs]
 ```
 
-There is also support for Big Unsigned Integers
+## Documentation
 
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
+The documentation can be generated using Cargo:
 
-// decimal number with digits 0-9
-let radix = 10_u32;
-// the number of digits of the greatest number = radix^digits -1 = 10^20-1
-let digits = 20;
-
-// the value to encrypt: 10^17
-let value = BigUint::from_str_radix("100000000000000000", radix).unwrap();
-
-let itg = Integer::instantiate(radix, digits).unwrap();
-
-let ciphertext = itg.encrypt_big(&key, tweak, &value).unwrap();
-assert_eq!(
-   BigUint::from_str_radix("65348521845006160218", radix).unwrap(),
-   ciphertext
-);
-
-let plaintext = itg.decrypt_big(&key, tweak, &ciphertext).unwrap();
-assert_eq!(
-   BigUint::from_str_radix("100000000000000000", radix).unwrap(),
-   plaintext
-);
+```bash
+cargo docs
 ```
 
+<<<<<<< HEAD
 #### Encrypting Floats
 
 The `fpe::Float` structure provides support for encrypting floats of type `f64`:
@@ -230,3 +263,7 @@ Run `cargo bench` from the root directory
    ```
 
 3. The benchmarks are then available in [./benches/BENCHMARKS.md](./benches/BENCHMARKS.md)
+=======
+It is also available on
+[doc.rs](https://docs.rs/cosmian_crypto_core/latest/cosmian_crypto_core/).
+>>>>>>> c8dba97 (feat: get callback errors from Findex)

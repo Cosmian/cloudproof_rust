@@ -1,19 +1,16 @@
 [package]
-name = "cosmian_ffi"
-version = "1.0.1"
+name = "cosmian_ffi_utils"
+version = "0.1.0"
 authors = [
-  "Théophile Brezot <theophile.brezot@cosmian.com>",
+  "Théophile Brézot<theophile.brezot@cosmian.com>",
 ]
 edition = "2021"
 license = "MIT/Apache-2.0"
-repository = "https://github.com/Cosmian/cosmian_ffi"
-description = "Tools to build Foreign Function Interfaces at Cosmian."
+description = "Cosmian FFI tools library"
 
 [lib]
-name = "cosmian_ffi"
-# The cdylib is only interesting if the `--features ffi` flag is set on build
-# This does not seem to be actionable conditionally https://github.com/rust-lang/cargo/issues/4881
-crate-type = ["rlib", "cdylib", "staticlib"]
+name = "cosmian_ffi_utils"
+
+[features]
 
 [dependencies]
-thiserror = "1.0.38"
