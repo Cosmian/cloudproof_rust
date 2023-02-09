@@ -7,6 +7,9 @@ authors = ["Bruno Grieder<bruno.grieder@cosmian.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+thiserror = "1.0"
+
+# Optional dependencies
 aes = { version = "0.8", optional = true }
 fpe = { git = "https://github.com/Cosmian/cosmian_fpe", optional = true }
 itertools = { version = "0.10", optional = true }
@@ -16,10 +19,14 @@ num-traits = { version = "0.2", default-features = false, optional = true }
 rand = { version = "0.8", optional = true }
 rand_distr = { version = "0.4", optional = true }
 rand_chacha = { version = "0.3", optional = true }
-thiserror = "1.0"
 wasm-bindgen = { version = "0.2", features = [
     "serde-serialize",
 ], optional = true }
+#cosmian_findex = { version = "2.0.1", optional = true }
+cosmian_cover_crypt = { path = "../cover_crypt", features = ["serialization"], optional = true }
+cosmian_crypto_core = { path = "../crypto_core", optional = true }
+lazy_static = { version = "1.4.0", optional = true }
+serde_json = "1.0.92"
 
 [dev-dependencies]
 rand = { version = "0.8" }
@@ -29,20 +36,12 @@ criterion = { version = "0.4" }
 
 
 [features]
-default = ["fpe"]
-fpe = [
-    "dep:fpe",
-    "aes",
-    "itertools",
-    "num-bigint",
-    "num-integer",
-    "num-traits",
-    "rand",
-    "rand_distr",
-    "rand_chacha",
-]
+fpe = ["dep:fpe", "aes", "itertools", "num-bigint", "num-integer", "num-traits", "rand", "rand_distr", "rand_chacha"]
 dylib = ["rand", "rand_distr", "rand_chacha"]
 wasm = ["wasm-bindgen"]
+#findex = ["cosmian_findex"]
+cover_crypt = ["cosmian_cover_crypt"]
+ffi = ["cosmian_crypto_core", "lazy_static"]
 
 
 [[bench]]
