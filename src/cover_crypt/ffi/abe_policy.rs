@@ -12,7 +12,7 @@ pub unsafe extern "C" fn h_policy(
     max_attribute_creations: c_int,
 ) -> c_int {
     let policy = Policy::new(max_attribute_creations as u32);
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy));
+    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error deserializing policy");
     ffi_write_bytes!("policy", &policy_bytes, policy_ptr, policy_len);
     0
 }
@@ -27,15 +27,22 @@ pub unsafe extern "C" fn h_add_policy_axis(
     axis_ptr: *const c_char,
 ) -> c_int {
     let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
-    let mut policy = ffi_unwrap!(Policy::parse_and_convert(policy_bytes));
+    let mut policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
     let axis_string = ffi_read_string!("axis", axis_ptr);
-    let axis = ffi_unwrap!(serde_json::from_str(&axis_string));
+    let axis = ffi_unwrap!(
+        serde_json::from_str(&axis_string),
+        "error deserializing polixy axis"
+    );
 
-    ffi_unwrap!(policy.add_axis(axis));
+    ffi_unwrap!(policy.add_axis(axis), "error adding policy axis");
 
+    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
     ffi_write_bytes!(
         "updated policy",
-        &ffi_unwrap!(<Vec<u8>>::try_from(&policy)),
+        &policy_bytes,
         updated_policy_ptr,
         updated_policy_len
     );
@@ -53,15 +60,22 @@ pub unsafe extern "C" fn h_rotate_attribute(
     attribute: *const c_char,
 ) -> c_int {
     let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
-    let mut policy = ffi_unwrap!(Policy::parse_and_convert(policy_bytes));
+    let mut policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
     let attr_string = ffi_read_string!("attribute", attribute);
-    let attr = ffi_unwrap!(Attribute::try_from(attr_string.as_str()));
+    let attr = ffi_unwrap!(
+        Attribute::try_from(attr_string.as_str()),
+        "error parsing attribute"
+    );
 
-    ffi_unwrap!(policy.rotate(&attr));
+    ffi_unwrap!(policy.rotate(&attr), "error rotating policy");
 
+    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
     ffi_write_bytes!(
         "updated policy",
-        &ffi_unwrap!(<Vec<u8>>::try_from(&policy)),
+        &policy_bytes,
         updated_policy_ptr,
         updated_policy_len
     );
@@ -75,7 +89,10 @@ pub unsafe extern "C" fn h_validate_boolean_expression(
     boolean_expression_ptr: *const c_char,
 ) -> c_int {
     let boolean_expression = ffi_read_string!("boolean expression", boolean_expression_ptr);
-    ffi_unwrap!(AccessPolicy::from_boolean_expression(&boolean_expression));
+    ffi_unwrap!(
+        AccessPolicy::from_boolean_expression(&boolean_expression),
+        "error parsing boolean expression"
+    );
     0
 }
 
@@ -83,7 +100,10 @@ pub unsafe extern "C" fn h_validate_boolean_expression(
 #[no_mangle]
 pub unsafe extern "C" fn h_validate_attribute(attribute_ptr: *const c_char) -> c_int {
     let attribute_str = ffi_read_string!("attribute", attribute_ptr);
-    ffi_unwrap!(AccessPolicy::from_boolean_expression(&attribute_str));
+    ffi_unwrap!(
+        AccessPolicy::from_boolean_expression(&attribute_str),
+        "error parsing attribute"
+    );
     0
 }
 

@@ -38,21 +38,6 @@ macro_rules! ffi_unwrap {
             }
         }
     };
-    ($res:expr) => {
-        match $res {
-            Ok(v) => {
-                println!("ici");
-                v
-            }
-            Err(e) => {
-                println!("la");
-                $crate::ffi_utils::error::set_last_error(
-                    $crate::ffi_utils::error::FfiError::Generic(e.to_string()),
-                );
-                return 1_i32;
-            }
-        }
-    };
 }
 
 /// Returns with an error.

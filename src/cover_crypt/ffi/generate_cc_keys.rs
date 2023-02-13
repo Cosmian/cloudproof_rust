@@ -28,21 +28,25 @@ pub unsafe extern "C" fn h_generate_master_keys(
     policy_ptr: *const c_char,
     policy_len: c_int,
 ) -> c_int {
-    //
-    // Read input from buffer.
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
-    let policy: Policy = ffi_unwrap!(Policy::try_from(policy_bytes));
+    let policy: Policy = ffi_unwrap!(Policy::try_from(policy_bytes), "error deserializing policy");
 
-    //
-    // Generate master keys.
-    let (msk, mpk) = ffi_unwrap!(CoverCryptX25519Aes256::default().generate_master_keys(&policy));
+    let (msk, mpk) = ffi_unwrap!(
+        CoverCryptX25519Aes256::default().generate_master_keys(&policy),
+        "error generating master keys"
+    );
 
-    //
-    // Serialize master keys and write to output buffers.
-    let msk_bytes = ffi_unwrap!(msk.try_to_bytes());
-    let mpk_bytes = ffi_unwrap!(mpk.try_to_bytes());
+    let msk_bytes = ffi_unwrap!(msk.try_to_bytes(), "error serializing master secret key");
+    let mpk_bytes = ffi_unwrap!(mpk.try_to_bytes(), "error serializing public key");
     ffi_write_bytes!(
-        "msk", &msk_bytes, msk_ptr, msk_len, "mpk", &mpk_bytes, mpk_ptr, mpk_len
+        "master secret key",
+        &msk_bytes,
+        msk_ptr,
+        msk_len,
+        "public key",
+        &mpk_bytes,
+        mpk_ptr,
+        mpk_len
     );
 
     0
@@ -68,27 +72,29 @@ pub unsafe extern "C" fn h_generate_user_secret_key(
     policy_ptr: *const c_char,
     policy_len: c_int,
 ) -> c_int {
-    //
-    // Read input from buffers.
-    let msk_bytes = ffi_read_bytes!("msk", msk_ptr, msk_len);
-    let msk = ffi_unwrap!(MasterSecretKey::try_from_bytes(msk_bytes));
+    let msk_bytes = ffi_read_bytes!("master secret key", msk_ptr, msk_len);
+    let msk = ffi_unwrap!(
+        MasterSecretKey::try_from_bytes(msk_bytes),
+        "error deserializing master secret key"
+    );
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
-    let policy = ffi_unwrap!(Policy::parse_and_convert(policy_bytes));
+    let policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
     let user_policy_string = ffi_read_string!("access policy", user_policy_ptr);
-    let user_policy = ffi_unwrap!(AccessPolicy::from_boolean_expression(
-        user_policy_string.as_str()
-    ));
+    let user_policy = ffi_unwrap!(
+        AccessPolicy::from_boolean_expression(user_policy_string.as_str()),
+        "error parsing user policy"
+    );
 
-    // Generate user secret key.
-    let usk = ffi_unwrap!(CoverCryptX25519Aes256::default().generate_user_secret_key(
-        &msk,
-        &user_policy,
-        &policy
-    ));
+    let usk = ffi_unwrap!(
+        CoverCryptX25519Aes256::default().generate_user_secret_key(&msk, &user_policy, &policy),
+        "error generating user secret key"
+    );
 
-    // Serialize user secret key and write to the output buffer.
-    let usk_bytes = ffi_unwrap!(usk.try_to_bytes());
-    ffi_write_bytes!("usk", &usk_bytes, usk_ptr, usk_len);
+    let usk_bytes = ffi_unwrap!(usk.try_to_bytes(), "error serializing user secret key");
+    ffi_write_bytes!("user secret key", &usk_bytes, usk_ptr, usk_len);
 
     0
 }
@@ -120,29 +126,39 @@ pub unsafe extern "C" fn h_update_master_keys(
     policy_ptr: *const c_char,
     policy_len: c_int,
 ) -> c_int {
-    //
-    // Read input from buffers.
-    let msk_bytes = ffi_read_bytes!("current msk", current_msk_ptr, current_msk_len);
-    let mut msk = ffi_unwrap!(MasterSecretKey::try_from_bytes(msk_bytes));
-    let mpk_bytes = ffi_read_bytes!("current mpk", current_mpk_ptr, current_mpk_len);
-    let mut mpk = ffi_unwrap!(PublicKey::try_from_bytes(mpk_bytes));
+    let msk_bytes = ffi_read_bytes!(
+        "current master secret key",
+        current_msk_ptr,
+        current_msk_len
+    );
+    let mut msk = ffi_unwrap!(
+        MasterSecretKey::try_from_bytes(msk_bytes),
+        "error deserializing master secret key"
+    );
+    let mpk_bytes = ffi_read_bytes!("current public key", current_mpk_ptr, current_mpk_len);
+    let mut mpk = ffi_unwrap!(
+        PublicKey::try_from_bytes(mpk_bytes),
+        "error deserializing public key"
+    );
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
-    let policy = ffi_unwrap!(Policy::parse_and_convert(policy_bytes));
+    let policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
 
-    //
-    // Update the master keys.
-    ffi_unwrap!(CoverCryptX25519Aes256::default().update_master_keys(&policy, &mut msk, &mut mpk));
+    ffi_unwrap!(
+        CoverCryptX25519Aes256::default().update_master_keys(&policy, &mut msk, &mut mpk),
+        "error updating master keys"
+    );
 
-    //
-    // Serialize the master keys and write to the output buffers.
-    let msk_bytes = ffi_unwrap!(msk.try_to_bytes());
-    let mpk_bytes = ffi_unwrap!(mpk.try_to_bytes());
+    let msk_bytes = ffi_unwrap!(msk.try_to_bytes(), "error serializing master secret key");
+    let mpk_bytes = ffi_unwrap!(mpk.try_to_bytes(), "error serializing public key");
     ffi_write_bytes!(
-        "msk",
+        "updated master secret key",
         &msk_bytes,
         updated_msk_ptr,
         updated_msk_len,
-        "mpk",
+        "updated public key",
         &mpk_bytes,
         updated_mpk_ptr,
         updated_mpk_len
@@ -179,36 +195,50 @@ pub unsafe extern "C" fn h_refresh_user_secret_key(
     msk_len: c_int,
     current_usk_ptr: *const c_char,
     current_usk_len: c_int,
-    access_policy_ptr: *const c_char,
+    user_policy_ptr: *const c_char,
     policy_ptr: *const c_char,
     policy_len: c_int,
     preserve_old_partitions_access: c_int,
 ) -> c_int {
-    //
-    // Read inputs from buffers.
-    let msk_bytes = ffi_read_bytes!("msk", msk_ptr, msk_len);
-    let msk = ffi_unwrap!(MasterSecretKey::try_from_bytes(msk_bytes));
-    let usk_bytes = ffi_read_bytes!("current usk", current_usk_ptr, current_usk_len);
-    let mut usk = ffi_unwrap!(UserSecretKey::try_from_bytes(usk_bytes));
+    let msk_bytes = ffi_read_bytes!("master secret key", msk_ptr, msk_len);
+    let msk = ffi_unwrap!(
+        MasterSecretKey::try_from_bytes(msk_bytes),
+        "error deserializing master secret key"
+    );
+    let usk_bytes = ffi_read_bytes!("current user secret key", current_usk_ptr, current_usk_len);
+    let mut usk = ffi_unwrap!(
+        UserSecretKey::try_from_bytes(usk_bytes),
+        "error deserializing user secret key"
+    );
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
-    let policy = ffi_unwrap!(Policy::parse_and_convert(policy_bytes));
-    let access_policy_string = ffi_read_string!("access policy", access_policy_ptr);
-    let access_policy = ffi_unwrap!(AccessPolicy::from_boolean_expression(&access_policy_string));
+    let policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
+    let user_policy_string = ffi_read_string!("user policy", user_policy_ptr);
+    let user_policy = ffi_unwrap!(
+        AccessPolicy::from_boolean_expression(&user_policy_string),
+        "error parsing user policy"
+    );
 
-    //
-    // update the user secret key
-    ffi_unwrap!(CoverCryptX25519Aes256::default().refresh_user_secret_key(
-        &mut usk,
-        &access_policy,
-        &msk,
-        &policy,
-        preserve_old_partitions_access != 0
-    ));
+    ffi_unwrap!(
+        CoverCryptX25519Aes256::default().refresh_user_secret_key(
+            &mut usk,
+            &user_policy,
+            &msk,
+            &policy,
+            preserve_old_partitions_access != 0
+        ),
+        "error refreshing user secret key"
+    );
 
-    //
-    // Serialize the user secret key and write it to the output buffer.
-    let usk_bytes = ffi_unwrap!(usk.try_to_bytes());
-    ffi_write_bytes!("usk", &usk_bytes, updated_usk_ptr, updated_usk_len);
+    let usk_bytes = ffi_unwrap!(usk.try_to_bytes(), "error serializing user secret key");
+    ffi_write_bytes!(
+        "updated user secret key",
+        &usk_bytes,
+        updated_usk_ptr,
+        updated_usk_len
+    );
 
     0
 }
