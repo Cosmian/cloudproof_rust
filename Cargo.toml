@@ -2,9 +2,13 @@
 name = "cloudproof_rust"
 version = "0.1.0"
 edition = "2021"
-authors = ["Bruno Grieder<bruno.grieder@cosmian.com>"]
+authors = [
+    "Bruno Grieder<bruno.grieder@cosmian.com>",
+    "Théophile Brézot<theophile.brezot@cosmian.com>"
+]
+license = "MIT/Apache-2.0"
+description = "Cosmian Rust Cloudproof library"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 getrandom = { version ="0.2", features = ["js"] }
@@ -29,6 +33,7 @@ wasm-bindgen = { version = "0.2", features = [
     "serde-serialize",
 ], optional = true }
 
+
 [dev-dependencies]
 criterion = { version = "0.4", default-features = false }
 rand = "0.8"
@@ -38,13 +43,12 @@ wasm-bindgen-test = "0.3"
 
 
 [features]
-fpe = ["dep:fpe", "aes", "itertools", "num-bigint", "num-integer", "num-traits", "rand", "rand_distr", "rand_chacha"]
-dylib = ["rand", "rand_distr", "rand_chacha"]
-wasm = ["wasm-bindgen", "js-sys"]
-#findex = ["cosmian_findex"]
 cover_crypt = ["cosmian_cover_crypt", "cosmian_crypto_core", "serde_json"]
+dylib = ["rand", "rand_distr", "rand_chacha"]
 ffi = ["lazy_static"]
+fpe = ["dep:fpe", "aes", "itertools", "num-bigint", "num-integer", "num-traits", "rand", "rand_distr", "rand_chacha"]
 python = ["pyo3"]
+wasm = ["wasm-bindgen", "js-sys"]
 
 
 [[bench]]
