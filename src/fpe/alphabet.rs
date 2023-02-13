@@ -1,8 +1,10 @@
-use crate::{ano_ensure, error::AnoError, fpe::KEY_LENGTH};
+use std::{collections::HashMap, fmt::Display};
+
 use aes::Aes256;
 use fpe::ff1::{FF1h, FlexibleNumeralString};
 use itertools::Itertools;
-use std::{collections::HashMap, fmt::Display};
+
+use crate::{ano_ensure, error::AnoError, fpe::KEY_LENGTH};
 
 /// The recommended threshold according to NIST standards
 pub const RECOMMENDED_THRESHOLD: usize = 1_000_000;
@@ -13,10 +15,12 @@ pub fn min_plaintext_length(alphabet_len: usize) -> usize {
     ((RECOMMENDED_THRESHOLD as f32).log(alphabet_len as f32)).ceil() as usize
 }
 
-/// The `Alphabet` structure contains information about the usable characters and the minimum plaintext length for FPE.
+/// The `Alphabet` structure contains information about the usable characters
+/// and the minimum plaintext length for FPE.
 ///
 /// It's recommended that the alphabet contains between 8 and 2^16 characters.
-/// Smaller alphabets as small as 2 characters are technically possible but can be challenging to ensure security.
+/// Smaller alphabets as small as 2 characters are technically possible but can
+/// be challenging to ensure security.
 ///
 /// Pre-defined alphabets are available:
 ///  - `Alphabet::alpha()`
@@ -33,7 +37,6 @@ pub fn min_plaintext_length(alphabet_len: usize) -> usize {
 /// use `Alphabet::try_from("0123456789abcdef").unwrap()`
 ///
 /// See the `encrypt()` and `decrypt()` methods for usage
-///
 #[derive(Debug, Clone)]
 pub struct Alphabet {
     /// Vector of characters that can be used in FPE
@@ -49,15 +52,21 @@ impl TryFrom<&str> for Alphabet {
     ///
     /// # Arguments
     ///
-    /// * `alphabet` - A string slice of the characters to be used as the alphabet.
+    /// * `alphabet` - A string slice of the characters to be used as the
+    ///   alphabet.
     ///
     /// # Returns
     ///
-    /// An `Alphabet` if the string slice contains between 2 and 2^16 characters, otherwise returns an error.
+    /// An `Alphabet` if the string slice contains between 2 and 2^16
+    /// characters, otherwise returns an error.
     fn try_from(alphabet: &str) -> Result<Self, Self::Error> {
         let chars = alphabet.chars().sorted().unique().collect_vec();
         if chars.len() < 2 || chars.len() >= 1 << 16 {
-            return Err(AnoError::FPE(format!("Alphabet must contain between 2 and 2^16 characters. This alphabet contains {} characters",chars.len())));
+            return Err(AnoError::FPE(format!(
+                "Alphabet must contain between 2 and 2^16 characters. This alphabet contains {} \
+                 characters",
+                chars.len()
+            )));
         }
         Ok(Alphabet {
             min_text_length: min_plaintext_length(chars.len()),
@@ -73,11 +82,13 @@ impl TryFrom<&String> for Alphabet {
     ///
     /// # Arguments
     ///
-    /// * `value` - A reference to a string of the characters to be used as the alphabet.
+    /// * `value` - A reference to a string of the characters to be used as the
+    ///   alphabet.
     ///
     /// # Returns
     ///
-    /// An `Alphabet` if the string contains between 2 and 2^16 characters, otherwise returns an error.
+    /// An `Alphabet` if the string contains between 2 and 2^16 characters,
+    /// otherwise returns an error.
     fn try_from(value: &String) -> Result<Self, Self::Error> {
         Alphabet::try_from(value.as_str())
     }
@@ -88,11 +99,13 @@ impl Alphabet {
     ///
     /// # Arguments
     ///
-    /// * `alphabet` - A string slice of the characters to be used as the alphabet.
+    /// * `alphabet` - A string slice of the characters to be used as the
+    ///   alphabet.
     ///
     /// # Returns
     ///
-    /// An `Alphabet` if the string slice contains between 2 and 2^16 characters, otherwise returns an error.
+    /// An `Alphabet` if the string slice contains between 2 and 2^16
+    /// characters, otherwise returns an error.
     pub fn instantiate(alphabet: &str) -> Result<Self, AnoError> {
         Alphabet::try_from(alphabet)
     }
@@ -111,21 +124,24 @@ impl Alphabet {
         self.min_text_length = min_plaintext_length(self.chars.len());
     }
 
-    /// Returns the minimum length required for the plaintext for FPE to be secure. The minimum length is
-    /// calculated based on the number of characters in the alphabet and recommended security thresholds.
+    /// Returns the minimum length required for the plaintext for FPE to be
+    /// secure. The minimum length is calculated based on the number of
+    /// characters in the alphabet and recommended security thresholds.
     pub fn minimum_plaintext_length(&self) -> usize {
         self.min_text_length
     }
 
     /// Extends the alphabet with additional characters.
     ///
-    /// This method takes a string of additional characters as input and returns a new `Alphabet` that
-    /// contains the characters of the original `Alphabet` as well as the additional characters. The new
-    /// `Alphabet` has duplicates removed.
+    /// This method takes a string of additional characters as input and returns
+    /// a new `Alphabet` that contains the characters of the original
+    /// `Alphabet` as well as the additional characters. The new `Alphabet`
+    /// has duplicates removed.
     ///
     /// # Arguments
     ///
-    /// * `additional_characters` - A string of characters to be added to the alphabet.
+    /// * `additional_characters` - A string of characters to be added to the
+    ///   alphabet.
     pub fn extend_with(&mut self, additional_characters: &str) {
         self.extend_(additional_characters.chars().collect::<Vec<_>>())
     }
@@ -143,7 +159,8 @@ impl Alphabet {
     ///
     /// # Returns
     ///
-    /// The position of the character within the alphabet, or `None` if the character is not present in the alphabet.
+    /// The position of the character within the alphabet, or `None` if the
+    /// character is not present in the alphabet.
     pub(crate) fn char_to_position(&self, c: char) -> Option<u16> {
         match self.chars.binary_search(&c) {
             Ok(pos) => Some(pos as u16),
@@ -155,11 +172,13 @@ impl Alphabet {
     ///
     /// # Arguments
     ///
-    /// * `position` - The position within the alphabet to be converted to its corresponding character.
+    /// * `position` - The position within the alphabet to be converted to its
+    ///   corresponding character.
     ///
     /// # Returns
     ///
-    /// The character at the specified position, or `None` if the position is outside the range of the alphabet.
+    /// The character at the specified position, or `None` if the position is
+    /// outside the range of the alphabet.
     pub(crate) fn char_from_position(&self, position: u16) -> Option<char> {
         let pos = position as usize;
         if pos >= self.chars.len() {
@@ -168,9 +187,10 @@ impl Alphabet {
         Some(self.chars[pos])
     }
 
-    /// Creates a `RebasedString` from a `&str` by replacing every character in the input with the
-    /// corresponding index in the `alphabet_chars` slice. Non-alphabet characters are stored as
-    /// separate `u16` values and will be re-inserted into the output during the conversion back
+    /// Creates a `RebasedString` from a `&str` by replacing every character in
+    /// the input with the corresponding index in the `alphabet_chars`
+    /// slice. Non-alphabet characters are stored as separate `u16` values
+    /// and will be re-inserted into the output during the conversion back
     /// to a `String` using `to_string`.
     fn rebase(&self, input: &str) -> (Vec<u16>, HashMap<usize, char>) {
         let mut stripped_input: Vec<u16> = vec![];
@@ -185,12 +205,14 @@ impl Alphabet {
         (stripped_input, non_alphabet_chars)
     }
 
-    /// Converts the `RebasedString` back to a `String` using the `alphabet_chars` slice to look up
-    /// the character representation of each `u16` value in the `stripped_input` vector. Non-alphabet
-    /// characters stored in the `non_alphabet_chars` map are re-inserted into the output in the
-    /// same position as they were in the original string.
+    /// Converts the `RebasedString` back to a `String` using the
+    /// `alphabet_chars` slice to look up the character representation of
+    /// each `u16` value in the `stripped_input` vector. Non-alphabet
+    /// characters stored in the `non_alphabet_chars` map are re-inserted into
+    /// the output in the same position as they were in the original string.
     ///
-    /// Returns a `Result` containing a `String` or an `AnoError` if the conversion fails.
+    /// Returns a `Result` containing a `String` or an `AnoError` if the
+    /// conversion fails.
     fn debase(
         &self,
         mut stripped_input: Vec<u16>,
@@ -215,7 +237,8 @@ impl Alphabet {
         Ok(result.into_iter().collect::<String>())
     }
 
-    /// Encrypts the plaintext using the given `key` and `tweak` using Format-Preserving Encryption (FPE).
+    /// Encrypts the plaintext using the given `key` and `tweak` using
+    /// Format-Preserving Encryption (FPE).
     ///
     /// # Examples
     ///
@@ -233,14 +256,16 @@ impl Alphabet {
     ///
     /// # Errors
     ///
-    /// Returns an error if the plaintext contains characters not in the alphabet, or if the encryption fails.
+    /// Returns an error if the plaintext contains characters not in the
+    /// alphabet, or if the encryption fails.
     pub fn encrypt(&self, key: &[u8], tweak: &[u8], plaintext: &str) -> Result<String, AnoError> {
         let (stripped_input, non_alphabet_chars) = self.rebase(plaintext);
 
         // Ensure the stripped input length meets the minimum security threshold
         ano_ensure!(
             stripped_input.len() >= self.minimum_plaintext_length(),
-            "The stripped input length of {} is too short. It should be at least {} given the alphabet length of {}.",
+            "The stripped input length of {} is too short. It should be at least {} given the \
+             alphabet length of {}.",
             stripped_input.len(),
             self.minimum_plaintext_length(),
             self.alphabet_len()
@@ -262,7 +287,8 @@ impl Alphabet {
         self.debase(ciphertext, &non_alphabet_chars)
     }
 
-    /// Decrypts the ciphertext using the given `key` and `tweak` using Format-Preserving Encryption (FPE).
+    /// Decrypts the ciphertext using the given `key` and `tweak` using
+    /// Format-Preserving Encryption (FPE).
     ///
     /// # Examples
     ///
@@ -280,7 +306,8 @@ impl Alphabet {
     ///
     /// # Errors
     ///
-    /// Returns an error if the ciphertext contains characters not in the alphabet, or if the decryption fails.
+    /// Returns an error if the ciphertext contains characters not in the
+    /// alphabet, or if the decryption fails.
     pub fn decrypt(&self, key: &[u8], tweak: &[u8], ciphertext: &str) -> Result<String, AnoError> {
         let (stripped_input, non_alphabet_chars) = self.rebase(ciphertext);
 
@@ -303,7 +330,8 @@ impl Display for Alphabet {
     }
 }
 
-// Use a macro to define functions with similar functionality but different names
+// Use a macro to define functions with similar functionality but different
+// names
 macro_rules! define_alphabet_constructors {
     ($($name:ident => $alphabet:expr),+) => {
         $(

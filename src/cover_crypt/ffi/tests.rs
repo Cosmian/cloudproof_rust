@@ -3,7 +3,18 @@ use std::{
     os::raw::c_int,
 };
 
-use crate::{cover_crypt::tests::policy, ffi_utils::error::h_get_error};
+use cosmian_cover_crypt::{
+    abe_policy::{
+        AccessPolicy,
+        //Attribute,
+        Policy,
+    },
+    statics::{
+        CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
+        UserSecretKey, DEM,
+    },
+    CoverCrypt, Error,
+};
 use cosmian_crypto_core::{bytes_ser_de::Serializable, symmetric_crypto::Dem, KeyTrait};
 
 use crate::cover_crypt::ffi::{
@@ -21,18 +32,7 @@ use crate::cover_crypt::ffi::{
         h_encrypt_header, h_encrypt_header_using_cache, h_hybrid_decrypt, h_hybrid_encrypt,
     },
 };
-use cosmian_cover_crypt::{
-    abe_policy::{
-        AccessPolicy,
-        //Attribute,
-        Policy,
-    },
-    statics::{
-        CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
-        UserSecretKey, DEM,
-    },
-    CoverCrypt, Error,
-};
+use crate::{cover_crypt::tests::policy, ffi_utils::error::h_get_error};
 
 unsafe fn encrypt_header(
     policy: &Policy,
@@ -508,8 +508,9 @@ fn test_ffi_keygen() {
 //));
 
 //let updated_policy_bytes =
-//std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize).to_vec();
-//let updated_policy = Policy::try_from(updated_policy_bytes.as_slice()).unwrap();
+//std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as
+// usize).to_vec(); let updated_policy =
+// Policy::try_from(updated_policy_bytes.as_slice()).unwrap();
 
 //updated_policy
 //}
@@ -538,8 +539,10 @@ fn test_ffi_keygen() {
 
 //// prepare updated master public key pointer
 //let mut updated_master_public_key_bytes = vec![0u8; 64 * 1024];
-//let updated_master_public_key_ptr = updated_master_public_key_bytes.as_mut_ptr().cast();
-//let mut updated_master_public_key_len = updated_master_public_key_bytes.len() as c_int;
+//let updated_master_public_key_ptr =
+// updated_master_public_key_bytes.as_mut_ptr().cast();
+// let mut updated_master_public_key_len = updated_master_public_key_bytes.len()
+// as c_int;
 
 //unwrap_ffi_error(h_update_master_keys(
 //updated_msk_ptr,
@@ -555,8 +558,9 @@ fn test_ffi_keygen() {
 //));
 
 //let updated_msk_bytes =
-//std::slice::from_raw_parts(updated_msk_ptr.cast(), updated_msk_len as usize).to_vec();
-//let updated_msk = MasterSecretKey::try_from_bytes(&updated_msk_bytes).unwrap();
+//std::slice::from_raw_parts(updated_msk_ptr.cast(), updated_msk_len as
+// usize).to_vec(); let updated_msk =
+// MasterSecretKey::try_from_bytes(&updated_msk_bytes).unwrap();
 
 //let updated_master_public_key_bytes = std::slice::from_raw_parts(
 //updated_master_public_key_ptr.cast(),
@@ -592,7 +596,8 @@ fn test_ffi_keygen() {
 //let access_policy_cs = CString::new(access_policy).unwrap();
 //let access_policy_ptr = access_policy_cs.as_ptr();
 
-//let preserve_old_partitions_access_c: c_int = i32::from(preserve_old_partitions_access);
+//let preserve_old_partitions_access_c: c_int =
+// i32::from(preserve_old_partitions_access);
 
 //// prepare updated user secret key pointer
 //let mut updated_usk_bytes = vec![0u8; 64 * 1024];
@@ -613,20 +618,20 @@ fn test_ffi_keygen() {
 //));
 
 //let updated_usk_bytes =
-//std::slice::from_raw_parts(updated_usk_ptr.cast(), updated_usk_len as usize).to_vec();
-//UserSecretKey::try_from_bytes(&updated_usk_bytes).unwrap()
+//std::slice::from_raw_parts(updated_usk_ptr.cast(), updated_usk_len as
+// usize).to_vec(); UserSecretKey::try_from_bytes(&updated_usk_bytes).unwrap()
 //}
 
 //#[test]
 //fn test_ffi_rotate_attribute() -> Result<(), Error> {
-////
 //// CoverCrypt setup
 ////
 //let policy = policy().unwrap();
 //let cover_crypt = CoverCryptX25519Aes256::default();
 //let (msk, mpk) = cover_crypt.generate_master_keys(&policy).unwrap();
-//let original_msk_partitions: Vec<Partition> = msk.x.clone().into_keys().collect();
-//let original_mpk_partitions: Vec<Partition> = mpk.H.clone().into_keys().collect();
+//let original_msk_partitions: Vec<Partition> =
+// msk.x.clone().into_keys().collect(); let original_mpk_partitions:
+// Vec<Partition> = mpk.H.clone().into_keys().collect();
 
 //let access_policy = "Department::MKG && Security Level::Confidential";
 //let usk = cover_crypt
@@ -640,12 +645,14 @@ fn test_ffi_keygen() {
 
 //unsafe {
 ////rotate the policy
-//let updated_policy = rotate_policy(&policy, &Attribute::new("Department", "MKG")).unwrap();
+//let updated_policy = rotate_policy(&policy, &Attribute::new("Department",
+// "MKG")).unwrap();
 //// update the master keys
-//let (updated_msk, updated_mpk) = update_master_keys(&updated_policy, msk, mpk).unwrap();
+//let (updated_msk, updated_mpk) = update_master_keys(&updated_policy, msk,
+// mpk).unwrap();
 //// check the msk updated partitions
-//let updated_msk_partitions: Vec<Partition> = updated_msk.x.clone().into_keys().collect();
-//assert_eq!(
+//let updated_msk_partitions: Vec<Partition> =
+// updated_msk.x.clone().into_keys().collect(); assert_eq!(
 //updated_msk_partitions.len(),
 //original_msk_partitions.len() + 3
 //);
@@ -653,8 +660,8 @@ fn test_ffi_keygen() {
 //assert!(updated_msk_partitions.contains(original_partition));
 //}
 //// check the mpk updated partitions
-//let updated_mpk_partitions: Vec<Partition> = updated_mpk.H.into_keys().collect();
-//assert_eq!(
+//let updated_mpk_partitions: Vec<Partition> =
+// updated_mpk.H.into_keys().collect(); assert_eq!(
 //updated_mpk_partitions.len(),
 //original_mpk_partitions.len() + 3
 //);
@@ -663,7 +670,8 @@ fn test_ffi_keygen() {
 //}
 //// update the user key, preserving the accesses to the rotated partitions
 //let updated_usk =
-//refresh_user_secret_key(&usk, access_policy, &updated_msk, &updated_policy, true)
+//refresh_user_secret_key(&usk, access_policy, &updated_msk, &updated_policy,
+// true)
 //.unwrap();
 //// 2 partitions accessed by the user were rotated (MKG Confidential and MKG
 //// Protected)
@@ -674,14 +682,14 @@ fn test_ffi_keygen() {
 //// update the user key, but do NOT preserve the accesses to the rotated
 //// partitions
 //let updated_usk =
-//refresh_user_secret_key(&usk, access_policy, &updated_msk, &updated_policy, false)
+//refresh_user_secret_key(&usk, access_policy, &updated_msk, &updated_policy,
+// false)
 //.unwrap();
 //// 2 partitions accessed by the user were rotated (MKG Confidential and MKG
 //// Protected)
 //assert_eq!(updated_usk.x.len(), original_usk.x.len());
 //for x_i in &original_usk.x {
 //assert!(!updated_usk.x.contains(x_i));
-//}
 //}
 //Ok(())
 //}

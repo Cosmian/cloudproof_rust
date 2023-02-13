@@ -1,5 +1,5 @@
 macro_rules! wasm_unwrap {
-    ($res: expr, $msg: literal) => {
+    ($res:expr, $msg:literal) => {
         $res.map_err(|e| JsValue::from_str(&format!("{}: {e:?}", $msg)))?
     };
 }

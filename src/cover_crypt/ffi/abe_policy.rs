@@ -1,6 +1,8 @@
-use crate::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
-use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, Policy};
 use std::ffi::{c_char, c_int};
+
+use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, Policy};
+
+use crate::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
 
 /// # Safety
 #[no_mangle]
@@ -87,9 +89,10 @@ pub unsafe extern "C" fn h_validate_attribute(attribute_ptr: *const c_char) -> c
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::{CStr, CString};
+
     use super::*;
     use crate::{cover_crypt::tests::policy, ffi_utils::error::h_get_error};
-    use std::ffi::{CStr, CString};
 
     #[test]
     fn test_rotate() {

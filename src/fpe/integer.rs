@@ -1,7 +1,8 @@
-use super::Alphabet;
-use crate::error::AnoError;
 use num_bigint::BigUint;
 use num_traits::{Num, One, ToPrimitive};
+
+use super::Alphabet;
+use crate::error::AnoError;
 
 pub struct Integer {
     pub(crate) radix: u32,
@@ -12,7 +13,8 @@ pub struct Integer {
 
 impl Integer {
     /// Creates a new instance of the `Integer` representation.
-    /// It calculates the `max_value` as the number of `digits` raised to the power of `radix`.
+    /// It calculates the `max_value` as the number of `digits` raised to the
+    /// power of `radix`.
     ///
     /// # Example
     /// ```
@@ -25,14 +27,15 @@ impl Integer {
     /// ```
     ///
     /// # Arguments
-    /// `radix` - The base of the number representation. Must be between 2 and 16 inclusive.
-    /// `digits` - The number of digits in the representation.
+    /// `radix` - The base of the number representation. Must be between 2 and
+    /// 16 inclusive. `digits` - The number of digits in the representation.
     ///
     /// # Returns
     /// A new instance of `Integer` representation.
     ///
     /// # Errors
-    /// If the `radix` is not between 2 and 16 inclusive or the calculation of the maximum value fails.
+    /// If the `radix` is not between 2 and 16 inclusive or the calculation of
+    /// the maximum value fails.
     pub fn instantiate(radix: u32, digits: usize) -> Result<Self, AnoError> {
         let min_digits = match radix {
             2 => 20,
@@ -77,7 +80,8 @@ impl Integer {
     }
 
     /// Encrypts a given `value` using the FPE method.
-    /// The value must be lower or equal to the `max_value` of the Integer representation.
+    /// The value must be lower or equal to the `max_value` of the Integer
+    /// representation.
     ///
     /// # Example
     /// ```
@@ -112,7 +116,8 @@ impl Integer {
     }
 
     /// Encrypts a given `value` using the FPE method.
-    /// The value must be lower or equal to the `max_value` of the Integer representation.
+    /// The value must be lower or equal to the `max_value` of the Integer
+    /// representation.
     ///
     /// # Example
     /// ```
@@ -160,7 +165,8 @@ impl Integer {
         Ok(big_ciphertext)
     }
 
-    // Decrypts the ciphertext using the specified key and tweak and returns the plaintext as a u64.
+    // Decrypts the ciphertext using the specified key and tweak and returns the
+    // plaintext as a u64.
     ///
     /// # Parameters
     ///
@@ -170,12 +176,14 @@ impl Integer {
     ///
     /// # Returns
     ///
-    /// Returns the plaintext as a u64 on success, or an error if the decryption was not successful.
+    /// Returns the plaintext as a u64 on success, or an error if the decryption
+    /// was not successful.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - If the ciphertext is greater than the maximum value set for the Integer struct.
+    /// - If the ciphertext is greater than the maximum value set for the
+    ///   Integer struct.
     /// - If the plaintext could not be generated from the ciphertext.
     /// - If the plaintext value could not be converted to a u64.
     ///
@@ -203,7 +211,8 @@ impl Integer {
         })
     }
 
-    // Decrypts the ciphertext using the specified key and tweak and returns the plaintext as a BigUint.
+    // Decrypts the ciphertext using the specified key and tweak and returns the
+    // plaintext as a BigUint.
     ///
     /// # Parameters
     ///
@@ -213,12 +222,14 @@ impl Integer {
     ///
     /// # Returns
     ///
-    /// Returns the plaintext as a BigUint on success, or an error if the decryption was not successful.
+    /// Returns the plaintext as a BigUint on success, or an error if the
+    /// decryption was not successful.
     ///
     /// # Errors
     ///
     /// This method returns an error in the following cases:
-    /// - If the ciphertext is greater than the maximum value set for the Integer struct.
+    /// - If the ciphertext is greater than the maximum value set for the
+    ///   Integer struct.
     /// - If the plaintext could not be generated from the ciphertext.
     /// - If the plaintext value could not be converted to a BigUint.
     ///

@@ -1,7 +1,4 @@
-use cloudproof_rust::fpe::Alphabet;
-use cloudproof_rust::fpe::Float;
-use cloudproof_rust::fpe::Integer;
-use cloudproof_rust::fpe::KEY_LENGTH;
+use cloudproof_rust::fpe::{Alphabet, Float, Integer, KEY_LENGTH};
 use criterion::{criterion_group, criterion_main, Criterion};
 use num_bigint::BigUint;
 use rand::{RngCore, SeedableRng};

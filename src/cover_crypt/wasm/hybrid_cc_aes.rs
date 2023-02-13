@@ -3,6 +3,11 @@
 #![allow(clippy::unused_unit)]
 // Wait for `wasm-bindgen` issue 2774: https://github.com/rustwasm/wasm-bindgen/issues/2774
 
+use cosmian_cover_crypt::{
+    abe_policy::AccessPolicy,
+    statics::{CoverCryptX25519Aes256, EncryptedHeader, PublicKey, UserSecretKey, DEM},
+    CoverCrypt,
+};
 use cosmian_crypto_core::{
     bytes_ser_de::{Deserializer, Serializable, Serializer},
     symmetric_crypto::{Dem, SymKey},
@@ -10,12 +15,6 @@ use cosmian_crypto_core::{
 };
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
-
-use cosmian_cover_crypt::{
-    abe_policy::AccessPolicy,
-    statics::{CoverCryptX25519Aes256, EncryptedHeader, PublicKey, UserSecretKey, DEM},
-    CoverCrypt,
-};
 
 pub const MAX_CLEAR_TEXT_SIZE: usize = 1 << 30;
 
@@ -292,7 +291,8 @@ pub fn webassembly_hybrid_decrypt(
     encrypted_bytes: Uint8Array,
     authentication_data: Uint8Array,
 ) -> Result<Uint8Array, JsValue> {
-    // Read encrypted bytes as the concatenation of an encrypted header and a DEM ciphertext.
+    // Read encrypted bytes as the concatenation of an encrypted header and a DEM
+    // ciphertext.
     let encrypted_bytes = encrypted_bytes.to_vec();
     let mut de = Deserializer::new(&encrypted_bytes);
     let header = wasm_unwrap!(

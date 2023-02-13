@@ -91,8 +91,9 @@ pub unsafe extern "C" fn h_get_error(error_ptr: *mut c_char, error_len: *mut c_i
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::ptr::null_mut;
+
+    use super::*;
 
     #[test]
     fn test_error() {

@@ -1,11 +1,13 @@
-use crate::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
+use std::os::raw::{c_char, c_int};
+
 use cosmian_cover_crypt::{
     abe_policy::{AccessPolicy, Policy},
     statics::{CoverCryptX25519Aes256, MasterSecretKey, PublicKey, UserSecretKey},
     CoverCrypt,
 };
 use cosmian_crypto_core::bytes_ser_de::Serializable;
-use std::os::raw::{c_char, c_int};
+
+use crate::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
 
 #[no_mangle]
 /// Generates the master authority keys for supplied Policy.
@@ -39,7 +41,9 @@ pub unsafe extern "C" fn h_generate_master_keys(
     // Serialize master keys and write to output buffers.
     let msk_bytes = ffi_unwrap!(msk.try_to_bytes());
     let mpk_bytes = ffi_unwrap!(mpk.try_to_bytes());
-    ffi_write_bytes!("msk", &msk_bytes, msk_ptr, msk_len, "mpk", &mpk_bytes, mpk_ptr, mpk_len);
+    ffi_write_bytes!(
+        "msk", &msk_bytes, msk_ptr, msk_len, "mpk", &mpk_bytes, mpk_ptr, mpk_len
+    );
 
     0
 }

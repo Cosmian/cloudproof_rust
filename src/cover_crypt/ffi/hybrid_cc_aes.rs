@@ -9,7 +9,11 @@ use std::{
     },
 };
 
-use crate::{ffi_bail, ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
+use cosmian_cover_crypt::{
+    abe_policy::{AccessPolicy, Policy},
+    statics::{CoverCryptX25519Aes256, EncryptedHeader, PublicKey, UserSecretKey, DEM},
+    CoverCrypt,
+};
 use cosmian_crypto_core::{
     bytes_ser_de::{Deserializer, Serializable, Serializer},
     symmetric_crypto::{Dem, SymKey},
@@ -17,11 +21,7 @@ use cosmian_crypto_core::{
 };
 use lazy_static::lazy_static;
 
-use cosmian_cover_crypt::{
-    abe_policy::{AccessPolicy, Policy},
-    statics::{CoverCryptX25519Aes256, EncryptedHeader, PublicKey, UserSecretKey, DEM},
-    CoverCrypt,
-};
+use crate::{ffi_bail, ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
 
 // -------------------------------
 //         Encryption

@@ -1,9 +1,3 @@
-use cosmian_crypto_core::{
-    bytes_ser_de::{Deserializer, Serializable, Serializer},
-    symmetric_crypto::{Dem, SymKey},
-};
-use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes};
-
 use cosmian_cover_crypt::{
     abe_policy::AccessPolicy,
     statics::{
@@ -12,10 +6,14 @@ use cosmian_cover_crypt::{
     },
     CoverCrypt as CoverCryptRust,
 };
-
-use crate::pyo3_unwrap;
+use cosmian_crypto_core::{
+    bytes_ser_de::{Deserializer, Serializable, Serializer},
+    symmetric_crypto::{Dem, SymKey},
+};
+use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes};
 
 use super::py_abe_policy::Policy;
+use crate::pyo3_unwrap;
 
 // Pyo3 doc on classes
 // https://pyo3.rs/v0.16.2/class.html

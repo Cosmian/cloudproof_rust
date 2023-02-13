@@ -1,10 +1,11 @@
-use super::{Float, Integer, KEY_LENGTH};
-use crate::{error::AnoError, fpe::Alphabet};
 use num_bigint::BigUint;
 use num_traits::{Num, ToPrimitive};
 use rand::{thread_rng, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use rand_distr::Alphanumeric;
+
+use super::{Float, Integer, KEY_LENGTH};
+use crate::{error::AnoError, fpe::Alphabet};
 
 /// Generate a random key using a cryptographically
 /// secure random number generator that is suitable for use with FPE
@@ -20,7 +21,8 @@ fn alphabet_check(plaintext: &str, alphabet: &Alphabet, non_alphabet_chars: &str
     let ciphertext = alphabet.encrypt(&key, &[], plaintext).unwrap();
     println!("  {:?} -> {:?} ", &plaintext, &ciphertext);
     assert_eq!(plaintext.chars().count(), ciphertext.chars().count());
-    // every character of the generated string should be part of the alphabet or a - or a ' '
+    // every character of the generated string should be part of the alphabet or a -
+    // or a ' '
     let non_alphabet_u16 = non_alphabet_chars.chars().collect::<Vec<char>>();
     for c in ciphertext.chars() {
         assert!(non_alphabet_u16.contains(&c) || alphabet.char_to_position(c).is_some());

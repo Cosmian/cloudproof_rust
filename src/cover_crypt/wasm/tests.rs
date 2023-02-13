@@ -1,3 +1,11 @@
+use cosmian_cover_crypt::{
+    abe_policy::Policy,
+    statics::{
+        CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
+        UserSecretKey,
+    },
+    CoverCrypt,
+};
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializable};
 /// Test WASM bindgen functions prerequisites:
 /// - `cargo install wasm-bindgen-cli`
@@ -19,14 +27,6 @@ use crate::cover_crypt::{
             webassembly_hybrid_decrypt, webassembly_hybrid_encrypt,
         },
     },
-};
-use cosmian_cover_crypt::{
-    abe_policy::Policy,
-    statics::{
-        CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
-        UserSecretKey,
-    },
-    CoverCrypt,
 };
 
 fn encrypt_header(

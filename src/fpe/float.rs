@@ -1,8 +1,8 @@
-use crate::error::AnoError;
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 
 use super::Integer;
+use crate::error::AnoError;
 
 /// Struct representing a floating point number.
 pub struct Float {
@@ -14,7 +14,8 @@ impl Float {
     ///
     /// # Returns
     ///
-    /// Returns a new instance of `Float` if successful, otherwise returns an error `AnoError`.
+    /// Returns a new instance of `Float` if successful, otherwise returns an
+    /// error `AnoError`.
     pub fn instantiate() -> Result<Float, AnoError> {
         Ok(Float {
             number: Integer::instantiate(16, 16)?,
@@ -31,7 +32,8 @@ impl Float {
     ///
     /// # Returns
     ///
-    /// Returns the encrypted floating point value if successful, otherwise returns an error `AnoError`.
+    /// Returns the encrypted floating point value if successful, otherwise
+    /// returns an error `AnoError`.
     pub fn encrypt(&self, key: &[u8; 32], tweak: &[u8], value: f64) -> Result<f64, AnoError> {
         // Convert the floating point value to a BigUint
         let big_uint = BigUint::from(value.to_bits());
@@ -58,7 +60,8 @@ impl Float {
     ///
     /// # Returns
     ///
-    /// Returns the decrypted floating point value if successful, otherwise returns an error `AnoError`.
+    /// Returns the decrypted floating point value if successful, otherwise
+    /// returns an error `AnoError`.
     pub fn decrypt(&self, key: &[u8; 32], tweak: &[u8], value: f64) -> Result<f64, AnoError> {
         // Convert the floating point value to a BigUint
         let big_uint = BigUint::from(value.to_bits());

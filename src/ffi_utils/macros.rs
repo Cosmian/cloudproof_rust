@@ -68,7 +68,7 @@ macro_rules! ffi_bail {
         $crate::ffi_utils::error::set_last_error($crate::ffi_utils::error::FfiError::Generic($msg));
         return 1;
     };
-    ($msg: expr, $err: expr) => {
+    ($msg:expr, $err:expr) => {
         $crate::ffi_utils::error::set_last_error($crate::ffi_utils::error::FfiError::Generic(
             $msg.to_string(),
         ));
@@ -165,7 +165,7 @@ macro_rules! ffi_write_bytes {
 /// - `len`     : length of the input buffer
 #[macro_export]
 macro_rules! ffi_read_bytes {
-    ($name: literal, $ptr: ident, $len: ident) => {{
+    ($name:literal, $ptr:ident, $len:ident) => {{
         $crate::ffi_not_null!($name, $ptr);
 
         if $len == 0 {
@@ -188,7 +188,7 @@ macro_rules! ffi_read_bytes {
 /// - `ptr`     : pointer to the input null-terminated C string
 #[macro_export]
 macro_rules! ffi_read_string {
-    ($name: literal, $ptr: ident) => {{
+    ($name:literal, $ptr:ident) => {{
         $crate::ffi_not_null!($name, $ptr);
 
         match $crate::ffi_utils::macros::CStr::from_ptr($ptr).to_str() {
