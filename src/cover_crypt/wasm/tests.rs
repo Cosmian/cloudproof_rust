@@ -7,12 +7,10 @@ use js_sys::{Array, JsString, Uint8Array};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_test::wasm_bindgen_test;
 
-use crate::{
-    abe_policy::{
-        interfaces::wasm_bindgen::{webassembly_rotate_attributes, Attributes},
-        Policy,
-    },
-    interfaces::wasm_bindgen::{
+use crate::cover_crypt::{
+    tests::policy,
+    wasm::{
+        abe_policy::{webassembly_rotate_attributes, Attributes},
         generate_cc_keys::{
             webassembly_generate_master_keys, webassembly_generate_user_secret_key,
         },
@@ -21,11 +19,14 @@ use crate::{
             webassembly_hybrid_decrypt, webassembly_hybrid_encrypt,
         },
     },
+};
+use cosmian_cover_crypt::{
+    abe_policy::Policy,
     statics::{
-        tests::policy, CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey,
-        PublicKey, UserSecretKey,
+        CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
+        UserSecretKey,
     },
-    CoverCrypt, Error,
+    CoverCrypt,
 };
 
 fn encrypt_header(
@@ -34,39 +35,55 @@ fn encrypt_header(
     public_key: &PublicKey,
     header_metadata: &[u8],
     authentication_data: &[u8],
-) -> Result<EncryptedHeader, Error> {
+) -> Result<EncryptedHeader, JsValue> {
     let header_metadata = Uint8Array::from(header_metadata);
     let authentication_data = Uint8Array::from(authentication_data);
-    let policy_bytes = serde_json::to_vec(&policy)?;
-    let public_key_bytes = Uint8Array::from(public_key.try_to_bytes()?.as_slice());
-    let encrypted_header = webassembly_encrypt_hybrid_header(
-        policy_bytes,
-        access_policy_string,
-        public_key_bytes,
-        header_metadata,
-        authentication_data,
-    )
-    .map_err(|e| Error::Other(e.as_string().unwrap()))?;
+    let policy_bytes = wasm_unwrap!(policy.try_into(), "Error serializing policy");
+    let public_key_bytes = Uint8Array::from(
+        wasm_unwrap!(public_key.try_to_bytes(), "Error serializing public key").as_slice(),
+    );
+    let encrypted_header = wasm_unwrap!(
+        webassembly_encrypt_hybrid_header(
+            policy_bytes,
+            access_policy_string,
+            public_key_bytes,
+            header_metadata,
+            authentication_data,
+        ),
+        "Error encrypting header"
+    );
     EncryptedHeader::try_from_bytes(
         &encrypted_header.to_vec()[CoverCryptX25519Aes256::SYM_KEY_LENGTH..],
     )
-    .map_err(|e| Error::JsonParsing(e.to_string()))
+    .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 fn decrypt_header(
     encrypted_header: &EncryptedHeader,
     user_decryption_key: &UserSecretKey,
     authentication_data: &[u8],
-) -> Result<CleartextHeader, Error> {
+) -> Result<CleartextHeader, JsValue> {
     let authentication_data = Uint8Array::from(authentication_data);
-    let encrypted_header_bytes =
-        Uint8Array::from(encrypted_header.try_to_bytes().unwrap().as_slice());
-    let sk_u = Uint8Array::from(user_decryption_key.try_to_bytes()?.as_slice());
-    let decrypted_header_bytes =
-        webassembly_decrypt_hybrid_header(sk_u, encrypted_header_bytes, authentication_data)
-            .map_err(|e| Error::Other(e.as_string().unwrap()))?;
+    let encrypted_header_bytes = Uint8Array::from(
+        wasm_unwrap!(
+            encrypted_header.try_to_bytes(),
+            "Error serializing encrypted header"
+        )
+        .as_slice(),
+    );
+    let sk_u = Uint8Array::from(
+        wasm_unwrap!(
+            user_decryption_key.try_to_bytes(),
+            "Error serializing the user secret key"
+        )
+        .as_slice(),
+    );
+    let decrypted_header_bytes = wasm_unwrap!(
+        webassembly_decrypt_hybrid_header(sk_u, encrypted_header_bytes, authentication_data),
+        "Error decrypting header"
+    );
     CleartextHeader::try_from_bytes(&decrypted_header_bytes.to_vec())
-        .map_err(|e| Error::JsonParsing(e.to_string()))
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 #[wasm_bindgen_test]

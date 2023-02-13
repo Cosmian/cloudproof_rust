@@ -19,7 +19,14 @@ macro_rules! impl_key_byte {
 
             /// Converts key to bytes
             pub fn to_bytes(&self, py: Python) -> PyResult<Py<PyBytes>> {
-                Ok(PyBytes::new(py, &self.0.try_to_bytes()?).into())
+                Ok(PyBytes::new(
+                    py,
+                    &self
+                        .0
+                        .try_to_bytes()
+                        .map_err(|e| PyTypeError::new_err(e.to_string()))?,
+                )
+                .into())
             }
 
             /// Reads key from bytes
@@ -27,7 +34,7 @@ macro_rules! impl_key_byte {
             pub fn from_bytes(key_bytes: &[u8]) -> PyResult<Self> {
                 match <$rust_type>::try_from_bytes(key_bytes) {
                     Ok(key) => Ok(Self(key)),
-                    Err(e) => Err(PyErr::from(e)),
+                    Err(e) => Err(PyTypeError::new_err(e.to_string())),
                 }
             }
         }

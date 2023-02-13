@@ -1,6 +1,6 @@
 use std::result::Result;
 
-use crate::abe_policy::{
+use cosmian_cover_crypt::abe_policy::{
     Attribute as AttributeRust, EncryptionHint, Policy as PolicyRust, PolicyAxis as PolicyAxisRust,
 };
 use pyo3::{

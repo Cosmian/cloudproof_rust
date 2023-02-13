@@ -1,7 +1,4 @@
-use crate::{
-    abe_policy::{Attribute, EncryptionHint, Policy, PolicyAxis},
-    Error,
-};
+use cosmian_cover_crypt::abe_policy::{Attribute, EncryptionHint, Policy, PolicyAxis};
 use js_sys::{Array, Boolean, JsString, Reflect};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
@@ -61,9 +58,22 @@ pub fn webassembly_policy(nb_creations: u32) -> Result<Vec<u8>, JsValue> {
 
 #[wasm_bindgen]
 pub fn webassembly_add_axis(policy: Vec<u8>, axis: String) -> Result<Vec<u8>, JsValue> {
-    let mut policy = Policy::parse_and_convert(&policy)?;
-    policy.add_axis(serde_json::from_str(&axis).map_err(Error::DeserializationError)?)?;
-    serde_json::to_vec(&policy).map_err(|e| JsValue::from_str(&e.to_string()))
+    let mut policy = wasm_unwrap!(
+        Policy::parse_and_convert(&policy),
+        "Error deserializing the policy"
+    );
+    wasm_unwrap!(
+        policy.add_axis(wasm_unwrap!(
+            serde_json::from_str(&axis),
+            "Error deserializing the policy axis"
+        )),
+        "Error adding axis to the policy"
+    );
+    serde_json::to_vec(&policy).map_err(|e| {
+        JsValue::from_str(&format!(
+            "Error serializing the policy into the response: {e}"
+        ))
+    })
 }
 
 /// Rotates attributes, changing their underlying values with that of an unused
@@ -79,13 +89,23 @@ pub fn webassembly_rotate_attributes(
     policy: Vec<u8>,
 ) -> Result<Vec<u8>, JsValue> {
     let attributes = Array::from(&JsValue::from(attributes));
-    let mut policy = Policy::parse_and_convert(&policy)?;
+    let mut policy = wasm_unwrap!(
+        Policy::parse_and_convert(&policy),
+        "Error deserializing the policy"
+    );
 
     // Rotate attributes of the current policy
     for attr in attributes.values() {
-        let attribute = Attribute::try_from(String::from(JsString::from(attr?)).as_str())?;
-        policy.rotate(&attribute)?;
+        let attribute = wasm_unwrap!(
+            Attribute::try_from(String::from(JsString::from(attr?)).as_str()),
+            "Error deserializing the attribute"
+        );
+        wasm_unwrap!(policy.rotate(&attribute), "Error rotating the policy");
     }
 
-    Ok(serde_json::to_vec(&policy).map_err(Error::DeserializationError)?)
+    serde_json::to_vec(&policy).map_err(|e| {
+        JsValue::from_str(&format!(
+            "Error serializing the policy into the response: {e}"
+        ))
+    })
 }

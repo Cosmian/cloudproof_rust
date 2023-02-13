@@ -2,17 +2,20 @@ use cosmian_crypto_core::{
     bytes_ser_de::{Deserializer, Serializable, Serializer},
     symmetric_crypto::{Dem, SymKey},
 };
-use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, PyErr};
+use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes};
 
-use crate::{
+use cosmian_cover_crypt::{
     abe_policy::AccessPolicy,
-    interfaces::pyo3::py_abe_policy::Policy,
     statics::{
         CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey as MasterSecretKeyRust,
         PublicKey as PublicKeyRust, UserSecretKey as UserSecretKeyRust, DEM,
     },
     CoverCrypt as CoverCryptRust,
 };
+
+use crate::pyo3_unwrap;
+
+use super::py_abe_policy::Policy;
 
 // Pyo3 doc on classes
 // https://pyo3.rs/v0.16.2/class.html
@@ -69,10 +72,8 @@ impl CoverCrypt {
     ///
     /// Returns: MasterSecretKey
     pub fn generate_master_keys(&self, policy: &Policy) -> PyResult<(MasterSecretKey, PublicKey)> {
-        match self.0.generate_master_keys(&policy.0) {
-            Ok((msk, pk)) => Ok((MasterSecretKey(msk), PublicKey(pk))),
-            Err(e) => Err(PyErr::from(e)),
-        }
+        let (msk, pk) = pyo3_unwrap!(self.0.generate_master_keys(&policy.0));
+        Ok((MasterSecretKey(msk), PublicKey(pk)))
     }
 
     /// Update the master keys according to this new policy.
@@ -91,9 +92,8 @@ impl CoverCrypt {
         msk: &mut MasterSecretKey,
         pk: &mut PublicKey,
     ) -> PyResult<()> {
-        self.0
-            .update_master_keys(&policy.0, &mut msk.0, &mut pk.0)
-            .map_err(PyErr::from)
+        pyo3_unwrap!(self.0.update_master_keys(&policy.0, &mut msk.0, &mut pk.0));
+        Ok(())
     }
 
     /// Generate a user secret key.
@@ -113,16 +113,12 @@ impl CoverCrypt {
         access_policy_str: &str,
         policy: &Policy,
     ) -> PyResult<UserSecretKey> {
-        let access_policy = AccessPolicy::from_boolean_expression(access_policy_str)
-            .map_err(|e| PyTypeError::new_err(format!("Access policy creation failed: {e}")))?;
-
-        match self
+        let access_policy = pyo3_unwrap!(AccessPolicy::from_boolean_expression(access_policy_str));
+        let usk = pyo3_unwrap!(self
             .0
-            .generate_user_secret_key(&msk.0, &access_policy, &policy.0)
-        {
-            Ok(usk) => Ok(UserSecretKey(usk)),
-            Err(e) => Err(PyErr::from(e)),
-        }
+            .generate_user_secret_key(&msk.0, &access_policy, &policy.0));
+
+        Ok(UserSecretKey(usk))
     }
 
     /// Refreshes the user key according to the given master key and access
@@ -148,18 +144,17 @@ impl CoverCrypt {
         policy: &Policy,
         keep_old_accesses: bool,
     ) -> PyResult<()> {
-        let access_policy = AccessPolicy::from_boolean_expression(access_policy_str)
-            .map_err(|e| PyTypeError::new_err(format!("Access policy creation failed: {e}")))?;
+        let access_policy = pyo3_unwrap!(AccessPolicy::from_boolean_expression(access_policy_str));
 
-        self.0
-            .refresh_user_secret_key(
-                &mut usk.0,
-                &access_policy,
-                &msk.0,
-                &policy.0,
-                keep_old_accesses,
-            )
-            .map_err(PyErr::from)
+        pyo3_unwrap!(self.0.refresh_user_secret_key(
+            &mut usk.0,
+            &access_policy,
+            &msk.0,
+            &policy.0,
+            keep_old_accesses,
+        ));
+
+        Ok(())
     }
 
     /// Encrypts data symmetrically in a block.
@@ -178,9 +173,11 @@ impl CoverCrypt {
         authentication_data: Option<Vec<u8>>,
         py: Python,
     ) -> PyResult<Py<PyBytes>> {
-        let ciphertext =
-            self.0
-                .encrypt(&symmetric_key.0, &plaintext, authentication_data.as_deref())?;
+        let ciphertext = pyo3_unwrap!(self.0.encrypt(
+            &symmetric_key.0,
+            &plaintext,
+            authentication_data.as_deref(),
+        ));
 
         Ok(PyBytes::new(py, &ciphertext).into())
     }
@@ -201,11 +198,11 @@ impl CoverCrypt {
         authentication_data: Option<Vec<u8>>,
         py: Python,
     ) -> PyResult<Py<PyBytes>> {
-        let plaintext = self.0.decrypt(
+        let plaintext = pyo3_unwrap!(self.0.decrypt(
             &symmetric_key.0,
             &ciphertext,
             authentication_data.as_deref(),
-        )?;
+        ));
 
         Ok(PyBytes::new(py, &plaintext).into())
     }
@@ -237,22 +234,21 @@ impl CoverCrypt {
         py: Python,
     ) -> PyResult<(SymmetricKey, Py<PyBytes>)> {
         // Deserialize inputs
-        let access_policy = AccessPolicy::from_boolean_expression(access_policy_str)
-            .map_err(|e| PyTypeError::new_err(format!("Access policy creation failed: {e}")))?;
+        let access_policy = pyo3_unwrap!(AccessPolicy::from_boolean_expression(access_policy_str));
 
         // Encrypt
-        let (symmetric_key, encrypted_header) = EncryptedHeader::generate(
+        let (symmetric_key, encrypted_header) = pyo3_unwrap!(EncryptedHeader::generate(
             &self.0,
             &policy.0,
             &public_key.0,
             &access_policy,
             header_metadata.as_deref(),
             authentication_data.as_deref(),
-        )?;
+        ));
 
         Ok((
             SymmetricKey(symmetric_key),
-            PyBytes::new(py, &encrypted_header.try_to_bytes()?).into(),
+            PyBytes::new(py, &pyo3_unwrap!(encrypted_header.try_to_bytes())).into(),
         ))
     }
 
@@ -273,12 +269,11 @@ impl CoverCrypt {
         authentication_data: Option<Vec<u8>>,
         py: Python,
     ) -> PyResult<(SymmetricKey, Py<PyBytes>)> {
-        // Finally decrypt symmetric key using given user decryption key
-        let cleartext_header = EncryptedHeader::try_from_bytes(&encrypted_header_bytes)?.decrypt(
-            &self.0,
-            &usk.0,
-            authentication_data.as_deref(),
-        )?;
+        let encrypted_header =
+            pyo3_unwrap!(EncryptedHeader::try_from_bytes(&encrypted_header_bytes));
+
+        let cleartext_header =
+            pyo3_unwrap!(encrypted_header.decrypt(&self.0, &usk.0, authentication_data.as_deref()));
 
         Ok((
             SymmetricKey(cleartext_header.symmetric_key),
@@ -316,23 +311,25 @@ impl CoverCrypt {
             .map_err(|e| PyTypeError::new_err(format!("Access policy creation failed: {e}")))?;
 
         // generates encrypted header
-        let (symmetric_key, encrypted_header) = EncryptedHeader::generate(
+        let (symmetric_key, encrypted_header) = pyo3_unwrap!(EncryptedHeader::generate(
             &self.0,
             &policy.0,
             &pk.0,
             &access_policy,
             header_metadata.as_deref(),
             authentication_data.as_deref(),
-        )?;
+        ));
 
         // encrypts the plaintext
-        let ciphertext =
-            self.0
-                .encrypt(&symmetric_key, &plaintext, authentication_data.as_deref())?;
+        let ciphertext = pyo3_unwrap!(self.0.encrypt(
+            &symmetric_key,
+            &plaintext,
+            authentication_data.as_deref()
+        ));
 
         // concatenates the encrypted header and the ciphertext
         let mut ser = Serializer::with_capacity(encrypted_header.length() + ciphertext.len());
-        encrypted_header.write(&mut ser)?;
+        pyo3_unwrap!(encrypted_header.write(&mut ser));
         ser.write_array(&ciphertext)
             .map_err(|e| PyTypeError::new_err(format!("Error serializing ciphertext: {e}")))?;
 
@@ -358,19 +355,20 @@ impl CoverCrypt {
     ) -> PyResult<(Py<PyBytes>, Py<PyBytes>)> {
         let mut de = Deserializer::new(encrypted_bytes.as_slice());
         // this will read the exact header size
-        let header = EncryptedHeader::read(&mut de)?;
+        let header = pyo3_unwrap!(EncryptedHeader::read(&mut de));
         // the rest is the symmetric ciphertext
         let ciphertext = de.finalize();
 
         // decrypts the header
-        let cleartext_header = header.decrypt(&self.0, &usk.0, authentication_data.as_deref())?;
+        let cleartext_header =
+            pyo3_unwrap!(header.decrypt(&self.0, &usk.0, authentication_data.as_deref()));
 
         // decrypts data
-        let plaintext = self.0.decrypt(
+        let plaintext = pyo3_unwrap!(self.0.decrypt(
             &cleartext_header.symmetric_key,
             ciphertext.as_slice(),
             authentication_data.as_deref(),
-        )?;
+        ));
 
         Ok((
             PyBytes::new(py, &plaintext).into(),

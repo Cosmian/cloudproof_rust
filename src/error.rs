@@ -1,20 +1,29 @@
-use thiserror::Error;
+use core::fmt::Display;
 
-#[derive(Error, Debug)]
+#[derive(Debug)]
 pub enum AnoError {
-    #[error("Anonymisation error: {0}")]
     Generic(String),
-    #[error("FPE error: {0}")]
     FPE(String),
-    #[error("Invalid key size {0}, expected: {1}")]
     KeySize(usize, usize),
-    #[error("Conversion error: {0}")]
     ConversionError(String),
 }
 
 impl From<std::num::TryFromIntError> for AnoError {
     fn from(value: std::num::TryFromIntError) -> Self {
         AnoError::ConversionError(value.to_string())
+    }
+}
+
+impl Display for AnoError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AnoError::Generic(err) => write!(f, "Anonymisation error: {err}"),
+            AnoError::FPE(err) => write!(f, "FPE error: {err}"),
+            AnoError::KeySize(given, expected) => {
+                write!(f, "Invalid key size {given}, expected: {expected}")
+            }
+            AnoError::ConversionError(err) => write!(f, "Conversion error: {err}"),
+        }
     }
 }
 
