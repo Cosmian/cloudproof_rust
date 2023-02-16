@@ -9,6 +9,8 @@ authors = [
 license = "MIT/Apache-2.0"
 description = "Cosmian Rust Cloudproof library"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 getrandom = { version ="0.2", features = ["js"] }
