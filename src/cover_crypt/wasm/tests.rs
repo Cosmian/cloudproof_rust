@@ -4,6 +4,7 @@ use cosmian_cover_crypt::{
         CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
         UserSecretKey,
     },
+    test_utils::policy,
     CoverCrypt,
 };
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializable};
@@ -15,17 +16,12 @@ use js_sys::{Array, JsString, Uint8Array};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_test::wasm_bindgen_test;
 
-use crate::cover_crypt::{
-    tests::policy,
-    wasm::{
-        abe_policy::{webassembly_rotate_attributes, Attributes},
-        generate_cc_keys::{
-            webassembly_generate_master_keys, webassembly_generate_user_secret_key,
-        },
-        hybrid_cc_aes::{
-            webassembly_decrypt_hybrid_header, webassembly_encrypt_hybrid_header,
-            webassembly_hybrid_decrypt, webassembly_hybrid_encrypt,
-        },
+use crate::cover_crypt::wasm::{
+    abe_policy::{webassembly_rotate_attributes, Attributes},
+    generate_cc_keys::{webassembly_generate_master_keys, webassembly_generate_user_secret_key},
+    hybrid_cc_aes::{
+        webassembly_decrypt_hybrid_header, webassembly_encrypt_hybrid_header,
+        webassembly_hybrid_decrypt, webassembly_hybrid_encrypt,
     },
 };
 

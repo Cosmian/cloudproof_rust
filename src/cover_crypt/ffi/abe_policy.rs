@@ -111,8 +111,10 @@ pub unsafe extern "C" fn h_validate_attribute(attribute_ptr: *const c_char) -> c
 mod tests {
     use std::ffi::{CStr, CString};
 
+    use cosmian_cover_crypt::test_utils::policy;
+
     use super::*;
-    use crate::{cover_crypt::tests::policy, ffi_utils::error::h_get_error};
+    use crate::ffi_utils::error::h_get_error;
 
     #[test]
     fn test_rotate() {

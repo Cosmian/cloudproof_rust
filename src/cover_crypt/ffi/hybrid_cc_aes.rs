@@ -199,9 +199,9 @@ pub unsafe extern "C" fn h_encrypt_header(
         PublicKey::try_from_bytes(mpk),
         "error deserializing public key"
     );
-    let encryption_policy_bytes = ffi_read_string!("encryption policy", encryption_policy_ptr);
+    let encryption_policy_string = ffi_read_string!("encryption policy", encryption_policy_ptr);
     let encryption_policy = ffi_unwrap!(
-        AccessPolicy::from_boolean_expression(&encryption_policy_bytes),
+        AccessPolicy::from_boolean_expression(&encryption_policy_string),
         "error parsing encryption policy"
     );
     let header_metadata = if header_metadata_ptr.is_null() || header_metadata_len == 0 {

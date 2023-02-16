@@ -3,6 +3,7 @@ use std::{
     os::raw::c_int,
 };
 
+use cosmian_cover_crypt::test_utils::policy;
 use cosmian_cover_crypt::{
     abe_policy::{
         AccessPolicy,
@@ -32,7 +33,7 @@ use crate::cover_crypt::ffi::{
         h_encrypt_header, h_encrypt_header_using_cache, h_hybrid_decrypt, h_hybrid_encrypt,
     },
 };
-use crate::{cover_crypt::tests::policy, ffi_utils::error::h_get_error};
+use crate::ffi_utils::error::h_get_error;
 
 unsafe fn encrypt_header(
     policy: &Policy,
@@ -42,11 +43,11 @@ unsafe fn encrypt_header(
     authentication_data: &[u8],
 ) -> (<DEM as Dem<{ DEM::KEY_LENGTH }>>::Key, EncryptedHeader) {
     let mut symmetric_key = vec![0u8; 32];
-    let symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
+    let mut symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
     let mut symmetric_key_len = symmetric_key.len() as c_int;
 
     let mut encrypted_header_bytes = vec![0u8; 8128];
-    let encrypted_header_ptr = encrypted_header_bytes.as_mut_ptr().cast();
+    let mut encrypted_header_ptr = encrypted_header_bytes.as_mut_ptr().cast();
     let mut encrypted_header_len = encrypted_header_bytes.len() as c_int;
 
     let policy_bytes: Vec<u8> = policy.try_into().unwrap();
@@ -60,7 +61,7 @@ unsafe fn encrypt_header(
     let encryption_policy_cs = CString::new(encryption_policy).unwrap();
     let encryption_policy_ptr = encryption_policy_cs.as_ptr();
 
-    unwrap_ffi_error(h_encrypt_header(
+    let res = h_encrypt_header(
         symmetric_key_ptr,
         &mut symmetric_key_len,
         encrypted_header_ptr,
@@ -74,7 +75,29 @@ unsafe fn encrypt_header(
         header_metadata.len() as i32,
         authentication_data.as_ptr().cast(),
         authentication_data.len() as i32,
-    ));
+    );
+
+    if 0 != res {
+        symmetric_key = vec![0u8; symmetric_key_len as usize];
+        encrypted_header_bytes = vec![0u8; encrypted_header_len as usize];
+        symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
+        encrypted_header_ptr = encrypted_header_bytes.as_mut_ptr().cast();
+        unwrap_ffi_error(h_encrypt_header(
+            symmetric_key_ptr,
+            &mut symmetric_key_len,
+            encrypted_header_ptr,
+            &mut encrypted_header_len,
+            policy_ptr,
+            policy_len,
+            public_key_ptr.cast(),
+            public_key_len,
+            encryption_policy_ptr,
+            header_metadata.as_ptr().cast(),
+            header_metadata.len() as i32,
+            authentication_data.as_ptr().cast(),
+            authentication_data.len() as i32,
+        ));
+    }
 
     let symmetric_key_ = <DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::try_from_bytes(
         std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize),
@@ -96,23 +119,23 @@ unsafe fn decrypt_header(
     authentication_data: &[u8],
 ) -> CleartextHeader {
     let mut symmetric_key = vec![0u8; 32];
-    let symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
+    let mut symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
     let mut symmetric_key_len = symmetric_key.len() as c_int;
+
+    let mut header_metadata = vec![0u8; 32];
+    let mut header_metadata_ptr = header_metadata.as_mut_ptr().cast();
+    let mut header_metadata_len = header_metadata.len() as c_int;
+
+    let header_bytes = header.try_to_bytes().unwrap();
 
     let authentication_data_ptr = authentication_data.as_ptr().cast();
     let authentication_data_len = authentication_data.len() as c_int;
-
-    let mut header_metadata = vec![0u8; 8128];
-    let header_metadata_ptr = header_metadata.as_mut_ptr().cast();
-    let mut header_metadata_len = header_metadata.len() as c_int;
 
     let user_decryption_key_bytes = user_decryption_key.try_to_bytes().unwrap();
     let user_decryption_key_ptr = user_decryption_key_bytes.as_ptr().cast();
     let user_decryption_key_len = user_decryption_key_bytes.len() as i32;
 
-    let header_bytes = header.try_to_bytes().unwrap();
-
-    unwrap_ffi_error(h_decrypt_header(
+    let res = h_decrypt_header(
         symmetric_key_ptr,
         &mut symmetric_key_len,
         header_metadata_ptr,
@@ -123,7 +146,26 @@ unsafe fn decrypt_header(
         authentication_data_len,
         user_decryption_key_ptr,
         user_decryption_key_len,
-    ));
+    );
+
+    if 0 != res {
+        symmetric_key = vec![0u8; symmetric_key_len as usize];
+        header_metadata = vec![0u8; header_metadata_len as usize];
+        symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
+        header_metadata_ptr = header_metadata.as_mut_ptr().cast();
+        unwrap_ffi_error(h_decrypt_header(
+            symmetric_key_ptr,
+            &mut symmetric_key_len,
+            header_metadata_ptr,
+            &mut header_metadata_len,
+            header_bytes.as_ptr().cast(),
+            header_bytes.len() as c_int,
+            authentication_data_ptr,
+            authentication_data_len,
+            user_decryption_key_ptr,
+            user_decryption_key_len,
+        ));
+    }
 
     let symmetric_key = <DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::try_from_bytes(
         std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize),
@@ -147,50 +189,8 @@ unsafe fn unwrap_ffi_error(val: i32) {
         let mut message_bytes_len = message_bytes_key.len() as c_int;
         h_get_error(message_bytes_ptr, &mut message_bytes_len);
         let cstr = CStr::from_ptr(message_bytes_ptr);
-        cstr.to_str().unwrap();
-    }
-}
-
-#[test]
-fn test_ffi_simple() {
-    unsafe {
-        //
-        // Policy settings
-        //
-        let policy = policy().unwrap();
-        let encryption_policy =
-            "(Department::HR || Department::FIN) && Security Level::Confidential";
-
-        //
-        // CoverCrypt setup
-        //
-        let cover_crypt = CoverCryptX25519Aes256::default();
-        let (msk, mpk) = cover_crypt.generate_master_keys(&policy).unwrap();
-        let user_access_policy =
-            AccessPolicy::from_boolean_expression("Department::FIN && Security Level::Top Secret")
-                .unwrap();
-        let usk = cover_crypt
-            .generate_user_secret_key(&msk, &user_access_policy, &policy)
-            .unwrap();
-
-        //
-        // Encrypt / decrypt
-        //
-        let header_metadata = vec![];
-        let authentication_data = vec![];
-
-        let (sym_key, encrypted_header) = encrypt_header(
-            &policy,
-            encryption_policy,
-            &mpk,
-            &header_metadata,
-            &authentication_data,
-        );
-
-        let decrypted_header = decrypt_header(&encrypted_header, &usk, &authentication_data);
-
-        assert_eq!(sym_key, decrypted_header.symmetric_key);
-        assert_eq!(&header_metadata, &decrypted_header.metadata);
+        let msg = cstr.to_str().unwrap();
+        panic!("{msg}");
     }
 }
 
@@ -201,8 +201,7 @@ fn test_ffi_hybrid_header() -> Result<(), Error> {
         // Policy settings
         //
         let policy = policy().unwrap();
-        let encryption_policy =
-            "(Department::HR || Department::FIN) && Security Level::Confidential";
+        let encryption_policy = "(Department::HR || Department::FIN) && Security Level::Low Secret";
 
         //
         // CoverCrypt setup
@@ -262,7 +261,7 @@ unsafe fn encrypt_header_using_cache(
         public_key_len,
     ));
 
-    let encryption_policy = "Department::FIN && Security Level::Confidential";
+    let encryption_policy = "Department::FIN && Security Level::Low Secret";
 
     let mut symmetric_key = vec![0u8; 32];
     let symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
@@ -795,8 +794,7 @@ fn test_encrypt_decrypt() {
         // Policy settings
         //
         let policy = policy().unwrap();
-        let encryption_policy =
-            "(Department::HR || Department::FIN) && Security Level::Confidential";
+        let encryption_policy = "(Department::HR || Department::FIN) && Security Level::Low Secret";
 
         //
         // CoverCrypt setup

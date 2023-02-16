@@ -57,7 +57,6 @@ macro_rules! ffi_bail {
         $crate::ffi_utils::error::set_last_error($crate::ffi_utils::error::FfiError::Generic(
             $msg.to_string(),
         ));
-        println!("again: {}", $err);
         return $err;
     };
 }
