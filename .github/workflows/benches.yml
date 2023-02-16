@@ -1,0 +1,12 @@
+---
+name: Benches on demand
+
+# on: push
+on: workflow_dispatch
+
+jobs:
+  bench:
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-bench.yml@main
+    with:
+      toolchain: stable
+      force: true

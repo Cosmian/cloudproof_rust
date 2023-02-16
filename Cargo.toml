@@ -10,7 +10,8 @@ license = "MIT/Apache-2.0"
 description = "Cosmian Rust Cloudproof library"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib", "cdylib", "staticlib"]
+name = "cloudproof_rust"
 
 [dependencies]
 getrandom = { version ="0.2", features = ["js"] }
@@ -41,13 +42,14 @@ criterion = { version = "0.4", default-features = false }
 rand = "0.8"
 rand_distr = "0.4"
 rand_chacha = "0.3"
+serde = "1.0"
 wasm-bindgen-test = "0.3"
 
 
 [features]
 cover_crypt = ["cosmian_cover_crypt", "cosmian_crypto_core", "serde_json"]
 dylib = ["rand", "rand_distr", "rand_chacha"]
-ffi = ["lazy_static"]
+ffi = ["lazy_static", "cover_crypt"]
 fpe = ["dep:fpe", "aes", "itertools", "num-bigint", "num-integer", "num-traits", "rand", "rand_distr", "rand_chacha"]
 python = ["pyo3"]
 wasm = ["wasm-bindgen", "js-sys"]

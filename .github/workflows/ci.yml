@@ -1,0 +1,10 @@
+---
+name: CI checks
+
+on: push
+
+jobs:
+  cargo-lint:
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery.yml@main
+    with:
+      toolchain: stable
