@@ -33,7 +33,7 @@ pub fn min_plaintext_length(alphabet_len: usize) -> usize {
 ///  - `Alphabet::latin1sup()`
 ///  - `Alphabet::latin1sup_alphanum()`
 ///
-/// To build your own, for example the hexadecimal alphabet,  
+/// To build your own, for example the hexadecimal alphabet,
 /// use `Alphabet::try_from("0123456789abcdef").unwrap()`
 ///
 /// See the `encrypt()` and `decrypt()` methods for usage
@@ -360,7 +360,6 @@ impl Alphabet {
     /// Creates an Alphabet with the first 63489 (~2^16) Unicode characters
     pub fn utf() -> Alphabet {
         let chars = (0..=1 << 16_u32)
-            .into_iter()
             .filter_map(char::from_u32)
             .collect::<Vec<char>>();
         Alphabet {
@@ -372,7 +371,6 @@ impl Alphabet {
     /// Creates an Alphabet with the Chinese characters
     pub fn chinese() -> Alphabet {
         let chars = (0x4E00..=0x9FFF_u32)
-            .into_iter()
             .filter_map(char::from_u32)
             .collect::<Vec<char>>();
         Alphabet {
@@ -386,7 +384,6 @@ impl Alphabet {
     pub fn latin1sup() -> Alphabet {
         let chars = (0x0021..=0x007E_u32)
             .chain(0x00C0..=0x00FF)
-            .into_iter()
             .filter_map(char::from_u32)
             .collect::<Vec<char>>();
         Alphabet {
@@ -402,7 +399,6 @@ impl Alphabet {
             .chain(0x0041..=0x005A)
             .chain(0x0061..=0x007A)
             .chain(0x00C0..=0x00FF)
-            .into_iter()
             .filter_map(char::from_u32)
             .collect::<Vec<char>>();
         Alphabet {
