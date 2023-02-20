@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 import unittest
-from cosmian_cover_crypt import (
+
+from cloudproof_rust import (
     Attribute,
+    CoverCrypt,
+    MasterSecretKey,
     Policy,
     PolicyAxis,
-    CoverCrypt,
-    SymmetricKey,
-    MasterSecretKey,
     PublicKey,
+    SymmetricKey,
     UserSecretKey,
 )
 

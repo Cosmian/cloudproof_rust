@@ -49,7 +49,7 @@ use py_cover_crypt::{CoverCrypt, MasterSecretKey, PublicKey, SymmetricKey, UserS
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn cosmian_cover_crypt(_py: Python, m: &PyModule) -> PyResult<()> {
+fn cloudproof_rust(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Attribute>()?;
     m.add_class::<PolicyAxis>()?;
     m.add_class::<Policy>()?;

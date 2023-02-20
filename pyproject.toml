@@ -3,7 +3,7 @@ requires = ["maturin>=0.13,<0.15"]
 build-backend = "maturin"
 
 [tool.maturin]
-python-source = "python"
+python-source = "python/cover_crypt"
 
 [project]
 name = "cloudproof_rust"
