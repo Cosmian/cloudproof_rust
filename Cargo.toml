@@ -19,7 +19,7 @@ getrandom = { version ="0.2", features = ["js"] }
 # Optional dependencies
 aes = { version = "0.8", optional = true }
 cosmian_cover_crypt = { git = "https://github.com/Cosmian/cover_crypt.git", branch = "feature/cloudproof_rust", features = ["serialization"], optional = true }
-cosmian_crypto_core = { git = "https://github.com/Cosmian/crypto_core.git", branch = "feature/cleanup", optional = true }
+cosmian_crypto_core = { version = "7.0", optional = true }
 fpe = { git = "https://github.com/Cosmian/cosmian_fpe", optional = true }
 itertools = { version = "0.10", optional = true }
 js-sys = { version = "0.3", optional = true }

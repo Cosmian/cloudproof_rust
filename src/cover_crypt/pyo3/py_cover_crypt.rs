@@ -45,10 +45,10 @@ impl SymmetricKey {
 
     /// Reads key from bytes
     #[staticmethod]
-    pub fn from_bytes(key_bytes: [u8; CoverCryptX25519Aes256::SYM_KEY_LENGTH]) -> PyResult<Self> {
-        Ok(Self(<DEM as Dem<
-            { CoverCryptX25519Aes256::SYM_KEY_LENGTH },
-        >>::Key::from_bytes(key_bytes)))
+    pub fn from_bytes(key_bytes: [u8; DEM::KEY_LENGTH]) -> PyResult<Self> {
+        Ok(Self(<DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::from_bytes(
+            key_bytes,
+        )))
     }
 }
 
