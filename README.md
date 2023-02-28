@@ -1,163 +1,153 @@
-## CloudproofRust
+# Cosmian Cloudproof Data Protection Library
 
-![Build status](https://github.com/Cosmian/crypto_core/actions/workflows/ci.yml/badge.svg)
-![Build status](https://github.com/Cosmian/crypto_core/actions/workflows/audit.yml/badge.svg)
-![latest version](<https://img.shields.io/crates/v/cosmian_crypto_core.svg>)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/ci.yml/badge.svg)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/build.yml/badge.svg)
 
-This crate implements the WASM, FFI and python interfaces to the cryptographic
-libraries used in Cosmian Cloudproof libraries for other languages:
+Cloudproof Encryption provides libraries and tools to encrypt and securely index large repositories of data with advanced, high-performance security primitives with Post-Quantum resistance.
 
-- CoverCrypt;
-- Findex;
-- FPE;
+See [the use cases and benefits](https://docs.cosmian.com/cloudproof_encryption/use_cases_benefits/) and a description of the [cryptosystems](https://docs.cosmian.com/cloudproof_encryption/crypto_systems/) used.
 
+The libraries are available in multiple languages to facilitate encryption close to the data source and decryption close to the decryption target, including mobile devices and browsers.
+
+The Cloudproof Rust repository provides these interfaces such as FFI, WebAssembly and Pyo3 to run :
+
+- **FFI** interface is used by:
+  - [cloudproof_java](https://github.com/Cosmian/cloudproof_java): the Cloudproof Java Library
+  - [cloudproof_flutter](https://github.com/Cosmian/cloudproof_flutter): the Cloudproof Flutter Library
+- **WebAssembly** interface is used by:
+  - [cloudproof_js](https://github.com/Cosmian/cloudproof_js): the Cloudproof Javascript Library
+- **Pyo3** interface is used by:
+  - [cloudproof_python](https://github.com/Cosmian/cloudproof_python): the Cloudproof Python Library
 
 <!-- toc -->
 
-- [Getting started](#getting-started)
-- [Building and Testing](#building-and-testing)
-  - [Build](#build)
-  - [Use](#use)
-  - [Run tests and benchmarks](#run-tests-and-benchmarks)
-- [Features and Benchmarks](#features-and-benchmarks)
-  - [Asymmetric Crypto](#asymmetric-crypto)
-  - [Symmetric Crypto](#symmetric-crypto)
-  - [Random Number Generator (RNG)](#random-number-generator-rng)
-  - [Key Derivation Function (KDF)](#key-derivation-function-kdf)
+- [Licensing](#licensing)
+- [Cryptographic primitives](#cryptographic-primitives)
+- [Building and testing](#building-and-testing)
+  - [Building the library for `cloudproof_java` or `cloudproof_flutter`](#building-the-library-for-cloudproof_java-or-cloudproof_flutter)
+  - [Build the library for `cloudproof_js`](#build-the-library-for-cloudproof_js)
+  - [Build the library for `cloudproof_python`](#build-the-library-for-cloudproof_python)
+  - [Building the library for a different glibc](#building-the-library-for-a-different-glibc)
+- [Benchmarks](#benchmarks)
 - [Documentation](#documentation)
+  - [CoverCrypt](#covercrypt)
+  - [Findex](#findex)
+  - [Format Preserving Encryption](#format-preserving-encryption)
+- [Releases](#releases)
 
 <!-- tocstop -->
 
-## Building and Testing
+## Licensing
 
-### Features
+The library is available under a dual licensing scheme Affero GPL/v3 and commercial. See [LICENSE.md](LICENSE.md) for details.
 
-Sub-crates are used for each of cryptographic libraries and features are used
-to select the proper interface. The available features are:
+## Cryptographic primitives
 
-| wasm	 | selects code for the WASM interface 	 |
-| ffi	 | selects code for the FFI interface	 |
-| python | selects code for the Python interface |
+These interfaces are based on:
 
-The `cloudproof_findex` subcrate has an additional `cloud` feature used to
-select the code to generate Findex Cloud interfaces. It should be combine with
-one of the above features in order to generate an actual interface.
+- [CoverCrypt](https://github.com/Cosmian/cover_crypt) algorithm which allows
+creating ciphertexts for a set of attributes and issuing user keys with access
+policies over these attributes. `CoverCrypt` offers Post-Quantum resistance.
 
-### Build
+- [Findex](https://github.com/Cosmian/findex) which is a cryptographic protocol designed to securely make search queries on
+an untrusted cloud server. Thanks to its encrypted indexes, large databases can
+securely be outsourced without compromising usability.
 
-To install and build CloudproofRust, clone the repo:
+- [This FPE library](./crates/fpe/README.md) provides multiple data protection techniques for use in a zero-trust environment. The techniques range from simple, less secure modifications of plaintext to quantum-resistant encryption for the best protection.
+
+## Building and testing
+
+To build all interfaces (including the FFI, Wasm and Pyo3):
 
 ```bash
-git clone https://github.com/Cosmian/crypto_core.git
+cargo build --release --all-features
 ```
 
-In all the following commands, the `cloud` feature can be added in order to
-build the cloud interface of Findex, e.g.: `--features cloud,wasm`.
+The latter will build the shared libraries for `cover_crypt` and `findex`. On Linux, one can verify that the FFI symbols are present using:
 
-**FFI**:
-
-To build the FFI interface, run:
 ```bash
-cargo build --release --features ffi
+objdump -T  target/release/libcosmian_cover_crypt.so
+objdump -T  target/release/libcosmian_findex.so
 ```
-The `.so` libraries can then be found in `target/release/`.
 
-**WASM**:
-
-To build the WASM interface, run (replace `[library path]` by `findex` or
-`cover_crypt`):
-```bash
-wasm-pack build --release [library path] --features wasm
-```
-The `.wasm` libraries can then be found in `[library path]/pkg/`.
-
-**Python**:
-
-To build the Python interface, run (replace `[library path]` by `findex` or
-`cover_crypt`):
-```bash
-maturin build --release --manifest-path [library path]/Cargo.toml --features python
-```
-The `.whl` libraries can then be found in `target/wheels/`.
-
-### Run tests and benchmarks
-
-Tests can be run with:
+The code contains numerous tests that you can run using:
 
 ```bash
 cargo test --release --all-features
 ```
 
-The benchmarks are available in the cryptographic libraries.
+### Building the library for `cloudproof_java` or `cloudproof_flutter`
 
-## Features and Benchmarks
+From the root directory:
 
-The benchmarks given below are run on a Intel(R) Core(TM) i7-10750H CPU @ 3.20GHz.
-
-### Asymmetric Crypto
-
-This crate implements a Diffie-Hellman asymmetric key pair based on the
-Curve25519. This is one of the fastest elliptic curves known at this time and
-it offers 128 bits of security.
-
-It uses the [Dalek](https://github.com/dalek-cryptography/curve25519-dalek)
-implementation, which offers an implementation of the Ristretto technique to
-construct a prime order group on the curve. This group is used to implement
-the public key.
-
-```c
-Bench the Group-Scalar multiplication on which is based the Diffie-Helman key exchange
-                        time:   [59.932 µs 60.131 µs 60.364 µs]
+```bash
+cargo build --release --features ffi
 ```
 
-### Symmetric Crypto
+The `.so` libraries can then be found in `target/release/`.
 
-This crate implements a Data Encryption Method (DEM) based on the AES256-GCM
-algorithm, as described in the [ISO 2004](https://www.shoup.net/iso/std6.pdf).
-This implementation is 128-bits secure in both the classic and the post-quantum
-models.
+### Build the library for `cloudproof_js`
 
-It uses the [`aes_gcm`](https://docs.rs/aes-gcm/latest/aes_gcm/index.html)
-implementation of the AES GCM algorithm. This implementation makes use of the
-AES instruction set when available, which allows for a high encryption speed.
+From the root directory:
 
-```c
-Bench the DEM encryption of a 2048-bytes message without additional data
-                        time:   [2.7910 µs 2.7911 µs 2.7914 µs]
-
-Bench the DEM decryption of a 2048-bytes message without additional data
-                        time:   [2.7074 µs 2.7079 µs 2.7085 µs]
+```bash
+wasm-pack build --release --features wasm_bindgen
 ```
 
-### Random Number Generator (RNG)
+The `.wasm` libraries can then be found in `pkg/`.
 
-This crate uses the implementation of the CHACHA algorithm with 12 rounds from
-the [`rand_chacha`](https://rust-random.github.io/rand/rand_chacha/index.html)
-crate to construct our RNG. It is therefore 128-bits secure.
+### Build the library for `cloudproof_python`
 
-```c
-Bench the generation of a cryptographic RNG
-                        time:   [353.84 ns 353.96 ns 354.10 ns]
+From the root directory:
+
+```bash
+maturin build --release --manifest-path crates/<cover_crypt or findex>/Cargo.toml --features python
 ```
 
-### Key Derivation Function (KDF)
+**Note**: when a new function or class is added to the PyO3 interface, its
+signature needs to be added to
+[`__init__.pyi`](./crates/<cover_crypt or findex>/python/cloudproof_<cover_crypt or findex>/__init__.pyi).
 
-This crate uses the pure rust implementation of the SHAKE128 algorithm from the
-[sha3](https://docs.rs/sha3/latest/sha3) crate. This allows implementing a KDF
-which 128-bits secure for input sizes of at least 256 bits (32 bytes).
+To run tests on the Python interface, run:
 
-```c
-bench the KDF derivation of a 32-bytes IKM into a 64-bytes key
-                        time:   [1.1065 µs 1.1067 µs 1.1070 µs]
+```bash
+bash ./scripts/test.sh cover_crypt
+bash ./scripts/test.sh findex
 ```
+
+The `.whl` libraries can then be found in `target/wheels/`.
+
+### Building the library for a different glibc
+
+Go to the [build](build/glibc-2.17/) directory for an example on how to build for GLIBC 2.17
+
+## Benchmarks
+
+The benchmarks presented in this section are run on a Intel(R) Xeon(R) Platinum 8171M CPU @ 2.60GHz.
+
+- [CoverCrypt classic implementation](https://github.com/Cosmian/cover_crypt/blob/main/benches/BENCHMARKS_classic.md)
+- [CoverCrypt post-quantum implementation](https://github.com/Cosmian/cover_crypt/blob/main/benches/BENCHMARKS_hybridized.md)
+- [FPE](./crates/fpe/benches/BENCHMARKS.md)
 
 ## Documentation
 
-The documentation can be generated using Cargo:
+### CoverCrypt
 
-```bash
-cargo docs
-```
+A formal description and proof of the CoverCrypt scheme is given in [this paper](https://github.com/Cosmian/cover_crypt/blob/main/bib/CoverCrypt.pdf).
+It also contains an interesting discussion about the implementation.
 
-It is also available on
-[doc.rs](https://docs.rs/cosmian_crypto_core/latest/cosmian_crypto_core/).
+The developer documentation can be found on [doc.rs](https://docs.rs/cosmian_cover_crypt/latest/cosmian_cover_crypt/index.html)
+
+### Findex
+
+Findex technical documentation can be found [here](https://github.com/Cosmian/findex/blob/main/documentation/Findex.pdf).
+
+The developer documentation can be found on [doc.rs](https://docs.rs/cosmian_findex/latest/cosmian_findex/index.html)
+
+### Format Preserving Encryption
+
+Findex technical documentation can be found [here](./crates/fpe/documentation/FPE.pdf).
+
+## Releases
+
+All releases can be found in the public URL [package.cosmian.com](https://package.cosmian.com).
