@@ -4,13 +4,8 @@ language = "C"
 [parse]
 parse_deps = true
 exclude = []
-<<<<<<< HEAD
 extra_bindings = ["cosmian_ffi"]
 include = ["cosmian_ffi"]
-=======
-extra_bindings = []
-include = []
->>>>>>> c8dba97 (feat: get callback errors from Findex)
 
 [defines]
 "target_os = ios" = "TARGET_OS_IOS"

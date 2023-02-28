@@ -3,31 +3,20 @@ use std::{
     os::raw::c_int,
 };
 
-use cosmian_cover_crypt::test_utils::policy;
 use cosmian_cover_crypt::{
-    abe_policy::{
-        AccessPolicy,
-        //Attribute,
-        Policy,
-    },
+    abe_policy::{AccessPolicy, Policy},
     statics::{
         CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
         UserSecretKey, DEM,
     },
+    test_utils::policy,
     CoverCrypt, Error,
 };
 use cosmian_crypto_core::{bytes_ser_de::Serializable, symmetric_crypto::Dem, KeyTrait};
 use cosmian_ffi_utils::error::h_get_error;
 
 use crate::ffi::{
-    //abe_policy::h_rotate_attribute,
-    //h_rotate_attribute,
-    generate_cc_keys::{
-        h_generate_master_keys,
-        h_generate_user_secret_key,
-        //h_refresh_user_secret_key,
-        //h_update_master_keys,
-    },
+    generate_cc_keys::{h_generate_master_keys, h_generate_user_secret_key},
     hybrid_cc_aes::{
         h_create_decryption_cache, h_create_encryption_cache, h_decrypt_header,
         h_decrypt_header_using_cache, h_destroy_decryption_cache, h_destroy_encryption_cache,

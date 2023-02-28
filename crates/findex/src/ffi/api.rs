@@ -23,8 +23,9 @@ use cosmian_findex::{
     Keyword, Label,
 };
 
+#[cfg(feature = "cloud")]
+use crate::cloud::FindexCloud;
 use crate::{
-    cloud::FindexCloud,
     ffi::{
         core::{
             FetchAllEntryTableUidsCallback, FetchChainTableCallback, FetchEntryTableCallback,

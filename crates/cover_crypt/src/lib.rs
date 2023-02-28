@@ -7,4 +7,4 @@ pub mod ffi;
 pub mod pyo3;
 
 #[cfg(feature = "wasm")]
-pub mod wasm;
+pub mod wasm_bindgen;

@@ -460,6 +460,7 @@ impl InternalFindex {
         fetch_chains_batch_size = 0,
         progress_callback = None
     ))]
+    #[allow(clippy::too_many_arguments)]
     pub fn search_wrapper(
         &mut self,
         keywords: Vec<&str>,

@@ -1,10 +1,11 @@
 use cosmian_cover_crypt::{
-    abe_policy::{EncryptionHint, Policy, PolicyAxis},
+    abe_policy::Policy,
     statics::{
         CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
         UserSecretKey,
     },
-    CoverCrypt, Error,
+    test_utils::policy,
+    CoverCrypt,
 };
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializable};
 use js_sys::{Array, JsString, Uint8Array};
@@ -20,71 +21,61 @@ use crate::wasm_bindgen::{
     },
 };
 
-pub fn wasm_policy() -> Result<Policy, Error> {
-    let sec_level = PolicyAxis::new(
-        "Security Level",
-        vec![
-            ("Protected", EncryptionHint::Classic),
-            ("Confidential", EncryptionHint::Classic),
-            ("Top Secret", EncryptionHint::Hybridized),
-        ],
-        true,
-    );
-    let department = PolicyAxis::new(
-        "Department",
-        vec![
-            ("R&D", EncryptionHint::Classic),
-            ("HR", EncryptionHint::Classic),
-            ("MKG", EncryptionHint::Classic),
-            ("FIN", EncryptionHint::Classic),
-        ],
-        false,
-    );
-    let mut policy = Policy::new(100);
-    policy.add_axis(sec_level)?;
-    policy.add_axis(department)?;
-    Ok(policy)
-}
-
 fn encrypt_header(
     policy: &Policy,
     access_policy_string: String,
     public_key: &PublicKey,
     header_metadata: &[u8],
     authentication_data: &[u8],
-) -> Result<EncryptedHeader, Error> {
+) -> Result<EncryptedHeader, JsValue> {
     let header_metadata = Uint8Array::from(header_metadata);
     let authentication_data = Uint8Array::from(authentication_data);
-    let policy_bytes = serde_json::to_vec(&policy)?;
-    let public_key_bytes = Uint8Array::from(public_key.try_to_bytes()?.as_slice());
-    let encrypted_header = webassembly_encrypt_hybrid_header(
-        policy_bytes,
-        access_policy_string,
-        public_key_bytes,
-        header_metadata,
-        authentication_data,
-    )
-    .map_err(|e| Error::Other(e.as_string().unwrap()))?;
+    let policy_bytes = wasm_unwrap!(policy.try_into(), "Error serializing policy");
+    let public_key_bytes = Uint8Array::from(
+        wasm_unwrap!(public_key.try_to_bytes(), "Error serializing public key").as_slice(),
+    );
+    let encrypted_header = wasm_unwrap!(
+        webassembly_encrypt_hybrid_header(
+            policy_bytes,
+            access_policy_string,
+            public_key_bytes,
+            header_metadata,
+            authentication_data,
+        ),
+        "Error encrypting header"
+    );
     EncryptedHeader::try_from_bytes(
         &encrypted_header.to_vec()[CoverCryptX25519Aes256::SYM_KEY_LENGTH..],
     )
-    .map_err(|e| Error::JsonParsing(e.to_string()))
+    .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 fn decrypt_header(
     encrypted_header: &EncryptedHeader,
     user_decryption_key: &UserSecretKey,
     authentication_data: &[u8],
-) -> Result<CleartextHeader, Error> {
+) -> Result<CleartextHeader, JsValue> {
     let authentication_data = Uint8Array::from(authentication_data);
-    let encrypted_header_bytes =
-        Uint8Array::from(encrypted_header.try_to_bytes().unwrap().as_slice());
-    let sk_u = Uint8Array::from(user_decryption_key.try_to_bytes()?.as_slice());
-    let decrypted_header_bytes =
-        webassembly_decrypt_hybrid_header(sk_u, encrypted_header_bytes, authentication_data)
-            .map_err(|e| Error::Other(e.as_string().unwrap()))?;
+    let encrypted_header_bytes = Uint8Array::from(
+        wasm_unwrap!(
+            encrypted_header.try_to_bytes(),
+            "Error serializing encrypted header"
+        )
+        .as_slice(),
+    );
+    let sk_u = Uint8Array::from(
+        wasm_unwrap!(
+            user_decryption_key.try_to_bytes(),
+            "Error serializing the user secret key"
+        )
+        .as_slice(),
+    );
+    let decrypted_header_bytes = wasm_unwrap!(
+        webassembly_decrypt_hybrid_header(sk_u, encrypted_header_bytes, authentication_data),
+        "Error decrypting header"
+    );
     CleartextHeader::try_from_bytes(&decrypted_header_bytes.to_vec())
-        .map_err(|e| Error::JsonParsing(e.to_string()))
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 #[wasm_bindgen_test]
@@ -92,7 +83,7 @@ fn test_encrypt_decrypt() {
     //
     // Policy settings
     //
-    let policy = wasm_policy().unwrap();
+    let policy = policy().unwrap();
     let access_policy_string = "Department::FIN && Security Level::Top Secret";
 
     //
@@ -151,7 +142,7 @@ fn test_generate_keys() {
     //
     // Policy settings
     //
-    let policy = wasm_policy().unwrap();
+    let policy = policy().unwrap();
     let policy_bytes = serde_json::to_vec(&policy).unwrap();
 
     //
@@ -177,7 +168,7 @@ fn test_generate_keys() {
     .to_vec();
     let usk = UserSecretKey::try_from_bytes(&usk_bytes).unwrap();
 
-    let access_policy_string = "Security Level::Confidential".to_string();
+    let access_policy_string = "Security Level::Low Secret".to_string();
     let attributes = Array::new();
     attributes.push(&JsString::from(access_policy_string.as_str()));
     let new_policy = webassembly_rotate_attributes(
@@ -221,7 +212,7 @@ fn test_generate_keys() {
     // Refresh user secret key
     let usk_bytes = webassembly_generate_user_secret_key(
         Uint8Array::from(secret_key_bytes),
-        "Security Level::Confidential",
+        "Security Level::Low Secret",
         policy_bytes,
     )
     .unwrap()
