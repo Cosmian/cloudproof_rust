@@ -12,6 +12,10 @@ description = "Cosmian Cloudproof FPE library"
 crate-type = ["cdylib", "rlib"]
 name = "cloudproof_fpe"
 
+[[bench]]
+harness = false
+name = "benches"
+
 [features]
 wasm_bindgen = []
 

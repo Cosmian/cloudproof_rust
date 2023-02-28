@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Refactor
 
-- Add existing findex and cover_crypt source code
+- Add existing findex and cover_crypt `interfaces` source code (FFI, Wasm, pyo3)
 
 ### Ci
 
