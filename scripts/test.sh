@@ -17,7 +17,7 @@ maturin build -m $crate_dir/Cargo.toml --release --features python
 pip install --force-reinstall ./target/wheels/*.whl
 
 # Test typing
-mypy $crate_dir/python/tests/test_$1.py
+mypy $crate_dir/python/tests/$1_test.py
 
 # Unit tests
-python $crate_dir/python/tests/test_$1.py
+python $crate_dir/python/tests/$1_test.py
