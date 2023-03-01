@@ -8,6 +8,9 @@ members = [
 
 [workspace.dependencies]
 cosmian_crypto_core = "7.0"
+js-sys = "0.3"
+pyo3 = "0.18"
+wasm-bindgen = "0.2.84"
 
 [profile.release]
 lto = true
