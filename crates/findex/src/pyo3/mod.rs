@@ -1,7 +1,7 @@
 //! Defines the Python interface for Findex.
 
 use py_api::{FindexCloud, InternalFindex};
-use py_structs::{IndexedValue, Keyword, Label, Location, MasterKey};
+use py_structs::{Keyword, Label, Location, MasterKey};
 use pyo3::prelude::*;
 
 macro_rules! pyo3_unwrap {
@@ -118,7 +118,6 @@ fn cloudproof_findex(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<FindexCloud>()?;
     m.add_class::<Label>()?;
     m.add_class::<MasterKey>()?;
-    m.add_class::<IndexedValue>()?;
     m.add_class::<Location>()?;
     m.add_class::<Keyword>()?;
 
