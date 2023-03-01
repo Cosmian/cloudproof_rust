@@ -23,7 +23,8 @@ use pyo3::{
 use crate::{
     cloud::{FindexCloud as FindexCloudRust, Token, SIGNATURE_SEED_LENGTH},
     pyo3::py_structs::{
-        IndexedValue as IndexedValuePy, Label as LabelPy, MasterKey as MasterKeyPy,
+        IndexedValue as IndexedValuePy, Keyword as KeywordPy, Label as LabelPy,
+        Location as LocationPy, MasterKey as MasterKeyPy,
     },
 };
 
@@ -470,8 +471,7 @@ impl InternalFindex {
         max_depth: usize,
         fetch_chains_batch_size: usize,
         progress_callback: Option<PyObject>,
-        py: Python,
-    ) -> PyResult<HashMap<String, Vec<PyObject>>> {
+    ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
         self.progress_callback = match progress_callback {
             Some(callback) => callback,
             None => self.default_progress_callback.clone(),
@@ -498,7 +498,7 @@ impl InternalFindex {
             "error blocking for search"
         );
 
-        Ok(search_results_to_python(results, py))
+        Ok(search_results_to_python(results))
     }
 
     /// Replace all the previous Index Entry Table UIDs and
@@ -610,8 +610,7 @@ impl FindexCloud {
         max_depth: usize,
         fetch_chains_batch_size: usize,
         base_url: Option<String>,
-        py: Python,
-    ) -> PyResult<HashMap<String, Vec<PyObject>>> {
+    ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
         let mut findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
         let master_key = findex.token.findex_master_key.clone();
 
@@ -641,7 +640,7 @@ impl FindexCloud {
             "error blocking for search"
         );
 
-        Ok(search_results_to_python(results, py))
+        Ok(search_results_to_python(results))
     }
 
     /// Generate a new Findex Cloud token with reduced permissions
@@ -710,21 +709,16 @@ fn indexed_values_and_keywords_to_rust(
 
 fn search_results_to_python(
     search_results: HashMap<Keyword, HashSet<Location>>,
-    py: Python,
-) -> HashMap<String, Vec<PyObject>> {
+) -> HashMap<KeywordPy, Vec<LocationPy>> {
     search_results
         .iter()
         .map(|(keyword, locations)| {
             (
-                // Convert keyword to string or base64
-                match String::from_utf8(keyword.clone().into()) {
-                    Ok(s) => s,
-                    Err(_) => format!("{keyword:?}"),
-                },
+                KeywordPy(keyword.clone()),
                 // Convert Locations to bytes
                 locations
                     .iter()
-                    .map(|location| PyBytes::new(py, location).into_py(py))
+                    .map(|location| LocationPy(location.clone()))
                     .collect::<Vec<_>>(),
             )
         })

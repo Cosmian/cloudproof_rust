@@ -6,9 +6,29 @@ use std::{
 use cosmian_crypto_core::{reexport::rand_core::SeedableRng, CsRng};
 use cosmian_findex::{
     parameters::MASTER_KEY_LENGTH, IndexedValue as IndexedValueRust,
-    KeyingMaterial as KeyingMaterialRust, Keyword, Label as LabelRust, Location,
+    KeyingMaterial as KeyingMaterialRust, Keyword as KeywordRust, Label as LabelRust,
+    Location as LocationRust,
 };
 use pyo3::{prelude::*, pyclass::CompareOp, types::PyBytes};
+
+fn truncate(s: String, max_chars: usize) -> String {
+    match s.char_indices().nth(max_chars) {
+        None => s,
+        Some((idx, _)) => format!("{}...", &s[..idx]),
+    }
+}
+
+#[pyclass]
+#[derive(Hash, PartialEq, Eq, Clone)]
+pub struct Keyword(pub(super) KeywordRust);
+
+impl_python_byte!(Keyword, KeywordRust);
+
+#[pyclass]
+#[derive(Hash, PartialEq, Eq, Clone)]
+pub struct Location(pub(super) LocationRust);
+
+impl_python_byte!(Location, LocationRust);
 
 /// The value indexed by a `Keyword`. It can be either a `Location` or another
 /// `Keyword` in case the searched `Keyword` was a tree node.
@@ -27,7 +47,9 @@ impl IndexedValue {
     ///     IndexedValue
     #[staticmethod]
     pub fn from_location(location_bytes: &[u8]) -> Self {
-        Self(IndexedValueRust::Location(Location::from(location_bytes)))
+        Self(IndexedValueRust::Location(LocationRust::from(
+            location_bytes,
+        )))
     }
 
     /// Create `IndexedValue` from a keyword in bytes.
@@ -39,7 +61,9 @@ impl IndexedValue {
     ///     IndexedValue
     #[staticmethod]
     pub fn from_keyword(keyword_bytes: &[u8]) -> Self {
-        Self(IndexedValueRust::NextKeyword(Keyword::from(keyword_bytes)))
+        Self(IndexedValueRust::NextKeyword(KeywordRust::from(
+            keyword_bytes,
+        )))
     }
 
     /// Checks whether the `IndexedValue` is a location.
