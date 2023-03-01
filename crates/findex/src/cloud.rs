@@ -1,4 +1,4 @@
-#[cfg(not(feature = "wasm"))]
+#[cfg(not(feature = "wasm_bindgen"))]
 use std::time::SystemTime;
 use std::{
     collections::{HashMap, HashSet},
@@ -17,10 +17,10 @@ use cosmian_findex::{
     CoreError as FindexCoreError, EncryptedTable, FindexCallbacks, FindexSearch, FindexUpsert,
     IndexedValue, KeyingMaterial, Keyword, Location, Uid, UpsertData,
 };
-#[cfg(feature = "wasm")]
+#[cfg(feature = "wasm_bindgen")]
 use js_sys::Date;
 use reqwest::Client;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "wasm_bindgen")]
 use wasm_bindgen::JsValue;
 
 use super::ser_de::serialize_set;
@@ -65,7 +65,7 @@ pub enum FindexCloudError {
     Serialization {
         error: SerializableSetError,
     },
-    #[cfg(not(feature = "wasm"))]
+    #[cfg(not(feature = "wasm_bindgen"))]
     Other {
         error: String,
     },
@@ -83,7 +83,7 @@ impl Display for FindexCloudError {
             Self::Callback { error } => write!(f, "{error}"),
             Self::Findex { error } => write!(f, "Findex core error: {error}"),
             Self::Serialization { error } => write!(f, "serialization error: {error}"),
-            #[cfg(not(feature = "wasm"))]
+            #[cfg(not(feature = "wasm_bindgen"))]
             Self::Other { error } => write!(f, "{error}"),
         }
     }
@@ -101,7 +101,7 @@ impl From<SerializableSetError> for FindexCloudError {
     }
 }
 
-#[cfg(feature = "wasm")]
+#[cfg(feature = "wasm_bindgen")]
 impl From<FindexCloudError> for JsValue {
     fn from(value: FindexCloudError) -> Self {
         JsValue::from_str(&value.to_string())
@@ -386,10 +386,10 @@ impl FindexCloud {
                 })?;
 
         // SystemTime::now() panics in WASM <https://github.com/rust-lang/rust/issues/48564>
-        #[cfg(feature = "wasm")]
+        #[cfg(feature = "wasm_bindgen")]
         let current_timestamp = (Date::now() / 1000.0) as u64; // Date::now() returns milliseconds
 
-        #[cfg(not(feature = "wasm"))]
+        #[cfg(not(feature = "wasm_bindgen"))]
         let current_timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|_| FindexCloudError::Other {

@@ -15,7 +15,7 @@ name = "cloudproof_cover_crypt"
 [features]
 ffi = ["cosmian_ffi_utils", "lazy_static"]
 python = ["pyo3"]
-wasm = ["js-sys", "wasm-bindgen"]
+wasm_bindgen = ["js-sys", "wasm-bindgen"]
 
 [dependencies]
 cosmian_crypto_core.workspace = true

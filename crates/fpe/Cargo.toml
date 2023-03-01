@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 name = "cloudproof_fpe"
 
 [features]
-wasm = []
+wasm_bindgen = []
 
 [dependencies]
 aes = { version = "0.8" }

@@ -17,7 +17,7 @@ cloud = ["reqwest", "base64"]
 ffi = ["cosmian_ffi_utils", "base64", "serde_json", "tokio/rt-multi-thread"]
 python = ["pyo3", "futures"]
 sqlite = ["base64", "faker_rand", "rand", "rusqlite", "serde", "serde_json"]
-wasm = ["js-sys", "hex", "wasm-bindgen", "wasm-bindgen-futures"]
+wasm_bindgen = ["js-sys", "hex", "wasm-bindgen", "wasm-bindgen-futures"]
 
 [dependencies]
 cosmian_crypto_core.workspace = true
