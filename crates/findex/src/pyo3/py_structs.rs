@@ -15,32 +15,53 @@ fn truncate(s: String, max_chars: usize) -> String {
     }
 }
 
-#[pyclass]
+fn is_printable_char(c: char) -> bool {
+    c.is_alphanumeric() || c.is_ascii_punctuation() || c == ' '
+}
+
+#[pyclass(subclass)]
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct Keyword(pub(super) KeywordRust);
 
-impl_python_byte!(Keyword, KeywordRust);
+impl_python_byte!(Keyword, KeywordRust, "Keyword");
 
-#[pyclass]
+#[pyclass(subclass)]
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub struct Location(pub(super) LocationRust);
 
-impl_python_byte!(Location, LocationRust);
+impl_python_byte!(Location, LocationRust, "Location");
 
-/// The value indexed by a `Keyword`. It can be either a `Location` or another
-/// `Keyword` in case the searched `Keyword` was a tree node.
+/// Interface to convert `Location` and `Keyword` to `IndexedValue`
+/// automatically
 #[derive(Hash, PartialEq, Eq, Clone)]
-pub struct IndexedValue(pub(super) IndexedValueRust);
+pub struct ToIndexedValue(pub(super) IndexedValueRust);
 
-impl<'a> FromPyObject<'a> for IndexedValue {
+impl<'a> FromPyObject<'a> for ToIndexedValue {
     fn extract(arg: &'a PyAny) -> PyResult<Self> {
         if let Ok(location) = Location::extract(arg) {
             Ok(Self(IndexedValueRust::Location(location.0)))
         } else if let Ok(keyword) = Keyword::extract(arg) {
             Ok(Self(IndexedValueRust::NextKeyword(keyword.0)))
         } else {
-            Err(pyo3::exceptions::PyNotImplementedError::new_err(
-                "Conversion not implemented",
+            Err(pyo3::exceptions::PyValueError::new_err(
+                "Only `Keyword` and `Location` can be used to index values in Findex",
+            ))
+        }
+    }
+}
+
+/// Interface to accept `Keyword` and String in `Upsert`
+pub struct ToKeyword(pub(super) KeywordRust);
+
+impl<'a> FromPyObject<'a> for ToKeyword {
+    fn extract(arg: &'a PyAny) -> PyResult<Self> {
+        if let Ok(keyword) = Keyword::extract(arg) {
+            Ok(Self(keyword.0))
+        } else if let Ok(str) = String::extract(arg) {
+            Ok(Self(KeywordRust::from(str.as_bytes())))
+        } else {
+            Err(pyo3::exceptions::PyValueError::new_err(
+                "Only `Keyword` and `str` can be used to index values in Findex",
             ))
         }
     }

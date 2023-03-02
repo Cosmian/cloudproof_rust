@@ -20,11 +20,12 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+use super::py_structs::ToKeyword;
 use crate::{
     cloud::{FindexCloud as FindexCloudRust, Token, SIGNATURE_SEED_LENGTH},
     pyo3::py_structs::{
-        IndexedValue as IndexedValuePy, Keyword as KeywordPy, Label as LabelPy,
-        Location as LocationPy, MasterKey as MasterKeyPy,
+        Keyword as KeywordPy, Label as LabelPy, Location as LocationPy, MasterKey as MasterKeyPy,
+        ToIndexedValue,
     },
 };
 
@@ -64,23 +65,27 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
         &self,
         results: &HashMap<Keyword, HashSet<IndexedValueRust>>,
     ) -> Result<bool, FindexPyo3Error> {
-        let py_results = results
-            .iter()
-            .map(|(keyword, indexed_values)| {
-                (
-                    match String::from_utf8(keyword.clone().into()) {
-                        Ok(s) => s,
-                        Err(_) => format!("{keyword:?}"),
-                    },
-                    indexed_values
-                        .iter()
-                        .map(|value| IndexedValuePy(value.clone()))
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .collect::<HashMap<_, _>>();
-
         Python::with_gil(|py| {
+            let py_results = results
+                .iter()
+                .map(|(keyword, locations)| {
+                    (
+                        KeywordPy(keyword.clone()),
+                        locations
+                            .iter()
+                            .map(|indexed_value| match indexed_value {
+                                IndexedValueRust::Location(location) => {
+                                    LocationPy(location.clone()).into_py(py)
+                                }
+                                IndexedValueRust::NextKeyword(keyword) => {
+                                    KeywordPy(keyword.clone()).into_py(py)
+                                }
+                            })
+                            .collect::<Vec<PyObject>>(),
+                    )
+                })
+                .collect::<HashMap<_, _>>();
+
             let ret = self
                 .progress_callback
                 .call1(py, (py_results,))
@@ -422,7 +427,7 @@ impl InternalFindex {
     /// - `label`                       : label used to allow versioning
     pub fn upsert_wrapper(
         &mut self,
-        indexed_values_and_keywords: HashMap<IndexedValuePy, Vec<&str>>,
+        indexed_values_and_keywords: HashMap<ToIndexedValue, Vec<ToKeyword>>,
         master_key: &MasterKeyPy,
         label: &LabelPy,
     ) -> PyResult<()> {
@@ -556,7 +561,7 @@ impl FindexCloud {
     /// - `label`                       : label used to allow versioning
     #[staticmethod]
     pub fn upsert(
-        indexed_values_and_keywords: HashMap<IndexedValuePy, Vec<&str>>,
+        indexed_values_and_keywords: HashMap<ToIndexedValue, Vec<ToKeyword>>,
         token: &str,
         label: &LabelPy,
         base_url: Option<String>,
@@ -694,17 +699,18 @@ fn uint8slice_to_seed(
 }
 
 fn indexed_values_and_keywords_to_rust(
-    indexed_values_and_strings: HashMap<IndexedValuePy, Vec<&str>>,
+    py_indexed_values_and_keywords: HashMap<ToIndexedValue, Vec<ToKeyword>>,
 ) -> HashMap<IndexedValueRust, HashSet<Keyword>> {
-    let mut indexed_values_and_keywords = HashMap::with_capacity(indexed_values_and_strings.len());
-    for (indexed_value, strings) in indexed_values_and_strings {
-        let mut keywords = HashSet::with_capacity(strings.len());
-        for string in strings {
-            keywords.insert(Keyword::from(string));
+    let mut rust_indexed_values_and_keywords =
+        HashMap::with_capacity(py_indexed_values_and_keywords.len());
+    for (indexed_value, to_keywords) in py_indexed_values_and_keywords {
+        let mut keywords = HashSet::with_capacity(to_keywords.len());
+        for kw in to_keywords {
+            keywords.insert(kw.0);
         }
-        indexed_values_and_keywords.insert(indexed_value.0, keywords);
+        rust_indexed_values_and_keywords.insert(indexed_value.0, keywords);
     }
-    indexed_values_and_keywords
+    rust_indexed_values_and_keywords
 }
 
 fn search_results_to_python(

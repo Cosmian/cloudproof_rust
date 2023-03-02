@@ -16,7 +16,7 @@ macro_rules! pyo3_unwrap {
 ///
 /// - `type_name`   : name of the key type
 macro_rules! impl_python_byte {
-    ($py_type:ty, $rust_type:ty) => {
+    ($py_type:ty, $rust_type:ty, $name:tt) => {
         #[pymethods]
         impl $py_type {
             /// Create from bytes.
@@ -60,11 +60,11 @@ macro_rules! impl_python_byte {
             /// Default print.
             fn __repr__(&self, py: Python) -> PyResult<String> {
                 match String::from_utf8(self.0.to_vec()) {
-                    Ok(s) => match s.chars().all(char::is_alphanumeric) {
-                        true => Ok(truncate(s, 20)),
-                        false => Ok(format!("hash#{}", self.__hash__(py)?)),
+                    Ok(s) => match s.chars().all(is_printable_char) {
+                        true => Ok(format!("{}(\"{}\")", $name, truncate(s, 20))),
+                        false => Ok(format!("{}(#{})", $name, self.__hash__(py)?)),
                     },
-                    Err(_) => Ok(format!("hash#{}", self.__hash__(py)?)),
+                    Err(_) => Ok(format!("{}(#{})", $name, self.__hash__(py)?)),
                 }
             }
 

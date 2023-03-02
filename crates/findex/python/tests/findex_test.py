@@ -1,38 +1,80 @@
 # -*- coding: utf-8 -*-
 import unittest
-from cloudproof_findex import IndexedValue, Label, MasterKey, InternalFindex
 from typing import Dict, List, Set, Tuple
+
+from cloudproof_findex import InternalFindex, Keyword, Label, Location, MasterKey
 
 
 class TestStructures(unittest.TestCase):
-    def test_indexed_value_location(self) -> None:
-        bytes = b'location uid'
-        iv = IndexedValue.from_location(bytes)
-        self.assertIsInstance(iv, IndexedValue)
-        self.assertEqual(iv.get_location(), bytes)
+    def test_location(self) -> None:
+        # from string
+        input_string = 'test location'
+        loc_str = Location.from_string(input_string)
+        # conversion
+        self.assertEqual(str(loc_str), input_string)
+        # comparison
+        self.assertEqual(loc_str, input_string)
+        self.assertNotEqual(loc_str, 'wrong str')
+        # hash
+        self.assertEqual(hash(loc_str), hash(input_string))
 
-        # Cannot access keyword from a location
-        self.assertIsNone(iv.get_keyword())
+        # from int
+        input_int = 2**51 - 1
+        loc_int = Location.from_int(input_int)
+        self.assertEqual(int(loc_int), input_int)
+        # comparison
+        self.assertEqual(loc_int, input_int)
+        self.assertNotEqual(loc_int, 2**51 - 2)
+        # hash not working for int
 
-    def test_indexed_value_keyword(self) -> None:
-        bytes = b'example keyword'
-        iv = IndexedValue.from_keyword(bytes)
-        self.assertIsInstance(iv, IndexedValue)
-        self.assertEqual(iv.get_keyword(), bytes)
+        # from bytes
+        input_bytes = b'test location'
+        loc_bytes = Location.from_bytes(input_bytes)
+        self.assertEqual(bytes(loc_bytes), input_bytes)
+        # comparison
+        self.assertEqual(loc_bytes, input_bytes)
+        self.assertNotEqual(loc_bytes, b'wrong bytes')
+        # hash
+        self.assertEqual(hash(loc_bytes), hash(input_bytes))
 
-        # Cannot access location from a keyword
-        self.assertIsNone(iv.get_location())
+        # comparison between keywords
+        self.assertEqual(loc_str, loc_bytes)
+        self.assertNotEqual(loc_str, loc_int)
 
-        # Check comparison
-        word1 = IndexedValue.from_keyword(b'word1')
-        word1_bis = IndexedValue.from_keyword(b'word1')
-        word2 = IndexedValue.from_keyword(b'word2')
+    def test_keyword(self) -> None:
+        # from string
+        input_string = 'test keyword'
+        kw_str = Keyword.from_string(input_string)
+        # conversion
+        self.assertEqual(str(kw_str), input_string)
+        # comparison
+        self.assertEqual(kw_str, input_string)
+        self.assertNotEqual(kw_str, 'wrong str')
+        # hash
+        self.assertEqual(hash(kw_str), hash(input_string))
 
-        self.assertEqual(hash(word1), hash(word1_bis))
-        self.assertEqual(word1, word1_bis)
+        # from int
+        input_int = 2**51 - 1
+        kw_int = Keyword.from_int(input_int)
+        self.assertEqual(int(kw_int), input_int)
+        # comparison
+        self.assertEqual(kw_int, input_int)
+        self.assertNotEqual(kw_int, 2**51 - 2)
+        # hash not working for int
 
-        self.assertNotEqual(hash(word1), hash(word2))
-        self.assertNotEqual(word1, word2)
+        # from bytes
+        input_bytes = b'test keyword'
+        kw_bytes = Keyword.from_bytes(input_bytes)
+        self.assertEqual(bytes(kw_bytes), input_bytes)
+        # comparison
+        self.assertEqual(kw_bytes, input_bytes)
+        self.assertNotEqual(kw_bytes, b'wrong bytes')
+        # hash
+        self.assertEqual(hash(kw_bytes), hash(input_bytes))
+
+        # comparison between keywords
+        self.assertEqual(kw_str, kw_bytes)
+        self.assertNotEqual(kw_str, kw_int)
 
     def test_label(self) -> None:
         rand_label = Label.random()
@@ -160,7 +202,7 @@ class TestFindex(unittest.TestCase):
 
     def test_upsert_search(self) -> None:
         indexed_values_and_keywords = {
-            IndexedValue.from_location(k): v for k, v in self.db.items()
+            Location.from_bytes(k): v for k, v in self.db.items()
         }
 
         # Calling Upsert without setting the proper callbacks will raise an Exception
@@ -211,7 +253,7 @@ class TestFindex(unittest.TestCase):
         )
 
         indexed_values_and_keywords = {
-            IndexedValue.from_location(k): v for k, v in self.db.items()
+            Location.from_bytes(k): v for k, v in self.db.items()
         }
         self.findex_interface.upsert_wrapper(
             indexed_values_and_keywords, self.msk, self.label
@@ -219,11 +261,11 @@ class TestFindex(unittest.TestCase):
 
         # Adding custom keywords graph
         graph = {
-            IndexedValue.from_keyword(b'Mart'): ['Mar'],
-            IndexedValue.from_keyword(b'Marti'): ['Mart'],
-            IndexedValue.from_keyword(b'Martin'): ['Marti'],
-            IndexedValue.from_keyword(b'Martia'): ['Marti'],
-            IndexedValue.from_keyword(b'Martial'): ['Martia'],
+            Keyword.from_bytes(b'Mart'): ['Mar'],
+            Keyword.from_bytes(b'Marti'): ['Mart'],
+            Keyword.from_bytes(b'Martin'): ['Marti'],
+            Keyword.from_bytes(b'Martia'): ['Marti'],
+            Keyword.from_bytes(b'Martial'): ['Martia'],
         }
         self.findex_interface.upsert_wrapper(graph, self.msk, self.label)
 
@@ -235,7 +277,7 @@ class TestFindex(unittest.TestCase):
         self.assertEqual(len(res['Mar']), 2)
 
         # Test progress callback
-        def false_progress_callback(res: Dict[str, List[IndexedValue]]):
+        def false_progress_callback(res: Dict[str, List[Location | Keyword]]):
             self.assertEqual(len(res['Mar']), 1)
             return False
 
@@ -245,7 +287,7 @@ class TestFindex(unittest.TestCase):
         # no locations returned since the progress_callback stopped the recursion
         self.assertEqual(len(res['Mar']), 0)
 
-        def early_stop_progress_callback(res: Dict[str, List[IndexedValue]]):
+        def early_stop_progress_callback(res: Dict[str, List[Location | Keyword]]):
             if 'Martin' in res:
                 return False
             return True
@@ -279,7 +321,7 @@ class TestFindex(unittest.TestCase):
         )
 
         indexed_values_and_keywords = {
-            IndexedValue.from_location(k): v for k, v in self.db.items()
+            Location.from_bytes(k): v for k, v in self.db.items()
         }
         self.findex_interface.upsert_wrapper(
             indexed_values_and_keywords, self.msk, self.label

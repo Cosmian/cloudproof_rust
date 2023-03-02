@@ -1,53 +1,107 @@
-from typing import Callable, Optional, Dict, List
+from typing import Callable, Dict, List, Optional
 
-class IndexedValue:
-    """The value indexed by a `Keyword`. It can be either a `Location` or another
-    `Keyword` in case the searched `Keyword` was a tree node.
-    """
+class Keyword:
+    """A `Keyword` is a byte vector used to index other values."""
 
-    def is_location(self) -> bool:
-        """Checks whether the `IndexedValue` is a location.
-
-        Returns:
-            bool
-        """
-    def is_keyword(self) -> bool:
-        """Checks whether the `IndexedValue` is a keyword.
-
-        Returns:
-            bool
-        """
-    def get_location(self) -> Optional[bytes]:
-        """Returns the underlying location if the `IndexedValue` is one.
-
-        Returns:
-            Optional[bytes]
-        """
-    def get_keyword(self) -> Optional[bytes]:
-        """Returns the underlying keyword if the `IndexedValue` is one.
-
-        Returns:
-            Optional[bytes]
-        """
     @staticmethod
-    def from_location(location_bytes: bytes) -> IndexedValue:
-        """Create `IndexedValue` from a location in bytes.
+    def from_string(val: str) -> Keyword:
+        """Create `Keyword` from string.
 
         Args:
-            location_bytes (bytes)
+            str (str)
 
         Returns:
-            IndexedValue
+            Keyword
         """
     @staticmethod
-    def from_keyword(keyword_bytes: bytes) -> IndexedValue:
-        """Create `IndexedValue` from a keyword in bytes.
+    def from_bytes(val: bytes) -> Keyword:
+        """Create `Keyword` from bytes.
 
         Args:
-            keyword_bytes (bytes)
+            val (bytes)
 
         Returns:
-            IndexedValue
+            Keyword
+        """
+    @staticmethod
+    def from_int(val: int) -> Keyword:
+        """Create `Keyword` from int.
+
+        Args:
+            val (int)
+
+        Returns:
+            Keyword
+        """
+    def __str__(self) -> str:
+        """Convert `Keyword` to string.
+
+        Returns:
+            str
+        """
+    def __int__(self) -> int:
+        """Convert `Keyword` to int.
+
+        Returns:
+            int
+        """
+    def __bytes__(self) -> bytes:
+        """Convert `Keyword` to bytes.
+
+        Returns:
+            bytes
+        """
+
+class Location:
+    """A `Location` is a byte vector used to index other values."""
+
+    @staticmethod
+    def from_string(val: str) -> Location:
+        """Create `Location` from string.
+
+        Args:
+            str (str)
+
+        Returns:
+            Location
+        """
+    @staticmethod
+    def from_bytes(val: bytes) -> Location:
+        """Create `Location` from bytes.
+
+        Args:
+            val (bytes)
+
+        Returns:
+            Location
+        """
+    @staticmethod
+    def from_int(val: int) -> Location:
+        """Create `Location` from int.
+
+        Args:
+            val (int)
+
+        Returns:
+            Location
+        """
+    def __str__(self) -> str:
+        """Convert `Location` to string.
+
+        Returns:
+            str
+        """
+    def __int__(self) -> int:
+        """Convert `Location` to int.
+
+        Returns:
+            int
+        """
+    def __bytes__(self) -> bytes:
+        """Convert `Location` to bytes.
+
+        Returns:
+            bytes
         """
 
 class Label:
