@@ -177,7 +177,7 @@ pub unsafe extern "C" fn h_upsert(
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
         KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(master_key_bytes),
-        "error reserializing master secret key"
+        "error re-serializing master secret key"
     );
 
     let findex = FindexUser {
