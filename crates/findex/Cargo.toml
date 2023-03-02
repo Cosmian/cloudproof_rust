@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_findex"
-version = "0.1.0"
+version = "3.0.0"
 authors = [
   "Théophile Brézot<theophile.brezot@cosmian.com>",
 ]
