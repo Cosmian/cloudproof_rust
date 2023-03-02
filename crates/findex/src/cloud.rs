@@ -104,7 +104,7 @@ impl From<SerializableSetError> for FindexCloudError {
 #[cfg(feature = "wasm_bindgen")]
 impl From<FindexCloudError> for JsValue {
     fn from(value: FindexCloudError) -> Self {
-        JsValue::from_str(&value.to_string())
+        Self::from_str(&value.to_string())
     }
 }
 
@@ -194,7 +194,7 @@ impl FromStr for Token {
                 },
             )?)?;
 
-        let mut token = Token {
+        let mut token = Self {
             index_id: index_id.to_owned(),
             findex_master_key,
 

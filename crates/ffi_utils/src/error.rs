@@ -13,8 +13,8 @@ pub enum FfiError {
 impl Display for FfiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            FfiError::NullPointer(pointer_name) => write!(f, "{pointer_name} shouldn't be null"),
-            FfiError::Generic(err) => write!(f, "{err}"),
+            Self::NullPointer(pointer_name) => write!(f, "{pointer_name} shouldn't be null"),
+            Self::Generic(err) => write!(f, "{err}"),
         }
     }
 }

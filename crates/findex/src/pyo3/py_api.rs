@@ -33,7 +33,7 @@ impl Display for FindexPyo3Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Callback(error) => write!(f, "callback error: {error}"),
-            Self::ConversionError(error) => write!(f, "converison error: {error}"),
+            Self::ConversionError(error) => write!(f, "conversion error: {error}"),
         }
     }
 }
@@ -455,7 +455,7 @@ impl InternalFindex {
     // use `u32::MAX` for `max_result_per_keyword`
     #[pyo3(signature = (
             keywords, master_key, label,
-        max_result_per_keyword = 4294967295,
+        max_result_per_keyword = 4_294_967_295,
         max_depth = 100,
         fetch_chains_batch_size = 0,
         progress_callback = None

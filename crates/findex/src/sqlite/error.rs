@@ -74,8 +74,8 @@ impl From<SerializableSetError> for Error {
     }
 }
 
-impl From<FindexError<Error>> for Error {
-    fn from(value: FindexError<Error>) -> Self {
+impl From<FindexError<Self>> for Error {
+    fn from(value: FindexError<Self>) -> Self {
         if let FindexError::Callback(error) = value {
             error
         } else {

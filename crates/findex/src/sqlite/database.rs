@@ -26,6 +26,7 @@ pub struct User {
 }
 
 impl User {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             firstName: rand::random::<FirstName>().to_string(),
@@ -39,6 +40,7 @@ impl User {
         }
     }
 
+    #[must_use]
     pub fn values(&self) -> Vec<String> {
         vec![
             self.firstName.clone(),

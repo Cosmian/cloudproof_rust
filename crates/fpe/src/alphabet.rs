@@ -126,6 +126,7 @@ impl Alphabet {
     /// Returns the minimum length required for the plaintext for FPE to be
     /// secure. The minimum length is calculated based on the number of
     /// characters in the alphabet and recommended security thresholds.
+    #[must_use]
     pub fn minimum_plaintext_length(&self) -> usize {
         self.min_text_length
     }
