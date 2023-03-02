@@ -71,7 +71,7 @@ impl Display for FindexFfiError {
         match self {
             Self::ConversionError(err) => write!(f, "{err}"),
             Self::CallbackErrorCode { name, code } => {
-                write!(f, "callback retuned with error code {code:?}: {name}")
+                write!(f, "callback returned with error code {code:?}: {name}")
             }
         }
     }

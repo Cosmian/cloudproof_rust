@@ -16,6 +16,6 @@ jobs:
       kms-version: 4.3.3
       branch-java: feature/cloudproof_rust
       branch-js: feature/cloudproof_rust
-      branch-flutter: develop
+      branch-flutter: feature/cloudproof_rust
       branch-python: develop
     secrets: inherit
