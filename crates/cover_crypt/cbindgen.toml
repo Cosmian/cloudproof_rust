@@ -8,5 +8,6 @@ extra_bindings = ["cosmian_ffi_utils"]
 include = ["cosmian_ffi_utils"]
 
 [defines]
+"feature = wasm_bindgen" = "DEFINE_WASM"
 "target_os = ios" = "TARGET_OS_IOS"
 "target_os = macos" = "TARGET_OS_MACOS"
