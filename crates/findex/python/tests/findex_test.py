@@ -2,7 +2,15 @@
 import unittest
 from typing import Dict, List, Set, Tuple
 
-from cloudproof_findex import InternalFindex, Keyword, Label, Location, MasterKey
+from cloudproof_findex import (
+    IndexedValuesAndKeywords,
+    InternalFindex,
+    Keyword,
+    Label,
+    Location,
+    MasterKey,
+    ProgressResults,
+)
 
 
 class TestStructures(unittest.TestCase):
@@ -99,7 +107,7 @@ class TestStructures(unittest.TestCase):
 class FindexHashmap:
     """Implement Findex callbacks using hashmaps"""
 
-    def __init__(self, db: Dict[bytes, List[str]]):
+    def __init__(self, db: Dict[int, List[str]]):
         self.db = db
         self.entry_table: Dict[bytes, bytes] = {}
         self.chain_table: Dict[bytes, bytes] = {}
@@ -158,11 +166,11 @@ class FindexHashmap:
                 raise KeyError('Conflict in Chain Table for UID: {uid}')
             self.chain_table[uid] = entries[uid]
 
-    def list_removed_locations(self, uids: List[bytes]) -> List[bytes]:
+    def list_removed_locations(self, locations: List[Location]) -> List[Location]:
         res = []
-        for uid in uids:
-            if not uid in self.db:
-                res.append(uid)
+        for loc in locations:
+            if not int(loc) in self.db:
+                res.append(loc)
         return res
 
     def update_lines(
@@ -192,17 +200,17 @@ class TestFindex(unittest.TestCase):
         self.label = Label.random()
 
         self.db = {
-            b'1': ['Martin', 'Sheperd'],
-            b'2': ['Martial', 'Wilkins'],
-            b'3': ['John', 'Sheperd'],
+            1: ['Martin', 'Sheperd'],
+            2: ['Martial', 'Wilkins'],
+            3: ['John', 'Sheperd'],
         }
 
         self.findex_backend = FindexHashmap(self.db)
         self.findex_interface = InternalFindex()
 
     def test_upsert_search(self) -> None:
-        indexed_values_and_keywords = {
-            Location.from_bytes(k): v for k, v in self.db.items()
+        indexed_values_and_keywords: IndexedValuesAndKeywords = {
+            Location.from_int(k): v for k, v in self.db.items()
         }
 
         # Calling Upsert without setting the proper callbacks will raise an Exception
@@ -233,7 +241,7 @@ class TestFindex(unittest.TestCase):
         res = self.findex_interface.search_wrapper(['Martial'], self.msk, self.label)
         self.assertEqual(len(res), 1)
         self.assertEqual(len(res['Martial']), 1)
-        self.assertEqual(res['Martial'][0], b'2')
+        self.assertEqual(int(res['Martial'][0]), 2)
 
         res = self.findex_interface.search_wrapper(
             ['Sheperd', 'Wilkins'], self.msk, self.label
@@ -252,20 +260,20 @@ class TestFindex(unittest.TestCase):
             self.findex_backend.fetch_chain,
         )
 
-        indexed_values_and_keywords = {
-            Location.from_bytes(k): v for k, v in self.db.items()
+        indexed_values_and_keywords: IndexedValuesAndKeywords = {
+            Location.from_int(k): v for k, v in self.db.items()
         }
         self.findex_interface.upsert_wrapper(
             indexed_values_and_keywords, self.msk, self.label
         )
 
         # Adding custom keywords graph
-        graph = {
-            Keyword.from_bytes(b'Mart'): ['Mar'],
-            Keyword.from_bytes(b'Marti'): ['Mart'],
-            Keyword.from_bytes(b'Martin'): ['Marti'],
-            Keyword.from_bytes(b'Martia'): ['Marti'],
-            Keyword.from_bytes(b'Martial'): ['Martia'],
+        graph: IndexedValuesAndKeywords = {
+            Keyword.from_string('Mart'): ['Mar'],
+            Keyword.from_string('Marti'): ['Mart'],
+            Keyword.from_string('Martin'): ['Marti'],
+            Keyword.from_string('Martia'): ['Marti'],
+            Keyword.from_string('Martial'): ['Martia'],
         }
         self.findex_interface.upsert_wrapper(graph, self.msk, self.label)
 
@@ -277,7 +285,7 @@ class TestFindex(unittest.TestCase):
         self.assertEqual(len(res['Mar']), 2)
 
         # Test progress callback
-        def false_progress_callback(res: Dict[str, List[Location | Keyword]]):
+        def false_progress_callback(res: ProgressResults) -> bool:
             self.assertEqual(len(res['Mar']), 1)
             return False
 
@@ -287,7 +295,7 @@ class TestFindex(unittest.TestCase):
         # no locations returned since the progress_callback stopped the recursion
         self.assertEqual(len(res['Mar']), 0)
 
-        def early_stop_progress_callback(res: Dict[str, List[Location | Keyword]]):
+        def early_stop_progress_callback(res: ProgressResults) -> bool:
             if 'Martin' in res:
                 return False
             return True
@@ -320,8 +328,8 @@ class TestFindex(unittest.TestCase):
             self.findex_backend.fetch_all_entry_table_uids,
         )
 
-        indexed_values_and_keywords = {
-            Location.from_bytes(k): v for k, v in self.db.items()
+        indexed_values_and_keywords: IndexedValuesAndKeywords = {
+            Location.from_int(k): v for k, v in self.db.items()
         }
         self.findex_interface.upsert_wrapper(
             indexed_values_and_keywords, self.msk, self.label
@@ -333,7 +341,7 @@ class TestFindex(unittest.TestCase):
         self.assertEqual(len(res), 0)
 
         # removing 2nd db line
-        del self.db[b'2']
+        del self.db[2]
         self.findex_interface.compact_wrapper(1, self.msk, self.msk, new_label)
 
         # now new_label can perform search

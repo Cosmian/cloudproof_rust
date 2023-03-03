@@ -275,22 +275,19 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
         locations: &HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexPyo3Error> {
         Python::with_gil(|py| {
-            let location_bytes: Vec<&PyBytes> =
-                locations.iter().map(|l| PyBytes::new(py, l)).collect();
+            let py_locations: Vec<LocationPy> =
+                locations.iter().map(|l| LocationPy(l.clone())).collect();
 
             let result = self
                 .list_removed_locations
-                .call1(py, (location_bytes,))
+                .call1(py, (py_locations,))
                 .map_err(|e| FindexPyo3Error::Callback(format!("{e} (list_removed_locations)")))?;
 
-            let py_result: Vec<&[u8]> = result.extract(py).map_err(|e| {
+            let py_result: Vec<LocationPy> = result.extract(py).map_err(|e| {
                 FindexPyo3Error::ConversionError(format!("{e} (list_removed_locations)"))
             })?;
 
-            Ok(py_result
-                .iter()
-                .map(|bytes| Location::from(*bytes))
-                .collect())
+            Ok(py_result.iter().map(|l| l.0.clone()).collect())
         })
     }
 }

@@ -1,4 +1,8 @@
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Sequence, Union
+
+IndexedValuesAndKeywords = Dict[Union[Location, Keyword], Sequence[Union[str, Keyword]]]
+SearchResults = Dict[Union[Keyword, str, bytes], List[Location]]
+ProgressResults = Dict[Union[Keyword, str, bytes], List[Union[Location, Keyword]]]
 
 class Keyword:
     """A `Keyword` is a byte vector used to index other values."""
@@ -173,31 +177,31 @@ class FindexCloud:
 
     @staticmethod
     def upsert(
-        indexed_values_and_keywords: Dict[IndexedValue, List[str]],
+        indexed_values_and_keywords: IndexedValuesAndKeywords,
         token: str,
         label: Label,
     ) -> None:
         """Upserts the given relations between `IndexedValue` and `Keyword` into Findex tables.
 
         Args:
-            indexed_values_and_keywords (Dict[IndexedValue, List[str]]): map of `IndexedValue`
-                                                                        to a list of `Keyword`
+            indexed_values_and_keywords (Dict[Location | Keyword, List[Keyword | str]]):
+                map of `IndexedValue` to a list of `Keyword`
             token (str): Findex token
             label (Label): label used to allow versioning
         """
     @staticmethod
     def search(
-        keywords: List[str],
+        keywords: List[Union[Keyword, str]],
         token: str,
         label: Label,
         max_result_per_keyword: int = 2**32 - 1,
         max_depth: int = 100,
         fetch_chains_batch_size: int = 0,
-    ) -> Dict[str, List[bytes]]:
+    ) -> SearchResults:
         """Recursively search Findex graphs for `Locations` corresponding to the given `Keyword`.
 
         Args:
-            keywords (List[str]): keywords to search using Findex.
+            keywords (List[Keyword | str]): keywords to search using Findex.
             token (str): Findex token.
             label (Label): public label used in keyword hashing.
             max_result_per_keyword (int, optional): maximum number of results to fetch per keyword.
@@ -205,7 +209,7 @@ class FindexCloud:
             fetch_chains_batch_size (int, optional): batch size during fetch chain.
 
         Returns:
-            Dict[str, List[bytes]]: `Locations` found by `Keyword`
+            Dict[Keyword, List[Location]]: `Locations` found by `Keyword`
         """
     @staticmethod
     def derive_new_token(token: str, search: bool, index: bool) -> str: ...
@@ -242,20 +246,20 @@ class InternalFindex:
     ) -> None: ...
     def upsert_wrapper(
         self,
-        indexed_values_and_keywords: Dict[IndexedValue, List[str]],
+        indexed_values_and_keywords: IndexedValuesAndKeywords,
         master_key: MasterKey,
         label: Label,
     ) -> None: ...
     def search_wrapper(
         self,
-        keywords: List[str],
+        keywords: List[Union[Keyword, str]],
         msk: MasterKey,
         label: Label,
         max_result_per_keyword: int = 2**32 - 1,
         max_depth: int = 100,
         fetch_chains_batch_size: int = 0,
         progress_callback: Optional[Callable] = None,
-    ) -> Dict[str, List[bytes]]: ...
+    ) -> SearchResults: ...
     def compact_wrapper(
         self,
         num_reindexing_before_full_set: int,
