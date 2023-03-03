@@ -58,8 +58,8 @@ pub unsafe extern "C" fn h_generate_master_keys(
 /// - `usk_len`             : Size of the output buffer
 /// - `msk_ptr`             : Master secret key (required for this generation)
 /// - `msk_len`             : Master secret key length
-/// - `user_policy_ptr`   : null terminated access policy string
-/// - `policy_ptr`          : bytes of the policyused to generate the keys
+/// - `user_policy_ptr`     : null terminated access policy string
+/// - `policy_ptr`          : bytes of the policy used to generate the keys
 /// - `policy_len`          : length of the policy (in bytes)
 /// # Safety
 pub unsafe extern "C" fn h_generate_user_secret_key(
