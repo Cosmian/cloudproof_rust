@@ -1,5 +1,4 @@
 //! Defines the Python interface for Findex.
-
 use py_api::{FindexCloud, InternalFindex};
 use py_structs::{Keyword, Label, Location, MasterKey};
 use pyo3::prelude::*;
@@ -110,6 +109,7 @@ macro_rules! impl_python_byte {
 }
 
 mod py_api;
+mod py_callbacks;
 mod py_structs;
 
 #[pymodule]
