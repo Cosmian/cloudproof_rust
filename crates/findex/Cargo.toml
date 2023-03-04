@@ -24,7 +24,7 @@ async-recursion = "1.0.0"
 base64 = { workspace = true }
 cosmian_crypto_core = "6.0"
 cosmian_ffi = { path = "../ffi_utils", optional = true }
-cosmian_findex = { git = "https://github.com/Cosmian/findex.git", branch = "develop", features = ["interfaces"] }
+cosmian_findex = { git = "https://github.com/Cosmian/findex.git", rev = "96ea6d3", features = ["interfaces"] }
 faker_rand = { version = "0.1", optional = true }
 futures = { version = "0.3" }
 hex = { workspace = true }
