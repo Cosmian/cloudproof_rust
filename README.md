@@ -106,7 +106,7 @@ maturin build --release --manifest-path crates/<cover_crypt or findex>/Cargo.tom
 
 **Note**: when a new function or class is added to the PyO3 interface, its
 signature needs to be added to
-[`__init__.pyi`](./crates/<cover_crypt or findex>/python/cloudproof_<cover_crypt or findex>/__init__.pyi).
+[`**init**.pyi`](./crates/<cover_crypt or findex>/python/cloudproof_<cover_crypt or findex>/**init**.pyi).
 
 To run tests on the Python interface, run:
 
