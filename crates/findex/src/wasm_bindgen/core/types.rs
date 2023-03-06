@@ -5,10 +5,7 @@ use std::{
     fmt::{Display, Formatter},
 };
 
-use cosmian_findex::{
-    core::{IndexedValue, Keyword, Location},
-    error::FindexErr,
-};
+use cosmian_findex::{IndexedValue, Keyword, Location};
 use js_sys::{Array, JsString, Object, Reflect, Uint8Array};
 use wasm_bindgen::{prelude::wasm_bindgen, JsCast, JsValue};
 
@@ -73,39 +70,34 @@ extern "C" {
 
 pub fn to_indexed_values_to_keywords(
     ivw: &IndexedValuesAndWords,
-) -> Result<HashMap<IndexedValue, HashSet<Keyword>>, FindexErr> {
+) -> Result<HashMap<IndexedValue, HashSet<Keyword>>, JsValue> {
     let array: &Array = ivw.dyn_ref().ok_or_else(|| {
-        FindexErr::CallBack(format!(
-            "During Findex upsert: `newIndexedEntries` should be an array, {} received.",
-            ivw.js_typeof()
-                .dyn_ref::<JsString>()
-                .map_or_else(|| "unknown type".to_owned(), |s| format!("{s}")),
-        ))
+        JsValue::from_str(
+            format!(
+                "During Findex upsert: `newIndexedEntries` should be an array, {} received.",
+                ivw.js_typeof()
+                    .dyn_ref::<JsString>()
+                    .map_or_else(|| "unknown type".to_owned(), |s| format!("{s}")),
+            )
+            .as_str(),
+        )
     })?;
 
     let mut iv_and_words = HashMap::new();
     let object_source_for_errors = ObjectSourceForErrors::Argument("newIndexedEntries");
     for (i, try_obj) in array.values().into_iter().enumerate() {
         //{indexedValue: Uint8Array, keywords: Uint8Array[]}
-        let obj = try_obj.map_err(|e| {
-            FindexErr::ConversionError(format!("convert keywords to bytes array, {e:?}"))
-        })?;
+        let obj = try_obj?;
         let iv_bytes =
             get_bytes_from_object_property(&obj, "indexedValue", &object_source_for_errors, i)?;
-        let iv = IndexedValue::try_from(iv_bytes.as_slice())?;
-        let kw_array = {
-            Array::from(
-                &Reflect::get(&obj, &JsValue::from_str("keywords")).map_err(|e| {
-                    FindexErr::ConversionError(format!("convert keywords from str, {e:?}"))
-                })?,
-            )
-        };
+        let iv = wasm_unwrap!(
+            IndexedValue::try_from(iv_bytes.as_slice()),
+            "error parsing indexed value"
+        );
+        let kw_array = { Array::from(&Reflect::get(&obj, &JsValue::from_str("keywords"))?) };
         let mut words_set: HashSet<Keyword> = HashSet::new();
         for try_bytes in kw_array.values() {
-            let bytes = Uint8Array::from(try_bytes.map_err(|e| {
-                FindexErr::ConversionError(format!("convert keywords from bytes array, {e:?}"))
-            })?)
-            .to_vec();
+            let bytes = Uint8Array::from(try_bytes?).to_vec();
             let keyword = Keyword::from(bytes);
             words_set.insert(keyword);
         }

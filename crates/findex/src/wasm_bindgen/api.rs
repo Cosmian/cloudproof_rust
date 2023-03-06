@@ -1,24 +1,26 @@
 //! Defines the Findex WASM API.
 
-use std::{collections::HashSet, num::NonZeroUsize, str::FromStr};
+#[cfg(feature = "cloud")]
+use std::str::FromStr;
+use std::{collections::HashSet, num::NonZeroUsize};
 
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
-    core::{FindexSearch, FindexUpsert, KeyingMaterial, Keyword, Label},
-    error::FindexErr,
+    parameters::{MASTER_KEY_LENGTH, SECURE_FETCH_CHAINS_BATCH_SIZE},
+    FindexSearch, FindexUpsert, KeyingMaterial, Keyword, Label,
 };
 use js_sys::{Array, Uint8Array};
 use wasm_bindgen::prelude::*;
 
+use super::core::{Fetch, FindexUser, Insert, Progress, Upsert};
+#[cfg(feature = "cloud")]
+use crate::cloud::{FindexCloud, Token, SIGNATURE_SEED_LENGTH};
 use crate::{
-    cloud::{FindexCloud, Token, SIGNATURE_SEED_LENGTH},
-    generic_parameters::{
-        MASTER_KEY_LENGTH, MAX_RESULTS_PER_KEYWORD, SECURE_FETCH_CHAINS_BATCH_SIZE,
-    },
     wasm_bindgen::core::{
-        search_results_to_js, to_indexed_values_to_keywords, ArrayOfKeywords, Fetch, FindexUser,
-        IndexedValuesAndWords, Insert, Progress, SearchResults, Upsert,
+        search_results_to_js, to_indexed_values_to_keywords, ArrayOfKeywords,
+        IndexedValuesAndWords, SearchResults,
     },
+    MAX_RESULTS_PER_KEYWORD,
 };
 
 /// See [`FindexSearch::search()`](crate::core::FindexSearch::search).
@@ -35,7 +37,6 @@ use crate::{
 /// - `progress`                : progress callback
 /// - `fetch_entries`           : callback to fetch from the Entry Table
 /// - `fetch_chains`            : callback to fetch from the Chain Table
-#[cfg(feature = "cloud")]
 #[wasm_bindgen]
 #[allow(clippy::too_many_arguments)]
 pub async fn webassembly_search(
@@ -102,7 +103,6 @@ pub async fn webassembly_search(
 /// - `fetch_entries`               : the callback to fetch from the entry table
 /// - `upsert_entries`              : the callback to upsert in the entry table
 /// - `insert_chains`               : the callback to insert in the chain table
-#[cfg(feature = "cloud")]
 #[wasm_bindgen]
 pub async fn webassembly_upsert(
     master_key: Uint8Array,
@@ -158,11 +158,7 @@ pub async fn webassembly_search_cloud(
     fetch_chains_batch_size: i32,
     base_url: Option<String>,
 ) -> Result<SearchResults, JsValue> {
-    let mut findex_cloud = wasm_unwrap!(
-        FindexCloud::new(&token, base_url),
-        "failed creating FindexCloud"
-    );
-
+    let mut findex_cloud = FindexCloud::new(&token, base_url)?;
     let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(
         findex_cloud.token.findex_master_key.as_ref(),
     )
@@ -218,10 +214,7 @@ pub async fn webassembly_upsert_cloud(
     indexed_values_to_keywords: IndexedValuesAndWords,
     base_url: Option<String>,
 ) -> Result<(), JsValue> {
-    let mut findex_cloud = wasm_unwrap!(
-        FindexCloud::new(&token, base_url),
-        "failed creating FindexCloud"
-    );
+    let mut findex_cloud = FindexCloud::new(&token, base_url)?;
 
     let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(
         findex_cloud.token.findex_master_key.as_ref(),
@@ -247,12 +240,9 @@ pub fn webassembly_derive_new_token(
     search: bool,
     index: bool,
 ) -> Result<String, JsValue> {
-    let mut token =
-        Token::from_str(&token).map_err(|e| JsValue::from(format!("token from str, {e}")))?;
+    let mut token = Token::from_str(&token)?;
 
-    token
-        .reduce_permissions(search, index)
-        .map_err(|e| JsValue::from(format!("reduce permissions, {e}")))?;
+    token.reduce_permissions(search, index)?;
 
     Ok(token.to_string())
 }
@@ -269,36 +259,26 @@ pub fn webassembly_generate_new_token(
 ) -> Result<String, JsValue> {
     let token = Token::random_findex_master_key(
         index_id,
-        wasm_unwrap!(
-            uint8array_to_seed(fetch_entries_seed, "fetch_entries_seed"),
-            "error reading seed from Uint8Array"
-        ),
-        wasm_unwrap!(
-            uint8array_to_seed(fetch_chains_seed, "fetch_chains_seed"),
-            "error reading seed from Uint8Array"
-        ),
-        wasm_unwrap!(
-            uint8array_to_seed(upsert_entries_seed, "upsert_entries_seed"),
-            "error reading seed from Uint8Array"
-        ),
-        wasm_unwrap!(
-            uint8array_to_seed(insert_chains_seed, "insert_chains_seed"),
-            "error reading seed from Uint8Array"
-        ),
-    )
-    .map_err(|e| JsValue::from(format!("random findex master key, {e}")))?;
+        uint8array_to_seed(fetch_entries_seed, "fetch_entries_seed")?,
+        uint8array_to_seed(fetch_chains_seed, "fetch_chains_seed")?,
+        uint8array_to_seed(upsert_entries_seed, "upsert_entries_seed")?,
+        uint8array_to_seed(insert_chains_seed, "insert_chains_seed")?,
+    )?;
 
     Ok(token.to_string())
 }
 
+#[cfg(feature = "cloud")]
 fn uint8array_to_seed(
     seed: Uint8Array,
     debug_name: &str,
-) -> Result<KeyingMaterial<SIGNATURE_SEED_LENGTH>, FindexErr> {
-    KeyingMaterial::try_from_bytes(seed.to_vec().as_slice()).map_err(|_| {
-        FindexErr::Other(format!(
+) -> Result<KeyingMaterial<SIGNATURE_SEED_LENGTH>, JsValue> {
+    let key_material = wasm_unwrap!(
+        KeyingMaterial::try_from_bytes(seed.to_vec().as_slice()),
+        format!(
             "{debug_name} is of wrong size ({} received, {SIGNATURE_SEED_LENGTH} expected)",
             seed.length()
-        ))
-    })
+        )
+    );
+    Ok(key_material)
 }

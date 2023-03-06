@@ -5,46 +5,56 @@ use std::{
 
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
 use cosmian_findex::{
-    core::{
-        EncryptedTable, FindexCallbacks, FindexCompact, FindexSearch, FindexUpsert, IndexedValue,
-        Keyword, Location, Uid, UpsertData,
-    },
-    error::FindexErr,
-};
-
-use crate::{
-    ffi::core::{
-        utils::{
-            fetch_callback, get_allocation_size_for_select_chain_request,
-            get_serialized_encrypted_entry_table_size_bound,
-        },
-        ErrorCode, FindexUser,
-    },
-    generic_parameters::{
+    parameters::{
         DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
         MASTER_KEY_LENGTH, TABLE_WIDTH, UID_LENGTH,
     },
-    ser_de::{deserialize_set, serialize_set, SerializableSet},
+    EncryptedTable, FindexCallbacks, FindexCompact, FindexSearch, FindexUpsert, IndexedValue,
+    Keyword, Location, Uid, UpsertData,
 };
 
-impl FindexCallbacks<UID_LENGTH> for FindexUser {
+use crate::{
+    ffi::{
+        core::{
+            utils::{
+                fetch_callback, get_allocation_size_for_select_chain_request,
+                get_serialized_encrypted_entry_table_size_bound,
+            },
+            FindexUser,
+        },
+        ErrorCode, FindexFfiError,
+    },
+    ser_de::{deserialize_set, serialize_set},
+};
+
+impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     async fn progress(
         &self,
         results: &HashMap<Keyword, HashSet<IndexedValue>>,
-    ) -> Result<bool, FindexErr> {
-        let progress = unwrap_callback!(self, progress);
+    ) -> Result<bool, FindexFfiError> {
+        let progress = unwrap_callback!("progress", self, progress);
         let mut serializer = Serializer::new();
-        serializer.write_u64(results.len() as u64)?;
+        to_error_with_code!(
+            serializer.write_leb128_u64(results.len() as u64),
+            ErrorCode::SerializationError
+        );
         for (keyword, indexed_values) in results {
-            serializer.write_vec(keyword)?;
-            serializer.write(&SerializableSet(indexed_values))?;
+            to_error_with_code!(serializer.write_vec(keyword), ErrorCode::SerializationError);
+            to_error_with_code!(
+                serializer.write_array(&serialize_set(indexed_values)?),
+                ErrorCode::SerializationError
+            );
         }
         let results = serializer.finalize();
         Ok(progress(results.as_ptr(), results.len() as c_uint) != 0)
     }
 
-    async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, FindexErr> {
-        let fetch_all_entry_table_uids = unwrap_callback!(self, fetch_all_entry_table_uids);
+    async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, FindexFfiError> {
+        let fetch_all_entry_table_uids = unwrap_callback!(
+            "fetch_all_entry_table_uids",
+            self,
+            fetch_all_entry_table_uids
+        );
         let mut allocation_size = 1_000_000 * UID_LENGTH; // about 32MB
         loop {
             let mut output_bytes = vec![0_u8; allocation_size];
@@ -55,7 +65,7 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
                 let uids_bytes = unsafe {
                     std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize)
                 };
-                return deserialize_set(uids_bytes);
+                return deserialize_set(uids_bytes).map_err(FindexFfiError::from);
             } else {
                 allocation_size = output_len as usize;
             }
@@ -65,8 +75,8 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
     async fn fetch_entry_table(
         &self,
         entry_table_uids: &HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexErr> {
-        let fetch_entry = unwrap_callback!(self, fetch_entry);
+    ) -> Result<EncryptedTable<UID_LENGTH>, FindexFfiError> {
+        let fetch_entry = unwrap_callback!("fetch_entry", self, fetch_entry);
 
         let serialized_uids = serialize_set(entry_table_uids)?;
         let res = fetch_callback(
@@ -76,14 +86,19 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
             "fetch entries",
         )?;
 
-        EncryptedTable::try_from_bytes(&res)
+        let encrypted_table = to_error_with_code!(
+            EncryptedTable::try_from_bytes(&res),
+            ErrorCode::SerializationError
+        );
+
+        Ok(encrypted_table)
     }
 
     async fn fetch_chain_table(
         &self,
         chain_uids: &HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexErr> {
-        let fetch_chain = unwrap_callback!(self, fetch_chain);
+    ) -> Result<EncryptedTable<UID_LENGTH>, FindexFfiError> {
+        let fetch_chain = unwrap_callback!("fetch_chain", self, fetch_chain);
         let serialized_chain_uids = serialize_set(chain_uids)?;
         let res = fetch_callback(
             &serialized_chain_uids,
@@ -91,17 +106,22 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
             *fetch_chain,
             "fetch chains",
         )?;
-        EncryptedTable::try_from_bytes(&res)
+        let encrypted_table = to_error_with_code!(
+            EncryptedTable::try_from_bytes(&res),
+            ErrorCode::SerializationError
+        );
+        Ok(encrypted_table)
     }
 
     async fn upsert_entry_table(
         &mut self,
         modifications: &UpsertData<UID_LENGTH>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexErr> {
-        let upsert_entry = unwrap_callback!(self, upsert_entry);
+    ) -> Result<EncryptedTable<UID_LENGTH>, FindexFfiError> {
+        let upsert_entry = unwrap_callback!("upsert_entry", self, upsert_entry);
 
         // Callback input
-        let serialized_upsert_data = modifications.try_to_bytes()?;
+        let serialized_upsert_data =
+            to_error_with_code!(modifications.try_to_bytes(), ErrorCode::SerializationError);
 
         // Callback output
         let allocation_size = get_serialized_encrypted_entry_table_size_bound(modifications.len());
@@ -119,8 +139,8 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
         );
 
         if error_code != ErrorCode::Success as i32 {
-            return Err(FindexErr::CallbackErrorCode {
-                name: "upsert entries",
+            return Err(FindexFfiError::CallbackErrorCode {
+                name: "upsert entries".to_string(),
                 code: error_code,
             });
         }
@@ -130,17 +150,23 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
             serialized_rejected_items.set_len(serialized_rejected_items_len as usize);
         }
 
-        EncryptedTable::try_from_bytes(&serialized_rejected_items)
+        let encrypted_table = to_error_with_code!(
+            EncryptedTable::try_from_bytes(&serialized_rejected_items),
+            ErrorCode::SerializationError
+        );
+
+        Ok(encrypted_table)
     }
 
     async fn insert_chain_table(
         &mut self,
         items: &EncryptedTable<UID_LENGTH>,
-    ) -> Result<(), FindexErr> {
-        let insert_chain = unwrap_callback!(self, insert_chain);
+    ) -> Result<(), FindexFfiError> {
+        let insert_chain = unwrap_callback!("insert_chain", self, insert_chain);
 
         // Callback input
-        let serialized_items = items.try_to_bytes()?;
+        let serialized_items =
+            to_error_with_code!(items.try_to_bytes(), ErrorCode::SerializationError);
 
         // FFI callback
         insert_chain(serialized_items.as_ptr(), serialized_items.len() as u32);
@@ -153,14 +179,18 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
         chain_table_uids_to_remove: HashSet<Uid<UID_LENGTH>>,
         new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
-    ) -> Result<(), FindexErr> {
-        let update_lines = unwrap_callback!(self, update_lines);
+    ) -> Result<(), FindexFfiError> {
+        let update_lines = unwrap_callback!("update_lines", self, update_lines);
 
         let serialized_chain_table_uids_to_remove = serialize_set(&chain_table_uids_to_remove)?;
-        let serialized_new_encrypted_entry_table_items =
-            new_encrypted_entry_table_items.try_to_bytes()?;
-        let serialized_new_encrypted_chain_table_items =
-            new_encrypted_chain_table_items.try_to_bytes()?;
+        let serialized_new_encrypted_entry_table_items = to_error_with_code!(
+            new_encrypted_entry_table_items.try_to_bytes(),
+            ErrorCode::SerializationError
+        );
+        let serialized_new_encrypted_chain_table_items = to_error_with_code!(
+            new_encrypted_chain_table_items.try_to_bytes(),
+            ErrorCode::SerializationError
+        );
 
         let error_code = update_lines(
             serialized_chain_table_uids_to_remove.as_ptr(),
@@ -172,8 +202,8 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
         );
 
         if error_code != ErrorCode::Success as i32 {
-            return Err(FindexErr::CallbackErrorCode {
-                name: "update lines",
+            return Err(FindexFfiError::CallbackErrorCode {
+                name: "update lines".to_string(),
                 code: error_code,
             });
         }
@@ -184,8 +214,9 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
     fn list_removed_locations(
         &self,
         locations: &HashSet<Location>,
-    ) -> Result<HashSet<Location>, FindexErr> {
-        let list_removed_locations = unwrap_callback!(self, list_removed_locations);
+    ) -> Result<HashSet<Location>, FindexFfiError> {
+        let list_removed_locations =
+            unwrap_callback!("list_removed_locations", self, list_removed_locations);
 
         let locations_as_bytes = locations.iter().cloned().collect::<HashSet<_>>();
         let serialized_chain_table_uids_to_remove = serialize_set(&locations_as_bytes)?;
@@ -202,8 +233,8 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
         );
 
         if error_code != ErrorCode::Success as i32 {
-            return Err(FindexErr::CallbackErrorCode {
-                name: "list removed locations",
+            return Err(FindexFfiError::CallbackErrorCode {
+                name: "list removed locations".to_string(),
                 code: error_code,
             });
         }
@@ -215,7 +246,7 @@ impl FindexCallbacks<UID_LENGTH> for FindexUser {
         let output_locations_bytes =
             unsafe { std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize) };
 
-        let locations = deserialize_set::<Location>(output_locations_bytes)?
+        let locations = deserialize_set(output_locations_bytes)?
             .into_iter()
             .collect();
 
@@ -234,6 +265,7 @@ impl
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        FindexFfiError,
     > for FindexUser
 {
 }
@@ -249,6 +281,7 @@ impl
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        FindexFfiError,
     > for FindexUser
 {
 }
@@ -264,6 +297,7 @@ impl
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        FindexFfiError,
     > for FindexUser
 {
 }

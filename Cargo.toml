@@ -1,25 +1,16 @@
 [workspace]
 members = [
-  "crates/ffi_utils",
   "crates/cover_crypt",
+  "crates/ffi_utils",
   "crates/findex",
   "crates/fpe",
 ]
 
 [workspace.dependencies]
-base64 = "0.13"
 cosmian_crypto_core = "7.0"
-hex = "0.4"
-js-sys = { version = "0.3" }
-leb128 = "0.2"
-pyo3 = { version = "0.18.1", features = ["extension-module", "abi3", "abi3-py37", "generate-import-lib"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
-sha3 = "0.10"
-thiserror = "1.0"
-wasm-bindgen-test = "0.3"
-wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
-zeroize = "1.5"
+js-sys = "0.3"
+pyo3 = { version = "0.18", features = ["extension-module", "abi3", "abi3-py37", "generate-import-lib"] }
+wasm-bindgen = "0.2.84"
 
 [profile.release]
 lto = true

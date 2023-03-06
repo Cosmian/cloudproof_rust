@@ -1,26 +1,27 @@
 use std::{convert::TryFrom, ffi::c_uchar};
 
 use cosmian_crypto_core::symmetric_crypto::Dem;
-use cosmian_findex::{core::Keyword, error::FindexErr};
+use cosmian_findex::{
+    parameters::{DemScheme, BLOCK_LENGTH, KWI_LENGTH, TABLE_WIDTH, UID_LENGTH},
+    Keyword,
+};
 
 use super::callbacks::FetchEntryTableCallback;
-use crate::{
-    ffi::{core::ErrorCode, LEB128_MAXIMUM_ENCODED_BYTES_NUMBER},
-    generic_parameters::{DemScheme, BLOCK_LENGTH, KWI_LENGTH, TABLE_WIDTH, UID_LENGTH},
-};
+use crate::ffi::{ErrorCode, FindexFfiError, LEB128_MAXIMUM_ENCODED_BYTES_NUMBER};
 
 /// Makes sure the given callback exists in the given Findex instance.
 ///
 /// - `findex`      : name of the findex instance
 /// - `callback`    : name of the callback
 macro_rules! unwrap_callback {
-    ($findex:ident, $callback:ident) => {
-        $findex.$callback.as_ref().ok_or_else(|| {
-            FindexErr::CryptoError(format!(
-                "No attribute `{}` is defined for `self`",
-                stringify!($callback)
-            ))
-        })?
+    ($callback_name:literal, $findex:ident, $callback:ident) => {
+        $findex
+            .$callback
+            .as_ref()
+            .ok_or_else(|| FindexFfiError::CallbackErrorCode {
+                name: $callback_name.to_string(),
+                code: ErrorCode::MissingCallback as i32,
+            })?
     };
 }
 
@@ -90,7 +91,7 @@ pub fn fetch_callback(
     allocation_size: usize,
     callback: FetchEntryTableCallback,
     debug_name: &'static str,
-) -> Result<Vec<u8>, FindexErr> {
+) -> Result<Vec<u8>, FindexFfiError> {
     //
     // DB request with correct allocation size
     //
@@ -118,8 +119,8 @@ pub fn fetch_callback(
     }
 
     if error_code != ErrorCode::Success as i32 {
-        return Err(FindexErr::CallbackErrorCode {
-            name: debug_name,
+        return Err(FindexFfiError::CallbackErrorCode {
+            name: debug_name.to_string(),
             code: error_code,
         });
     }

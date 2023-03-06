@@ -12,30 +12,27 @@ use wasm_bindgen::prelude::*;
 /// - `policy`  : global policy data (JSON)
 #[wasm_bindgen]
 pub fn webassembly_generate_master_keys(policy_bytes: Vec<u8>) -> Result<Uint8Array, JsValue> {
-    let policy = Policy::parse_and_convert(&policy_bytes)
-        .map_err(|e| JsValue::from_str(&format!("Error deserializing policy: {e}")))?;
+    let policy = wasm_unwrap!(
+        Policy::parse_and_convert(&policy_bytes,),
+        "Error deserializing policy"
+    );
 
     //
     // Setup CoverCrypt
-    let (msk, mpk) = CoverCryptX25519Aes256::default()
-        .generate_master_keys(&policy)
-        .map_err(|e| JsValue::from_str(&format!("Error generating master keys: {e}")))?;
+    let (msk, mpk) = wasm_unwrap!(
+        CoverCryptX25519Aes256::default().generate_master_keys(&policy),
+        "Error generating master keys"
+    );
 
     // Serialize master keys
-    let msk_bytes = msk
-        .try_to_bytes()
-        .map_err(|e| JsValue::from_str(&format!("Error serializing master secret key: {e}")))?;
-    let mpk_bytes = mpk
-        .try_to_bytes()
-        .map_err(|e| JsValue::from_str(&format!("Error serializing master public key: {e}")))?;
+    let msk_bytes = wasm_unwrap!(msk.try_to_bytes(), "Error serializing master secret key");
+    let mpk_bytes = wasm_unwrap!(mpk.try_to_bytes(), "Error serializing master public key");
 
     let mut master_keys_bytes = Vec::with_capacity(4 + msk_bytes.len() + msk_bytes.len());
-    master_keys_bytes.extend_from_slice(&u32::to_be_bytes(
-        msk_bytes
-            .len()
-            .try_into()
-            .map_err(|e| JsValue::from_str(&format!("Error while converting usize to u32: {e}")))?,
-    ));
+    master_keys_bytes.extend_from_slice(&u32::to_be_bytes(wasm_unwrap!(
+        msk_bytes.len().try_into(),
+        "Error while converting usize to u32"
+    )));
     master_keys_bytes.extend_from_slice(&msk_bytes);
     master_keys_bytes.extend_from_slice(&mpk_bytes);
     Ok(Uint8Array::from(&master_keys_bytes[..]))
@@ -52,19 +49,22 @@ pub fn webassembly_generate_user_secret_key(
     access_policy_str: &str,
     policy_bytes: Vec<u8>,
 ) -> Result<Uint8Array, JsValue> {
-    let msk = MasterSecretKey::try_from_bytes(msk_bytes.to_vec().as_slice())
-        .map_err(|e| JsValue::from_str(&format!("Error deserializing secret key: {e}")))?;
-    let policy = Policy::parse_and_convert(&policy_bytes)
-        .map_err(|e| JsValue::from_str(&format!("Error deserializing policy: {e}")))?;
-    let access_policy = AccessPolicy::from_boolean_expression(access_policy_str)
-        .map_err(|e| JsValue::from_str(&format!("Error deserializing access policy: {e}")))?;
-
-    let user_key = CoverCryptX25519Aes256::default()
-        .generate_user_secret_key(&msk, &access_policy, &policy)
-        .map_err(|e| JsValue::from_str(&format!("Error generating user secret key: {e}")))?;
-
-    let user_key_bytes = user_key
-        .try_to_bytes()
-        .map_err(|e| JsValue::from_str(&format!("Error serializing user key: {e}")))?;
+    let msk = wasm_unwrap!(
+        MasterSecretKey::try_from_bytes(&msk_bytes.to_vec()),
+        "Error deserializing master secret key"
+    );
+    let policy = wasm_unwrap!(
+        Policy::parse_and_convert(&policy_bytes),
+        "Error deserializing policy"
+    );
+    let access_policy = wasm_unwrap!(
+        AccessPolicy::from_boolean_expression(access_policy_str),
+        "Error deserializing access policy"
+    );
+    let user_key = wasm_unwrap!(
+        CoverCryptX25519Aes256::default().generate_user_secret_key(&msk, &access_policy, &policy),
+        "Error generating user secret key"
+    );
+    let user_key_bytes = wasm_unwrap!(user_key.try_to_bytes(), "Error serializing user key");
     Ok(Uint8Array::from(user_key_bytes.as_slice()))
 }

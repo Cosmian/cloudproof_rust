@@ -8,34 +8,34 @@ use std::{
     os::raw::{c_char, c_int},
 };
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
-use cosmian_ffi::{
+use cosmian_ffi_utils::{
     error::{h_get_error, set_last_error, FfiError},
     ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes,
 };
 use cosmian_findex::{
-    core::{
-        FindexCompact, FindexSearch, FindexUpsert, IndexedValue, KeyingMaterial, Keyword, Label,
+    parameters::{
+        DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
+        MASTER_KEY_LENGTH, SECURE_FETCH_CHAINS_BATCH_SIZE, TABLE_WIDTH, UID_LENGTH,
     },
-    error::FindexErr,
+    CallbackError, FindexCompact, FindexSearch, FindexUpsert, IndexedValue, KeyingMaterial,
+    Keyword, Label,
 };
 
+#[cfg(feature = "cloud")]
+use crate::cloud::FindexCloud;
 use crate::{
-    cloud::FindexCloud,
     ffi::{
         core::{
             FetchAllEntryTableUidsCallback, FetchChainTableCallback, FetchEntryTableCallback,
             FindexUser, InsertChainTableCallback, ListRemovedLocationsCallback, ProgressCallback,
             UpdateLinesCallback, UpsertEntryTableCallback,
         },
-        MAX_DEPTH,
+        ErrorCode, FindexFfiError, MAX_DEPTH,
     },
-    generic_parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
-        MASTER_KEY_LENGTH, MAX_RESULTS_PER_KEYWORD, SECURE_FETCH_CHAINS_BATCH_SIZE, TABLE_WIDTH,
-        UID_LENGTH,
-    },
-    ser_de::SerializableSet,
+    ser_de::serialize_set,
+    MAX_RESULTS_PER_KEYWORD,
 };
 
 /// Re-export the `cosmian_ffi` `h_get_error` function to clients with the old
@@ -100,9 +100,8 @@ pub unsafe extern "C" fn h_search(
 ) -> c_int {
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(master_key_bytes).map_err(|e| {
-            FindexErr::Other(format!("While parsing master key for Findex search, {e}"))
-        })
+        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(master_key_bytes),
+        "error deserializing master secret key"
     );
 
     let findex = FindexUser {
@@ -177,9 +176,8 @@ pub unsafe extern "C" fn h_upsert(
 ) -> c_int {
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(master_key_bytes).map_err(|e| {
-            FindexErr::Other(format!("While parsing master key for Findex search, {e}"))
-        })
+        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(master_key_bytes),
+        "error re-serializing master secret key"
     );
 
     let findex = FindexUser {
@@ -250,30 +248,28 @@ pub unsafe extern "C" fn h_compact(
         u32::try_from(num_reindexing_before_full_set)
             .ok()
             .and_then(NonZeroU32::new)
-            .ok_or_else(|| FindexErr::Other(format!(
-                "num_reindexing_before_full_set ({num_reindexing_before_full_set}) should be a \
-                 non-zero positive integer."
-            )))
+            .ok_or_else(|| FindexFfiError::CallbackErrorCode {
+                name: format!(
+                    "num_reindexing_before_full_set ({num_reindexing_before_full_set}) should be \
+                     a non-zero positive integer."
+                ),
+                code: ErrorCode::BufferTooSmall as i32,
+            }),
+        "error converting num_reindexing_before_full_set"
     );
 
     let old_master_key_bytes =
         ffi_read_bytes!("master key", old_master_key_ptr, old_master_key_len);
     let old_master_key = ffi_unwrap!(
-        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(old_master_key_bytes).map_err(|e| {
-            FindexErr::Other(format!(
-                "While parsing the old master key for Findex compact, {e}"
-            ))
-        })
+        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(old_master_key_bytes),
+        "error old deserializing master secret key"
     );
 
     let new_master_key_bytes =
         ffi_read_bytes!("new master key", new_master_key_ptr, new_master_key_len);
     let new_master_key = ffi_unwrap!(
-        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(new_master_key_bytes).map_err(|e| {
-            FindexErr::Other(format!(
-                "While parsing the new master key for Findex compact, {e}"
-            ))
-        })
+        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(new_master_key_bytes),
+        "error deserializing new master secret key"
     );
 
     let new_label_bytes = ffi_read_bytes!("new label", new_label_ptr, new_label_len);
@@ -290,18 +286,25 @@ pub unsafe extern "C" fn h_compact(
         fetch_all_entry_table_uids: Some(fetch_all_entry_table_uids),
     };
 
-    let rt = ffi_unwrap!(tokio::runtime::Runtime::new());
+    let rt = ffi_unwrap!(
+        tokio::runtime::Runtime::new(),
+        "error creating Tokio runtime"
+    );
 
-    ffi_unwrap!(rt.block_on(findex.compact(
-        num_reindexing_before_full_set.into(),
-        &old_master_key,
-        &new_master_key,
-        &new_label,
-    )));
+    ffi_unwrap!(
+        rt.block_on(findex.compact(
+            num_reindexing_before_full_set.into(),
+            &old_master_key,
+            &new_master_key,
+            &new_label,
+        )),
+        "error waiting for the compact operation to return"
+    );
 
     0
 }
 
+#[cfg(feature = "cloud")]
 #[no_mangle]
 /// Recursively searches Findex graphs for values indexed by the given keywords.
 ///
@@ -352,7 +355,10 @@ pub unsafe extern "C" fn h_search_cloud(
         Some(ffi_read_string!("base url", base_url_ptr))
     };
 
-    let findex = ffi_unwrap!(FindexCloud::new(&token, base_url));
+    let findex = ffi_unwrap!(
+        FindexCloud::new(&token, base_url),
+        "error initializing Findex Cloud object"
+    );
     let master_key = findex.token.findex_master_key.clone();
 
     ffi_search(
@@ -369,6 +375,7 @@ pub unsafe extern "C" fn h_search_cloud(
     )
 }
 
+#[cfg(feature = "cloud")]
 #[no_mangle]
 /// Index the given values for the given keywords. After upserting, any
 /// search for such a keyword will result in finding (at least) the
@@ -418,7 +425,11 @@ pub unsafe extern "C" fn h_upsert_cloud(
         Some(ffi_read_string!("base url", base_url_ptr))
     };
 
-    let findex = ffi_unwrap!(FindexCloud::new(&token, base_url));
+    let findex = ffi_unwrap!(
+        FindexCloud::new(&token, base_url),
+        "error instantiating Findex Cloud"
+    );
+
     let master_key = findex.token.findex_master_key.clone();
 
     ffi_upsert(
@@ -436,7 +447,8 @@ pub unsafe extern "C" fn h_upsert_cloud(
 ///
 /// Cannot be safe since using FFI.
 #[allow(clippy::too_many_arguments)]
-unsafe fn ffi_search<
+pub unsafe fn ffi_search<
+    Error: std::error::Error + CallbackError,
     T: FindexSearch<
         UID_LENGTH,
         BLOCK_LENGTH,
@@ -447,6 +459,7 @@ unsafe fn ffi_search<
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        Error,
     >,
 >(
     mut findex: T,
@@ -482,11 +495,10 @@ unsafe fn ffi_search<
     let mut keywords = HashSet::with_capacity(keywords_as_base64_vec.len());
     for keyword_as_base64 in keywords_as_base64_vec {
         // base64 decode the words
-        let word_bytes = ffi_unwrap!(base64::decode(&keyword_as_base64).map_err(|e| {
-            FindexErr::ConversionError(format!(
-                "Failed decoding the base64 encoded word: {keyword_as_base64}: {e}"
-            ))
-        }));
+        let word_bytes = ffi_unwrap!(
+            STANDARD.decode(keyword_as_base64),
+            "error decoding base64 keyword"
+        );
         keywords.insert(Keyword::from(word_bytes));
     }
 
@@ -497,7 +509,10 @@ unsafe fn ffi_search<
 
     // We want to forward error code returned by callbacks to the parent caller to
     // do error management client side.
-    let rt = ffi_unwrap!(tokio::runtime::Runtime::new());
+    let rt = ffi_unwrap!(
+        tokio::runtime::Runtime::new(),
+        "error creating Tokio runtime"
+    );
 
     let results = match rt.block_on(findex.search(
         &keywords,
@@ -509,12 +524,9 @@ unsafe fn ffi_search<
         0,
     )) {
         Ok(results) => results,
-        Err(err) => {
-            set_last_error(FfiError::Generic(format!("{err}")));
-            return match err {
-                FindexErr::CallbackErrorCode { code, .. } => code,
-                _ => 1,
-            };
+        Err(e) => {
+            set_last_error(FfiError::Generic(e.to_string()));
+            return 1;
         }
     };
 
@@ -524,10 +536,19 @@ unsafe fn ffi_search<
     // constructor from an existing slice)
     // <https://github.com/Cosmian/findex/issues/20>
     let mut serializer = Serializer::new();
-    ffi_unwrap!(serializer.write_u64(results.len() as u64));
+    ffi_unwrap!(
+        serializer.write_leb128_u64(results.len() as u64),
+        "error serializing length"
+    );
     for (keyword, locations) in results {
-        ffi_unwrap!(serializer.write_vec(&keyword));
-        ffi_unwrap!(serializer.write(&SerializableSet(&locations)));
+        ffi_unwrap!(serializer.write_vec(&keyword), "error serializing keyword");
+        ffi_unwrap!(
+            serializer.write_array(&ffi_unwrap!(
+                serialize_set(&locations),
+                "error serializing set"
+            )),
+            "error serializing locations"
+        );
     }
     let serialized_uids = serializer.finalize();
 
@@ -547,6 +568,7 @@ unsafe fn ffi_search<
 ///
 /// Cannot be safe since using FFI.
 unsafe extern "C" fn ffi_upsert<
+    Error: std::error::Error + CallbackError,
     T: FindexUpsert<
         UID_LENGTH,
         BLOCK_LENGTH,
@@ -557,6 +579,7 @@ unsafe extern "C" fn ffi_upsert<
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        Error,
     >,
 >(
     mut findex: T,
@@ -580,34 +603,41 @@ unsafe extern "C" fn ffi_upsert<
     // performances.
     // <https://github.com/Cosmian/findex/issues/19>
     let indexed_values_and_keywords_as_base64_hashmap: HashMap<String, Vec<String>> = ffi_unwrap!(
-        serde_json::from_str(&indexed_values_and_keywords_as_json_string)
+        serde_json::from_str(&indexed_values_and_keywords_as_json_string),
+        "error deserializing indexed values and keywords JSON"
     );
 
     let mut indexed_values_and_keywords =
         HashMap::with_capacity(indexed_values_and_keywords_as_base64_hashmap.len());
     for (indexed_value, keywords_vec) in indexed_values_and_keywords_as_base64_hashmap {
-        let indexed_value_bytes = ffi_unwrap!(base64::decode(indexed_value));
-        let indexed_value = ffi_unwrap!(IndexedValue::try_from(indexed_value_bytes.as_slice()));
+        let indexed_value_bytes = ffi_unwrap!(
+            STANDARD.decode(indexed_value),
+            "error decoding indexed value"
+        );
+        let indexed_value = ffi_unwrap!(
+            IndexedValue::try_from(indexed_value_bytes.as_slice()),
+            "error deserializing indexed value"
+        );
         let mut keywords = HashSet::with_capacity(keywords_vec.len());
         for keyword in keywords_vec {
-            let keyword_bytes = ffi_unwrap!(base64::decode(keyword));
+            let keyword_bytes = ffi_unwrap!(STANDARD.decode(keyword), "error decoding keyword");
             keywords.insert(Keyword::from(keyword_bytes));
         }
         indexed_values_and_keywords.insert(indexed_value, keywords);
     }
 
-    let rt = ffi_unwrap!(tokio::runtime::Runtime::new());
+    let rt = ffi_unwrap!(
+        tokio::runtime::Runtime::new(),
+        "error creating Tokio runtime"
+    );
 
     // We want to forward error code returned by callbacks to the parent caller to
     // do error management client side.
     match rt.block_on(findex.upsert(indexed_values_and_keywords, master_key, &label)) {
         Ok(_) => 0,
-        Err(err) => {
-            set_last_error(FfiError::Generic(format!("{err}")));
-            match err {
-                FindexErr::CallbackErrorCode { code, .. } => code,
-                _ => 1,
-            }
+        Err(e) => {
+            set_last_error(FfiError::Generic(e.to_string()));
+            1
         }
     }
 }

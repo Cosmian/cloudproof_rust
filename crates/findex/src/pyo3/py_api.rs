@@ -1,14 +1,16 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Display,
     num::NonZeroUsize,
 };
 
 use cosmian_findex::{
-    core::{
-        EncryptedTable, FindexCallbacks, FindexCompact, FindexSearch, FindexUpsert,
-        IndexedValue as IndexedValueRust, Keyword, Location, Uid, UpsertData,
+    parameters::{
+        DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
+        MASTER_KEY_LENGTH, SECURE_FETCH_CHAINS_BATCH_SIZE, TABLE_WIDTH, UID_LENGTH,
     },
-    error::FindexErr,
+    CallbackError, EncryptedTable, FindexCallbacks, FindexCompact, FindexSearch, FindexUpsert,
+    IndexedValue as IndexedValueRust, Keyword, Location, Uid, UpsertData,
 };
 use futures::executor::block_on;
 use pyo3::{
@@ -16,15 +18,27 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use crate::{
-    generic_parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
-        MASTER_KEY_LENGTH, SECURE_FETCH_CHAINS_BATCH_SIZE, TABLE_WIDTH, UID_LENGTH,
-    },
-    pyo3::py_structs::{
-        IndexedValue as IndexedValuePy, Label as LabelPy, MasterKey as MasterKeyPy,
-    },
+use crate::pyo3::py_structs::{
+    IndexedValue as IndexedValuePy, Label as LabelPy, MasterKey as MasterKeyPy,
 };
+
+#[derive(Debug)]
+pub enum FindexPyo3Error {
+    Callback(String),
+
+    ConversionError(String),
+}
+
+impl Display for FindexPyo3Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Callback(error) => write!(f, "callback error: {error}"),
+            Self::ConversionError(error) => write!(f, "conversion error: {error}"),
+        }
+    }
+}
+impl std::error::Error for FindexPyo3Error {}
+impl CallbackError for FindexPyo3Error {}
 
 #[pyclass(subclass)]
 pub struct InternalFindex {
@@ -39,16 +53,16 @@ pub struct InternalFindex {
     fetch_all_entry_table_uids: PyObject,
 }
 
-impl FindexCallbacks<UID_LENGTH> for InternalFindex {
+impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
     async fn progress(
         &self,
         results: &HashMap<Keyword, HashSet<IndexedValueRust>>,
-    ) -> Result<bool, FindexErr> {
+    ) -> Result<bool, FindexPyo3Error> {
         let py_results = results
             .iter()
             .map(|(keyword, indexed_values)| {
                 (
-                    match keyword.clone().try_into_string() {
+                    match String::from_utf8(keyword.clone().into()) {
                         Ok(s) => s,
                         Err(_) => format!("{keyword:?}"),
                     },
@@ -64,22 +78,23 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
             let ret = self
                 .progress_callback
                 .call1(py, (py_results,))
-                .map_err(|e| FindexErr::CallBack(format!("{e} (progress_callback)")))?;
+                .map_err(|e| FindexPyo3Error::Callback(format!("{e} (progress_callback)")))?;
 
             ret.extract(py)
-                .map_err(|e| FindexErr::ConversionError(format!("{e} (progress_callback)")))
+                .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (progress_callback)")))
         })
     }
 
-    async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, FindexErr> {
+    async fn fetch_all_entry_table_uids(
+        &self,
+    ) -> Result<HashSet<Uid<UID_LENGTH>>, FindexPyo3Error> {
         Python::with_gil(|py| {
-            let results = self
-                .fetch_all_entry_table_uids
-                .call0(py)
-                .map_err(|e| FindexErr::CallBack(format!("{e} (fetch_all_entry_table_uids)")))?;
+            let results = self.fetch_all_entry_table_uids.call0(py).map_err(|e| {
+                FindexPyo3Error::Callback(format!("{e} (fetch_all_entry_table_uids)"))
+            })?;
             let py_result_table: HashSet<[u8; UID_LENGTH]> = results
                 .extract(py)
-                .map_err(|e| FindexErr::ConversionError(format!("{e} (fetch_entry)")))?;
+                .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (fetch_entry)")))?;
 
             // Convert python result (HashSet<[u8; UID_LENGTH]>) to
             // HashSet<Uid<UID_LENGTH>>
@@ -94,7 +109,7 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
     async fn fetch_entry_table(
         &self,
         entry_table_uids: &HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexErr> {
+    ) -> Result<EncryptedTable<UID_LENGTH>, FindexPyo3Error> {
         Python::with_gil(|py| {
             let py_entry_uids = entry_table_uids
                 .iter()
@@ -103,10 +118,10 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
             let results = self
                 .fetch_entry
                 .call1(py, (py_entry_uids,))
-                .map_err(|e| FindexErr::CallBack(format!("{e} (fetch_entry)")))?;
+                .map_err(|e| FindexPyo3Error::Callback(format!("{e} (fetch_entry)")))?;
             let py_result_table: HashMap<[u8; UID_LENGTH], Vec<u8>> = results
                 .extract(py)
-                .map_err(|e| FindexErr::ConversionError(format!("{e} (fetch_entry)")))?;
+                .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (fetch_entry)")))?;
 
             // Convert python result (HashMap<[u8; UID_LENGTH], Vec<u8>>) to
             // EncryptedEntryTable<UID_LENGTH>
@@ -122,7 +137,7 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
     async fn fetch_chain_table(
         &self,
         chain_uids: &HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexErr> {
+    ) -> Result<EncryptedTable<UID_LENGTH>, FindexPyo3Error> {
         Python::with_gil(|py| {
             let py_chain_uids = chain_uids
                 .iter()
@@ -132,11 +147,11 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
             let result = self
                 .fetch_chain
                 .call1(py, (py_chain_uids,))
-                .map_err(|e| FindexErr::CallBack(format!("{e} (fetch_chain)")))?;
+                .map_err(|e| FindexPyo3Error::Callback(format!("{e} (fetch_chain)")))?;
 
             let py_result_table: HashMap<[u8; UID_LENGTH], Vec<u8>> = result
                 .extract(py)
-                .map_err(|e| FindexErr::ConversionError(format!("{e} (fetch_chain)")))?;
+                .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (fetch_chain)")))?;
 
             // Convert python result (HashMap<[u8; UID_LENGTH], Vec<u8>>) to
             // EncryptedTable<UID_LENGTH>
@@ -151,7 +166,7 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
     async fn upsert_entry_table(
         &mut self,
         items: &UpsertData<UID_LENGTH>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexErr> {
+    ) -> Result<EncryptedTable<UID_LENGTH>, FindexPyo3Error> {
         let empty_vec = &vec![];
         Python::with_gil(|py| {
             let py_entry_table = PyDict::new(py);
@@ -164,17 +179,17 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
                             PyBytes::new(py, new_value),
                         ),
                     )
-                    .map_err(|e| FindexErr::ConversionError(format!("{e} (upsert_entry)")))?;
+                    .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (upsert_entry)")))?;
             }
 
             let rejected_lines = self
                 .upsert_entry
                 .call1(py, (py_entry_table,))
-                .map_err(|e| FindexErr::CallBack(format!("{e} (upsert_entry)")))?;
+                .map_err(|e| FindexPyo3Error::Callback(format!("{e} (upsert_entry)")))?;
 
             let rejected_lines: HashMap<[u8; UID_LENGTH], Vec<u8>> = rejected_lines
                 .extract(py)
-                .map_err(|e| FindexErr::ConversionError(format!("{e} (upsert_entry)")))?;
+                .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (upsert_entry)")))?;
 
             let rejected_lines = rejected_lines
                 .into_iter()
@@ -188,17 +203,17 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
     async fn insert_chain_table(
         &mut self,
         items: &EncryptedTable<UID_LENGTH>,
-    ) -> Result<(), FindexErr> {
+    ) -> Result<(), FindexPyo3Error> {
         Python::with_gil(|py| {
             let py_chain_table = PyDict::new(py);
             for (key, value) in items.iter() {
                 py_chain_table
                     .set_item(PyBytes::new(py, key), PyBytes::new(py, value))
-                    .map_err(|e| FindexErr::ConversionError(format!("{e} (insert_chain)")))?;
+                    .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (insert_chain)")))?;
             }
             self.insert_chain
                 .call1(py, (py_chain_table,))
-                .map_err(|e| FindexErr::CallBack(format!("{e} (insert_chain)")))?;
+                .map_err(|e| FindexPyo3Error::Callback(format!("{e} (insert_chain)")))?;
             Ok(())
         })
     }
@@ -208,13 +223,13 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
         chain_table_uids_to_remove: HashSet<Uid<UID_LENGTH>>,
         new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
-    ) -> Result<(), FindexErr> {
+    ) -> Result<(), FindexPyo3Error> {
         Python::with_gil(|py| {
             let py_entry_table_items = PyDict::new(py);
             for (key, value) in new_encrypted_entry_table_items.iter() {
                 py_entry_table_items
                     .set_item(PyBytes::new(py, key), PyBytes::new(py, value))
-                    .map_err(|e| FindexErr::ConversionError(format!("{e} (update_lines)")))?;
+                    .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (update_lines)")))?;
             }
 
             let py_removed_chain_uids: Vec<&PyBytes> = chain_table_uids_to_remove
@@ -226,7 +241,7 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
             for (key, value) in new_encrypted_chain_table_items.iter() {
                 py_chain_table_items
                     .set_item(PyBytes::new(py, key), PyBytes::new(py, value))
-                    .map_err(|e| FindexErr::ConversionError(format!("{e} (update_lines)")))?;
+                    .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (update_lines)")))?;
             }
 
             self.update_lines
@@ -238,7 +253,7 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
                         py_chain_table_items,
                     ),
                 )
-                .map_err(|e| FindexErr::CallBack(format!("{e} (update_lines)")))?;
+                .map_err(|e| FindexPyo3Error::Callback(format!("{e} (update_lines)")))?;
 
             Ok(())
         })
@@ -247,7 +262,7 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
     fn list_removed_locations(
         &self,
         locations: &HashSet<Location>,
-    ) -> Result<HashSet<Location>, FindexErr> {
+    ) -> Result<HashSet<Location>, FindexPyo3Error> {
         Python::with_gil(|py| {
             let location_bytes: Vec<&PyBytes> =
                 locations.iter().map(|l| PyBytes::new(py, l)).collect();
@@ -255,11 +270,11 @@ impl FindexCallbacks<UID_LENGTH> for InternalFindex {
             let result = self
                 .list_removed_locations
                 .call1(py, (location_bytes,))
-                .map_err(|e| FindexErr::CallBack(format!("{e} (list_removed_locations)")))?;
+                .map_err(|e| FindexPyo3Error::Callback(format!("{e} (list_removed_locations)")))?;
 
-            let py_result: Vec<&[u8]> = result
-                .extract(py)
-                .map_err(|e| FindexErr::ConversionError(format!("{e} (list_removed_locations)")))?;
+            let py_result: Vec<&[u8]> = result.extract(py).map_err(|e| {
+                FindexPyo3Error::ConversionError(format!("{e} (list_removed_locations)"))
+            })?;
 
             Ok(py_result
                 .iter()
@@ -280,6 +295,7 @@ impl
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        FindexPyo3Error,
     > for InternalFindex
 {
 }
@@ -295,6 +311,7 @@ impl
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        FindexPyo3Error,
     > for InternalFindex
 {
 }
@@ -310,6 +327,7 @@ impl
         DEM_KEY_LENGTH,
         KmacKey,
         DemScheme,
+        FindexPyo3Error,
     > for InternalFindex
 {
 }
@@ -435,7 +453,6 @@ impl InternalFindex {
     ///
     /// Returns: List[IndexedValue]
     // use `u32::MAX` for `max_result_per_keyword`
-    #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (
             keywords, master_key, label,
         max_result_per_keyword = 4_294_967_295,
@@ -443,6 +460,7 @@ impl InternalFindex {
         fetch_chains_batch_size = 0,
         progress_callback = None
     ))]
+    #[allow(clippy::too_many_arguments)]
     pub fn search_wrapper(
         &mut self,
         keywords: Vec<&str>,
@@ -485,7 +503,7 @@ impl InternalFindex {
             .map(|(keyword, indexed_values)| {
                 (
                     // Convert keyword to string or base64
-                    match keyword.clone().try_into_string() {
+                    match String::from_utf8(keyword.clone().into()) {
                         Ok(s) => s,
                         Err(_) => format!("{keyword:?}"),
                     },

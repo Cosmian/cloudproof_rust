@@ -10,7 +10,7 @@ use faker_rand::{
 use rusqlite::{Connection, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
+use crate::sqlite::Error;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize)]
@@ -24,8 +24,10 @@ pub struct User {
     pub(crate) employeeNumber: String,
     pub(crate) security: String,
 }
+
 impl User {
-    pub(crate) fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             firstName: rand::random::<FirstName>().to_string(),
             lastName: rand::random::<LastName>().to_string(),
@@ -38,7 +40,8 @@ impl User {
         }
     }
 
-    pub(crate) fn values(&self) -> Vec<String> {
+    #[must_use]
+    pub fn values(&self) -> Vec<String> {
         vec![
             self.firstName.clone(),
             self.lastName.clone(),

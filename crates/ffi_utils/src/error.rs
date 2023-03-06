@@ -1,18 +1,22 @@
+use core::{cell::RefCell, fmt::Display};
 use std::{
-    cell::RefCell,
     ffi::CString,
     os::raw::{c_char, c_int},
 };
 
-use thiserror::Error;
-
-#[derive(Clone, Error, Debug)]
+#[derive(Debug)]
 pub enum FfiError {
-    #[error("{0} shouldn't be null")]
     NullPointer(String),
-
-    #[error("{0}")]
     Generic(String),
+}
+
+impl Display for FfiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NullPointer(pointer_name) => write!(f, "{pointer_name} shouldn't be null"),
+            Self::Generic(err) => write!(f, "{err}"),
+        }
+    }
 }
 
 thread_local! {

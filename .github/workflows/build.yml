@@ -13,9 +13,9 @@ jobs:
     with:
       project-name: cloudproof_rust
       toolchain: nightly-2022-10-28
-      kms-version: 4.2.0
-      branch-java: develop
-      branch-js: develop
-      branch-flutter: develop
-      branch-python: develop
+      kms-version: 4.3.3
+      branch-java: feature/cloudproof_rust
+      branch-js: feature/cloudproof_rust
+      branch-flutter: feature/cloudproof_rust
+      branch-python: feature/cloudproof_rust
     secrets: inherit

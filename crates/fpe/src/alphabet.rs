@@ -10,7 +10,6 @@ use crate::{ano_ensure, AnoError, KEY_LENGTH};
 pub const RECOMMENDED_THRESHOLD: usize = 1_000_000;
 
 /// Calculates the minimum length of the plaintext for FPE to be secure.
-#[inline]
 pub fn min_plaintext_length(alphabet_len: usize) -> usize {
     ((RECOMMENDED_THRESHOLD as f32).log(alphabet_len as f32)).ceil() as usize
 }

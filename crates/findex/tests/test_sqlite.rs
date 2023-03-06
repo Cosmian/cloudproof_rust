@@ -1,19 +1,18 @@
+#![cfg(feature = "sqlite")]
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
 };
 
-use cosmian_findex::{core::Keyword, error::FindexErr};
-
-use super::{database::User, search, upsert, utils::delete_db};
-use crate::error::Error;
+use cloudproof_findex::sqlite::{search, upsert, utils::delete_db, Error, User};
+use cosmian_findex::Keyword;
 
 fn generate_new_dataset(nb_user: usize, dataset_filename: &str) {
-    let mut users = Vec::new();
-    for _i in 0..nb_user {
-        let user = User::new();
-        users.push(user);
+    let mut users = Vec::with_capacity(nb_user);
+    for _ in 0..nb_user {
+        users.push(User::new());
     }
+
     // Save the JSON structure into the other file.
     std::fs::write(
         dataset_filename,
@@ -23,11 +22,11 @@ fn generate_new_dataset(nb_user: usize, dataset_filename: &str) {
 }
 
 #[actix_rt::test]
-async fn test_findex_sqlite_no_regression() -> Result<(), FindexErr> {
+async fn test_findex_sqlite_no_regression() -> Result<(), Error> {
     //
     // Prepare database and create Findex structs
     //
-    let db = PathBuf::from("../../tests/findex/datasets/sqlite.db");
+    let db = PathBuf::from("datasets/sqlite.db");
 
     //
     // Search
@@ -52,14 +51,14 @@ async fn test_findex_sqlite_generate() -> Result<(), Error> {
     //
     let file_path = Path::new("../../target/sqlite.db");
     if file_path.exists() {
-        std::fs::remove_file(file_path)?;
+        std::fs::remove_file(file_path).map_err(Error::IoError)?;
     }
     let db = PathBuf::from(file_path);
 
     //
     // Create new database
     //
-    upsert(&db, "../../tests/findex/datasets/data.json").await?;
+    upsert(&db, "datasets/data.json").await?;
 
     //
     // Search - simple check
@@ -75,9 +74,8 @@ async fn test_findex_sqlite_generate() -> Result<(), Error> {
 }
 
 #[actix_rt::test]
-async fn test_different_scenarios() -> Result<(), FindexErr> {
-    delete_db("sqlite2.db")?;
-    let db = std::env::temp_dir().join("sqlite2.db");
+async fn test_different_scenarios() -> Result<(), Error> {
+    let db = std::env::temp_dir().join("sqlite_tmp.db");
     for _ in 0..5 {
         //
         // Generate a new dataset and index it
@@ -96,6 +94,6 @@ async fn test_different_scenarios() -> Result<(), FindexErr> {
         .await?;
     }
 
-    delete_db("sqlite2.db")?;
+    delete_db(&db)?;
     Ok(())
 }

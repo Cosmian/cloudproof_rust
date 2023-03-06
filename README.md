@@ -1,232 +1,153 @@
 # Cosmian Cloudproof Data Protection Library
 
-This library provides multiple data protection techniques for use in a zero-trust environment. The techniques range from simple, less secure modifications of plaintext to quantum-resistant encryption for the best protection.
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/ci.yml/badge.svg)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/build.yml/badge.svg)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/benches.yml/badge.svg)
 
-The primitives offered, from least to most secure, are:
+Cloudproof Encryption provides libraries and tools to encrypt and securely index large repositories of data with advanced, high-performance security primitives with Post-Quantum resistance.
 
-- Aggregation: replaces data with a numerical interval
-- Differential privacy: adds noise to numerical data
-- Format preserving encryption: encryption that preserves the format of the plaintext
-- Hashing: deterministic hashing of a value
-- CoverCrypt: post-quantum encryption with embedded access policies
+See [the use cases and benefits](https://docs.cosmian.com/cloudproof_encryption/use_cases_benefits/) and a description of the [cryptosystems](https://docs.cosmian.com/cloudproof_encryption/crypto_systems/) used.
+
+The libraries are available in multiple languages to facilitate encryption close to the data source and decryption close to the decryption target, including mobile devices and browsers.
+
+The Cloudproof Rust repository provides these interfaces such as FFI, WebAssembly and Pyo3 to run :
+
+- **FFI** interface is used by:
+  - [cloudproof_java](https://github.com/Cosmian/cloudproof_java): the Cloudproof Java Library
+  - [cloudproof_flutter](https://github.com/Cosmian/cloudproof_flutter): the Cloudproof Flutter Library
+- **WebAssembly** interface is used by:
+  - [cloudproof_js](https://github.com/Cosmian/cloudproof_js): the Cloudproof Javascript Library
+- **Pyo3** interface is used by:
+  - [cloudproof_python](https://github.com/Cosmian/cloudproof_python): the Cloudproof Python Library
 
 <!-- toc -->
 
-- [Format Preserving Encryption (FPE)](#format-preserving-encryption-fpe)
-  - [Implementation](#implementation)
-  - [Using FPE](#using-fpe)
-    - [Encrypting Text](#encrypting-text)
-      - [Encrypting and decrypting an alphanumeric text](#encrypting-and-decrypting-an-alphanumeric-text)
-      - [Encrypting and decrypting a credit card number](#encrypting-and-decrypting-a-credit-card-number)
-      - [Encrypting and decrypting a Chinese text with spaces](#encrypting-and-decrypting-a-chinese-text-with-spaces)
-    - [Encrypting Integers](#encrypting-integers)
-    - [Encrypting Floats](#encrypting-floats)
+- [Licensing](#licensing)
+- [Cryptographic primitives](#cryptographic-primitives)
+- [Building and testing](#building-and-testing)
+  - [Building the library for `cloudproof_java` or `cloudproof_flutter`](#building-the-library-for-cloudproof_java-or-cloudproof_flutter)
+  - [Build the library for `cloudproof_js`](#build-the-library-for-cloudproof_js)
+  - [Build the library for `cloudproof_python`](#build-the-library-for-cloudproof_python)
+  - [Building the library for a different glibc](#building-the-library-for-a-different-glibc)
 - [Benchmarks](#benchmarks)
-  - [Run quick start](#run-quick-start)
-  - [Run detailed report (Linux, MacOS)](#run-detailed-report-linux-macos)
+- [Documentation](#documentation)
+  - [CoverCrypt](#covercrypt)
+  - [Findex](#findex)
+  - [Format Preserving Encryption](#format-preserving-encryption)
+- [Releases](#releases)
 
 <!-- tocstop -->
 
-## Format Preserving Encryption (FPE)
+## Licensing
 
-FPE aims to encrypt plaintext while retaining its format (alphabet). FPE-FF1 is a normalized algorithm that uses symmetric encryption, but it's not as fast or secure as standardized symmetric (or public key) encryption methods like AES or ChaCha. It should only be used where the format of the ciphertext container is constrained (e.g., a fixed database schema that cannot be changed).
+The library is available under a dual licensing scheme Affero GPL/v3 and commercial. See [LICENSE.md](LICENSE.md) for details.
 
-### Implementation
+## Cryptographic primitives
 
-The FPE implementation follows NIST specifications for FF1 (found in the [NIST SP 800-38G specification](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-38G.pdf#page=19&zoom=100,0,0)).
+These interfaces are based on:
 
-The code is based on the `cosmian_fpe` directory found on [GitHub](https://github.com/Cosmian/cosmian_fpe), which is based on `str4d/fpe`. The number of Feistel rounds has been increased to 18 following the recommendations of this [cryptanalysis paper](https://eprint.iacr.org/2020/1311.pdf).
+- [CoverCrypt](https://github.com/Cosmian/cover_crypt) algorithm which allows
+creating ciphertexts for a set of attributes and issuing user keys with access
+policies over these attributes. `CoverCrypt` offers Post-Quantum resistance.
 
-The implementation also enforces the requirement that `radix^min_len > 1_000_000`. For the `Alphabet` and `Integer` FPE facilities, this requirement is met with the following parameters:
+- [Findex](https://github.com/Cosmian/findex) which is a cryptographic protocol designed to securely make search queries on
+an untrusted cloud server. Thanks to its encrypted indexes, large databases can
+securely be outsourced without compromising usability.
 
-| radix | example alphabet    | min text len |
-| ----- | ------------------- | ------------ |
-| 2     | "01"                | 20           |
-| 10    | "01234567890"       | 6            |
-| 16    | "01234567890abcdef" | 5            |
+- [This FPE library](./crates/fpe/README.md) provides multiple data protection techniques for use in a zero-trust environment. The techniques range from simple, less secure modifications of plaintext to quantum-resistant encryption for the best protection.
 
-### Using FPE
+## Building and testing
 
-Cosmian FPE proposes 3 structures:
+To build all interfaces (including the FFI, Wasm and Pyo3):
 
-- `fpe::Alphabet` to encrypt text
-- `fpe::Integer` to encrypt integers with various radixes
-- `fpe::Float` to encrypt floating numbers
-
-#### Encrypting Text
-
-The `fpe::Alphabet` structure provides the ability to encrypt a plaintext using an `alphabet`.
-Characters of the plaintext that belong to the alphabet are encrypted while the others are left unchanged at their original location in the ciphertext.
-
-An alphabet can be instantiated using the `Alphabet::instantiate()` method:
-
-```rust
-let hexadecimal_alphabet = Alphabet::instantiate("01234567890abcdef").unwrap();
+```bash
+cargo build --release --all-features
 ```
 
-There are multiple pre-defined alphabets available:
+The latter will build the shared libraries for `cover_crypt` and `findex`. On Linux, one can verify that the FFI symbols are present using:
 
-- `Alphabet::alpha()`
-- `Alphabet::alpha_lower()`
-- `Alphabet::alpha_upper()`
-- `Alphabet::numeric()`
-- `Alphabet::hexa_decimal()`
-- `Alphabet::alpha_numeric()`
-- `Alphabet::chinese()`
-- `Alphabet::latin1sup()`
-- `Alphabet::latin1sup_alphanum()`
-
-These alphabets can easily be extended using the `extend_with` method
-
-```rust
-//0-9a-zA-Z
-let mut alphabet = Alphabet::alphanumeric();
-// add the space character
-alphabet.extend_with(" ");
+```bash
+objdump -T  target/release/libcosmian_cover_crypt.so
+objdump -T  target/release/libcosmian_findex.so
 ```
 
-##### Encrypting and decrypting an alphanumeric text
+The code contains numerous tests that you can run using:
 
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
-
-let alphabet = Alphabet::alpha_numeric(); //0-9a-zA-Z
-
-let ciphertext = alphabet.encrypt(&key, tweak, "alphanumeric").unwrap();
-assert_eq!("jraqSuFWZmdH", ciphertext);
-
-let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
-assert_eq!("alphanumeric", plaintext);
+```bash
+cargo test --release --all-features
 ```
 
-##### Encrypting and decrypting a credit card number
+### Building the library for `cloudproof_java` or `cloudproof_flutter`
 
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
+From the root directory:
 
-let alphabet = Alphabet::numeric(); //0-9
-
-let ciphertext = alphabet
-   .encrypt(&key, tweak, "1234-1234-1234-1234")
-   .unwrap();
-assert_eq!("1415-4650-5562-7272", ciphertext);
-
-let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
-assert_eq!("1234-1234-1234-1234", plaintext);
+```bash
+cargo build --release --features ffi
 ```
 
-_Note_: since the `-` character is not part of the alphabet it is preserved during encryption and decryption.
+The `.so` libraries can then be found in `target/release/`.
 
-##### Encrypting and decrypting a Chinese text with spaces
+### Build the library for `cloudproof_js`
 
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
+From the root directory:
 
-let mut alphabet = Alphabet::chinese();
-// add the space character to the alphabet
-alphabet.extend_with(" ");
-
-let ciphertext = alphabet.encrypt(&key, tweak, "天地玄黄 宇宙洪荒").unwrap();
-assert_eq!("儖濣鈍媺惐墷礿截媃", ciphertext);
-
-let plaintext = alphabet.decrypt(&key, tweak, &ciphertext).unwrap();
-assert_eq!("天地玄黄 宇宙洪荒", plaintext);
+```bash
+wasm-pack build --release --features wasm_bindgen
 ```
 
-_Note_: since the space character was added to the alphabet, it is also encrypted.
+The `.wasm` libraries can then be found in `pkg/`.
 
-#### Encrypting Integers
+### Build the library for `cloudproof_python`
 
-The `fpe::Integer` structure offers the ability to encrypt integers with a radix between 2 (binary) and 16 (hexadecimal) and up to a maximum power of this radix.
+From the root directory:
 
-To encrypt decimal integers up to u64::MAX, use:
-
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
-
-// decimal number with digits 0-9
-let radix = 10_u32;
-// the number of digits of the biggest number = radix^digits -1
-// In this case 6 decimal digits -> 999_999
-let digits = 6;
-
-let itg = Integer::instantiate(radix, digits).unwrap();
-
-let ciphertext = itg.encrypt(&key, tweak, 123_456_u64).unwrap();
-assert_eq!(110_655_u64, ciphertext);
-
-let plaintext = itg.decrypt(&key, tweak, ciphertext).unwrap();
-assert_eq!(123_456_u64, plaintext);
+```bash
+maturin build --release --manifest-path crates/<cover_crypt or findex>/Cargo.toml --features python
 ```
 
-There is also support for Big Unsigned Integers
+**Note**: when a new function or class is added to the PyO3 interface, its
+signature needs to be added to
+[`**init**.pyi`](./crates/<cover_crypt or findex>/python/cloudproof_<cover_crypt or findex>/**init**.pyi).
 
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
+To run tests on the Python interface, run:
 
-// decimal number with digits 0-9
-let radix = 10_u32;
-// the number of digits of the greatest number = radix^digits -1 = 10^20-1
-let digits = 20;
-
-// the value to encrypt: 10^17
-let value = BigUint::from_str_radix("100000000000000000", radix).unwrap();
-
-let itg = Integer::instantiate(radix, digits).unwrap();
-
-let ciphertext = itg.encrypt_big(&key, tweak, &value).unwrap();
-assert_eq!(
-   BigUint::from_str_radix("65348521845006160218", radix).unwrap(),
-   ciphertext
-);
-
-let plaintext = itg.decrypt_big(&key, tweak, &ciphertext).unwrap();
-assert_eq!(
-   BigUint::from_str_radix("100000000000000000", radix).unwrap(),
-   plaintext
-);
+```bash
+bash ./scripts/test_python.sh
 ```
 
-#### Encrypting Floats
+The `.whl` libraries can then be found in `target/wheels/`.
 
-The `fpe::Float` structure provides support for encrypting floats of type `f64`:
+### Building the library for a different glibc
 
-```rust
-let key = [0_u8; 32];
-let tweak = b"unique tweak";
-
-let flt = Float::instantiate().unwrap();
-let ciphertext = flt.encrypt(&key, tweak, 123_456.789_f64).unwrap();
-assert_eq!(1.170438892319619e91_f64, ciphertext);
-
-let plaintext = flt.decrypt(&key, tweak, ciphertext).unwrap();
-assert_eq!(123_456.789_f64, plaintext);
-```
+Go to the [build](build/glibc-2.17/) directory for an example on how to build for GLIBC 2.17
 
 ## Benchmarks
 
-### Run quick start
+The benchmarks presented in this section are run on a Intel(R) Xeon(R) Platinum 8171M CPU @ 2.60GHz.
 
-Run `cargo bench` from the root directory
+- [CoverCrypt classic implementation](https://github.com/Cosmian/cover_crypt/blob/main/benches/BENCHMARKS_classic.md)
+- [CoverCrypt post-quantum implementation](https://github.com/Cosmian/cover_crypt/blob/main/benches/BENCHMARKS_hybridized.md)
+- [FPE](./crates/fpe/benches/BENCHMARKS.md)
 
-### Run detailed report (Linux, MacOS)
+## Documentation
 
-1. Install criterion and criterion-table
+### CoverCrypt
 
-   ```sh
-   cargo install cargo-criterion
-   cargo install criterion-table
-   ```
+A formal description and proof of the CoverCrypt scheme is given in [this paper](https://github.com/Cosmian/cover_crypt/blob/main/bib/CoverCrypt.pdf).
+It also contains an interesting discussion about the implementation.
 
-2. From the root of the project, run
+The developer documentation can be found on [doc.rs](https://docs.rs/cosmian_cover_crypt/latest/cosmian_cover_crypt/index.html)
 
-   ```bash
-   bash ./benches/benches.sh
-   ```
+### Findex
 
-3. The benchmarks are then available in [./benches/BENCHMARKS.md](./benches/BENCHMARKS.md)
+Findex technical documentation can be found [here](https://github.com/Cosmian/findex/blob/main/documentation/Findex.pdf).
+
+The developer documentation can be found on [doc.rs](https://docs.rs/cosmian_findex/latest/cosmian_findex/index.html)
+
+### Format Preserving Encryption
+
+Findex technical documentation can be found [here](./crates/fpe/documentation/FPE.pdf).
+
+## Releases
+
+All releases can be found in the public URL [package.cosmian.com](https://package.cosmian.com).

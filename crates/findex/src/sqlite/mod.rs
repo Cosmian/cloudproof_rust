@@ -1,33 +1,27 @@
-//! This module implements the Findex interface for `SQlite`. It has been
-//! written for testing purpose only.
+//! This crate implements the Findex interface for `SQlite`. It has been
 
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
-    usize,
 };
 
+use base64::{engine::general_purpose, Engine};
+use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
-    core::{FindexSearch, FindexUpsert, IndexedValue, KeyingMaterial, Keyword, Label, Location},
-    error::FindexErr,
+    parameters::{MASTER_KEY_LENGTH, SECURE_FETCH_CHAINS_BATCH_SIZE},
+    FindexSearch, FindexUpsert, IndexedValue, KeyingMaterial, Keyword, Label, Location,
 };
+use database::SqliteDatabase;
+use findex::RusqliteFindex;
 use rusqlite::Connection;
 
-use crate::{
-    error::Error,
-    generic_parameters::MASTER_KEY_LENGTH,
-    sqlite::{database::SqliteDatabase, findex::RusqliteFindex},
-};
-
 mod database;
+mod error;
 mod findex;
-#[cfg(test)]
-mod tests;
-mod utils;
+pub mod utils;
 
-pub use utils::delete_db;
-
-use super::generic_parameters::SECURE_FETCH_CHAINS_BATCH_SIZE;
+pub use database::User;
+pub use error::Error;
 
 pub async fn upsert(sqlite_db_path: &PathBuf, dataset_path: &str) -> Result<(), Error> {
     //
@@ -60,17 +54,17 @@ pub async fn upsert(sqlite_db_path: &PathBuf, dataset_path: &str) -> Result<(), 
     let mut rusqlite_upsert = RusqliteFindex {
         connection: &mut connection,
     };
-    let label = Label::from(include_bytes!("../../../../tests/findex/datasets/label").to_vec());
-    let master_key_str = include_str!("../../../../tests/findex/datasets/key.json");
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from(master_key_str)?;
+    let label = Label::from(include_bytes!("../../datasets/label").to_vec());
+    let master_key_bytes = general_purpose::STANDARD
+        .decode(include_str!("../../datasets/key.json"))
+        .map_err(|e| Error::Other(e.to_string()))?;
+    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(&master_key_bytes)?;
 
     rusqlite_upsert
         .upsert(locations_and_words, &master_key, &label)
         .await?;
 
-    connection
-        .close()
-        .map_err(|e| Error::Sqlite(format!("Error while closing connection: {e:?}")))
+    connection.close().map_err(|(_, e)| Error::RusqliteError(e))
 }
 
 pub async fn search(
@@ -82,11 +76,12 @@ pub async fn search(
     let mut rusqlite_search = RusqliteFindex {
         connection: &mut connection,
     };
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from(include_str!(
-        "../../../../tests/findex/datasets/key.json"
-    ))?;
+    let master_key_bytes = general_purpose::STANDARD
+        .decode(include_str!("../../datasets/key.json"))
+        .map_err(|e| Error::Other(e.to_string()))?;
+    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(&master_key_bytes)?;
 
-    let label = Label::from(include_bytes!("../../../../tests/findex/datasets/label").to_vec());
+    let label = Label::from(include_bytes!("../../datasets/label").to_vec());
     let results = rusqlite_search
         .search(
             &bulk_words,
@@ -104,16 +99,15 @@ pub async fn search(
             let db_uid = i64::from_be_bytes(
                 (*location)
                     .try_into()
-                    .map_err(|e| FindexErr::ConversionError(format!("Invalid location: {e}")))?,
+                    .map_err(|e| Error::Other(format!("Invalid location: {e}")))?,
             );
             db_uids.push(db_uid);
         }
     }
     if check {
         db_uids.sort_unstable();
-        let mut search_results: Vec<i64> = serde_json::from_str(include_str!(
-            "../../../../tests/findex/datasets/expected_db_uids.json"
-        ))?;
+        let mut search_results: Vec<i64> =
+            serde_json::from_str(include_str!("../../datasets/expected_db_uids.json"))?;
         search_results.sort_unstable();
         assert_eq!(db_uids, search_results);
     }

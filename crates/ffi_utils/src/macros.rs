@@ -37,15 +37,6 @@ macro_rules! ffi_unwrap {
             }
         }
     };
-    ($res:expr) => {
-        match $res {
-            Ok(v) => v,
-            Err(e) => {
-                $crate::error::set_last_error($crate::error::FfiError::Generic(e.to_string()));
-                return 1_i32;
-            }
-        }
-    };
 }
 
 /// Returns with an error.
@@ -63,7 +54,6 @@ macro_rules! ffi_bail {
     };
     ($msg:expr, $err:expr) => {
         $crate::error::set_last_error($crate::error::FfiError::Generic($msg.to_string()));
-        println!("again: {}", $err);
         return $err;
     };
 }
