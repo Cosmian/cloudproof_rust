@@ -160,7 +160,7 @@ impl InternalFindex {
     #[allow(clippy::too_many_arguments)]
     pub fn search_wrapper(
         &mut self,
-        keywords: Vec<&str>,
+        keywords: Vec<ToKeyword>,
         master_key: &MasterKeyPy,
         label: &LabelPy,
         max_result_per_keyword: usize,
@@ -173,10 +173,8 @@ impl InternalFindex {
             None => self.default_progress_callback.clone(),
         };
 
-        let keywords_set: HashSet<Keyword> = keywords
-            .iter()
-            .map(|keyword| Keyword::from(*keyword))
-            .collect();
+        let keywords_set: HashSet<Keyword> =
+            keywords.iter().map(|keyword| keyword.0.clone()).collect();
 
         let results = pyo3_unwrap!(
             block_on(
@@ -299,7 +297,7 @@ impl FindexCloud {
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn search(
-        keywords: Vec<&str>,
+        keywords: Vec<ToKeyword>,
         token: &str,
         label: &LabelPy,
         max_result_per_keyword: usize,
@@ -310,10 +308,8 @@ impl FindexCloud {
         let mut findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
         let master_key = findex.token.findex_master_key.clone();
 
-        let keywords_set: HashSet<Keyword> = keywords
-            .iter()
-            .map(|keyword| Keyword::from(*keyword))
-            .collect();
+        let keywords_set: HashSet<Keyword> =
+            keywords.iter().map(|keyword| keyword.0.clone()).collect();
 
         let rt = pyo3_unwrap!(
             tokio::runtime::Runtime::new(),

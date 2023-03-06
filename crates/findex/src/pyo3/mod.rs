@@ -75,6 +75,22 @@ macro_rules! impl_python_byte {
                 }
             }
 
+            fn is_equal(&self, other: Py<PyAny>, py: Python) -> PyResult<bool> {
+                if let Ok(str) = other.extract::<&str>(py) {
+                    Ok(self.0.as_ref() == str.as_bytes())
+                } else if let Ok(bytes) = other.extract::<&[u8]>(py) {
+                    Ok(self.0.as_ref() == bytes)
+                } else if let Ok(int) = other.extract::<i64>(py) {
+                    Ok(self.0.as_ref() == int.to_be_bytes())
+                } else if let Ok(py_obj) = other.extract::<Self>(py) {
+                    Ok(self.0 == py_obj.0)
+                } else {
+                    return Err(pyo3::exceptions::PyValueError::new_err(
+                        "Wrong type for comparison",
+                    ));
+                }
+            }
+
             /// Implements comparison.
             fn __richcmp__(
                 &self,
@@ -82,23 +98,9 @@ macro_rules! impl_python_byte {
                 op: pyo3::basic::CompareOp,
                 py: Python,
             ) -> PyResult<bool> {
-                let other_bytes: Vec<u8>;
-                if let Ok(str) = other.extract::<&str>(py) {
-                    other_bytes = str.as_bytes().to_vec();
-                } else if let Ok(bytes) = other.extract::<&[u8]>(py) {
-                    other_bytes = bytes.to_vec();
-                } else if let Ok(int) = other.extract::<i64>(py) {
-                    other_bytes = int.to_be_bytes().to_vec();
-                } else if let Ok(py_obj) = other.extract::<$py_type>(py) {
-                    other_bytes = py_obj.0.to_vec();
-                } else {
-                    return Err(pyo3::exceptions::PyValueError::new_err(
-                        "Wrong type for comparison",
-                    ));
-                }
                 match op {
-                    CompareOp::Eq => Ok(self.0.to_vec() == other_bytes),
-                    CompareOp::Ne => Ok(self.0.to_vec() != other_bytes),
+                    CompareOp::Eq => Ok(self.is_equal(other, py)?),
+                    CompareOp::Ne => Ok(!self.is_equal(other, py)?),
                     _ => Err(pyo3::exceptions::PyNotImplementedError::new_err(
                         "Comparison operator not available",
                     )),

@@ -191,7 +191,7 @@ class FindexCloud:
         """
     @staticmethod
     def search(
-        keywords: List[Union[Keyword, str]],
+        keywords: Sequence[Union[Keyword, str]],
         token: str,
         label: Label,
         max_result_per_keyword: int = 2**32 - 1,
@@ -252,7 +252,7 @@ class InternalFindex:
     ) -> None: ...
     def search_wrapper(
         self,
-        keywords: List[Union[Keyword, str]],
+        keywords: Sequence[Union[Keyword, str]],
         msk: MasterKey,
         label: Label,
         max_result_per_keyword: int = 2**32 - 1,

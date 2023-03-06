@@ -238,9 +238,11 @@ class TestFindex(unittest.TestCase):
             self.findex_backend.fetch_chain,
         )
 
-        res = self.findex_interface.search_wrapper(['Martial'], self.msk, self.label)
+        res = self.findex_interface.search_wrapper(
+            [Keyword.from_bytes(b'Martial')], self.msk, self.label
+        )
         self.assertEqual(len(res), 1)
-        self.assertEqual(len(res['Martial']), 1)
+        self.assertEqual(len(res[Keyword.from_string('Martial')]), 1)
         self.assertEqual(int(res['Martial'][0]), 2)
 
         res = self.findex_interface.search_wrapper(
