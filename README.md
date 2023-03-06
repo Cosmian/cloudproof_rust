@@ -2,6 +2,7 @@
 
 ![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/ci.yml/badge.svg)
 ![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/build.yml/badge.svg)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/benches.yml/badge.svg)
 
 Cloudproof Encryption provides libraries and tools to encrypt and securely index large repositories of data with advanced, high-performance security primitives with Post-Quantum resistance.
 
