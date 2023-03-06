@@ -112,8 +112,7 @@ signature needs to be added to
 To run tests on the Python interface, run:
 
 ```bash
-bash ./scripts/test_python.sh cover_crypt
-bash ./scripts/test_python.sh findex
+bash ./scripts/test_python.sh
 ```
 
 The `.whl` libraries can then be found in `target/wheels/`.
