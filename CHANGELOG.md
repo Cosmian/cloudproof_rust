@@ -13,9 +13,8 @@ All notable changes to this project will be documented in this file.
 - Add existing findex and cover_crypt source code
 - Get callback errors from Findex
 - Add RusqliteFindex implementation
-- Define workspace dependencies
-- Remove `.cargo` folder
-- Wrap FindexCloud in Pyo3 ([#6](https://github.com/orhun/git-cliff/issues/6))
+- Define workspace dependencies and mutualize findex and cover_crypt to 7.0.0
+- Wrap FindexCloud in Pyo3
 
 ### Refactor
 
