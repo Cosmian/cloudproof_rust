@@ -25,7 +25,8 @@ The Cloudproof Rust repository provides these interfaces such as FFI, WebAssembl
 - [Licensing](#licensing)
 - [Cryptographic primitives](#cryptographic-primitives)
 - [Building and testing](#building-and-testing)
-  - [Building the library for `cloudproof_java` or `cloudproof_flutter`](#building-the-library-for-cloudproof_java-or-cloudproof_flutter)
+  - [Building the library for `cloudproof_java`](#building-the-library-for-cloudproof_java)
+  - [Building the library for `cloudproof_flutter`](#building-the-library-for-cloudproof_flutter)
   - [Build the library for `cloudproof_js`](#build-the-library-for-cloudproof_js)
   - [Build the library for `cloudproof_python`](#build-the-library-for-cloudproof_python)
   - [Building the library for a different glibc](#building-the-library-for-a-different-glibc)
@@ -77,7 +78,17 @@ The code contains numerous tests that you can run using:
 cargo test --release --all-features
 ```
 
-### Building the library for `cloudproof_java` or `cloudproof_flutter`
+### Building the library for `cloudproof_java`
+
+From the root directory:
+
+```bash
+cargo build --release --features ffi,cloud
+```
+
+The `.so` libraries can then be found in `target/release/`.
+
+### Building the library for `cloudproof_flutter`
 
 From the root directory:
 

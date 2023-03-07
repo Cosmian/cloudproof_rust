@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2023-03-06
+## [1.0.0] - 2023-03-07
 
 ### Documentation
 
@@ -15,15 +15,8 @@ All notable changes to this project will be documented in this file.
 - Add RusqliteFindex implementation
 - Define workspace dependencies
 - Remove `.cargo` folder
-
-### Miscellaneous Tasks
-
-- Typos
+- Wrap FindexCloud in Pyo3 ([#6](https://github.com/orhun/git-cliff/issues/6))
 
 ### Refactor
 
 - Rebase on cover_crypt 11
-
-### Ci
-
-- Relaunch
