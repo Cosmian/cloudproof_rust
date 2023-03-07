@@ -1,0 +1,16 @@
+[package]
+name = "cosmian_ffi_utils"
+version = "0.1.0"
+authors = [
+  "Théophile Brézot<theophile.brezot@cosmian.com>",
+]
+edition = "2021"
+license = "MIT/Apache-2.0"
+description = "Cosmian FFI tools library"
+
+[lib]
+name = "cosmian_ffi_utils"
+
+[features]
+
+[dependencies]

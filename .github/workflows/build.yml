@@ -1,0 +1,21 @@
+---
+name: Cloudproof build
+
+on:
+  push:
+    tags:
+      - '*'
+  pull_request:
+
+jobs:
+  cloudproof_rust:
+    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
+    with:
+      project-name: cloudproof_rust
+      toolchain: nightly-2022-10-28
+      kms-version: 4.3.3
+      branch-java: develop
+      branch-js: develop
+      branch-flutter: develop
+      branch-python: develop
+    secrets: inherit

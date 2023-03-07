@@ -1,50 +1,17 @@
-[package]
-name = "cloudproof_rust"
-version = "0.1.0"
-edition = "2021"
-authors = ["Bruno Grieder<bruno.grieder@cosmian.com>"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-aes = { version = "0.8", optional = true }
-fpe = { git = "https://github.com/Cosmian/cosmian_fpe", optional = true }
-itertools = { version = "0.10", optional = true }
-num-bigint = { version = "0.4", default-features = false, optional = true }
-num-integer = { version = "0.1", default-features = false, optional = true }
-num-traits = { version = "0.2", default-features = false, optional = true }
-rand = { version = "0.8", optional = true }
-rand_distr = { version = "0.4", optional = true }
-rand_chacha = { version = "0.3", optional = true }
-thiserror = "1.0"
-wasm-bindgen = { version = "0.2", features = [
-    "serde-serialize",
-], optional = true }
-
-[dev-dependencies]
-rand = { version = "0.8" }
-rand_distr = { version = "0.4" }
-rand_chacha = { version = "0.3" }
-criterion = { version = "0.4" }
-
-
-[features]
-default = ["fpe"]
-fpe = [
-    "dep:fpe",
-    "aes",
-    "itertools",
-    "num-bigint",
-    "num-integer",
-    "num-traits",
-    "rand",
-    "rand_distr",
-    "rand_chacha",
+[workspace]
+members = [
+  "crates/cover_crypt",
+  "crates/ffi_utils",
+  "crates/findex",
+  "crates/fpe",
 ]
-dylib = ["rand", "rand_distr", "rand_chacha"]
-wasm = ["wasm-bindgen"]
 
+[workspace.dependencies]
+cosmian_crypto_core = "7.0"
+js-sys = "0.3"
+pyo3 = { version = "0.18", features = ["extension-module", "abi3", "abi3-py37", "generate-import-lib"] }
+wasm-bindgen = "0.2.84"
 
-[[bench]]
-harness = false
-name = "benches"
+[profile.release]
+lto = true
+strip = true
