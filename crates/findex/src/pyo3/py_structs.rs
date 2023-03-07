@@ -1,106 +1,68 @@
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-};
+use std::hash::Hash;
 
 use cosmian_crypto_core::{reexport::rand_core::SeedableRng, CsRng};
 use cosmian_findex::{
     parameters::MASTER_KEY_LENGTH, IndexedValue as IndexedValueRust,
-    KeyingMaterial as KeyingMaterialRust, Keyword, Label as LabelRust, Location,
+    KeyingMaterial as KeyingMaterialRust, Keyword as KeywordRust, Label as LabelRust,
+    Location as LocationRust,
 };
 use pyo3::{prelude::*, pyclass::CompareOp, types::PyBytes};
 
-/// The value indexed by a `Keyword`. It can be either a `Location` or another
-/// `Keyword` in case the searched `Keyword` was a tree node.
-#[pyclass]
+fn truncate(s: String, max_chars: usize) -> String {
+    match s.char_indices().nth(max_chars) {
+        None => s,
+        Some((idx, _)) => format!("{}...", &s[..idx]),
+    }
+}
+
+fn is_printable_char(c: char) -> bool {
+    c.is_alphanumeric() || c.is_ascii_punctuation() || c == ' '
+}
+
+#[pyclass(subclass)]
 #[derive(Hash, PartialEq, Eq, Clone)]
-pub struct IndexedValue(pub(super) IndexedValueRust);
+pub struct Keyword(pub(super) KeywordRust);
 
-#[pymethods]
-impl IndexedValue {
-    /// Create `IndexedValue` from a location in bytes.
-    ///
-    /// Args:
-    ///     location_bytes (bytes)
-    ///
-    /// Returns:
-    ///     IndexedValue
-    #[staticmethod]
-    pub fn from_location(location_bytes: &[u8]) -> Self {
-        Self(IndexedValueRust::Location(Location::from(location_bytes)))
+impl_python_byte!(Keyword, KeywordRust, "Keyword");
+
+#[pyclass(subclass)]
+#[derive(Hash, PartialEq, Eq, Clone)]
+pub struct Location(pub(super) LocationRust);
+
+impl_python_byte!(Location, LocationRust, "Location");
+
+/// Interface to convert `Location` and `Keyword` to `IndexedValue`
+/// automatically
+#[derive(Hash, PartialEq, Eq, Clone)]
+pub struct ToIndexedValue(pub(super) IndexedValueRust);
+
+impl<'a> FromPyObject<'a> for ToIndexedValue {
+    fn extract(arg: &'a PyAny) -> PyResult<Self> {
+        if let Ok(location) = Location::extract(arg) {
+            Ok(Self(IndexedValueRust::Location(location.0)))
+        } else if let Ok(keyword) = Keyword::extract(arg) {
+            Ok(Self(IndexedValueRust::NextKeyword(keyword.0)))
+        } else {
+            Err(pyo3::exceptions::PyValueError::new_err(
+                "Only `Keyword` and `Location` can be used to index values in Findex",
+            ))
+        }
     }
+}
 
-    /// Create `IndexedValue` from a keyword in bytes.
-    ///
-    /// Args:
-    /// keyword_bytes (bytes)
-    ///
-    /// Returns:
-    ///     IndexedValue
-    #[staticmethod]
-    pub fn from_keyword(keyword_bytes: &[u8]) -> Self {
-        Self(IndexedValueRust::NextKeyword(Keyword::from(keyword_bytes)))
-    }
+/// Interface to accept `Keyword` and String in `Upsert`
+pub struct ToKeyword(pub(super) KeywordRust);
 
-    /// Checks whether the `IndexedValue` is a location.
-    ///
-    /// Returns:
-    ///     bool
-    pub fn is_location(&self) -> bool {
-        self.0.is_location()
-    }
-
-    /// Checks whether the `IndexedValue` is a keyword.
-    ///
-    /// Returns:
-    ///     bool
-    pub fn is_keyword(&self) -> bool {
-        self.0.is_keyword()
-    }
-
-    /// Returns the underlying location if the `IndexedValue` is one.
-    ///
-    /// Returns:
-    ///     Optional[bytes]
-    pub fn get_location(&self, py: Python) -> PyObject {
-        self.0
-            .get_location()
-            .map(|location| PyBytes::new(py, location))
-            .into_py(py)
-    }
-
-    /// Returns the underlying keyword if the `IndexedValue` is one.
-    ///
-    /// Returns:
-    ///     Optional[bytes]
-    pub fn get_keyword(&self, py: Python) -> PyObject {
-        self.0
-            .get_keyword()
-            .map(|keyword| PyBytes::new(py, keyword))
-            .into_py(py)
-    }
-
-    /// Converts to string.
-    /// See <https://pyo3.rs/v0.17.3/class/protocols.html#basic-object-customization>
-    fn __repr__(&self) -> String {
-        format!("{:?}", self.0)
-    }
-
-    /// Makes the object hashable in Python.
-    fn __hash__(&self) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        self.0.hash(&mut hasher);
-        hasher.finish()
-    }
-
-    /// Implements comparison.
-    fn __richcmp__(&self, other: Self, op: pyo3::basic::CompareOp) -> PyResult<bool> {
-        match op {
-            CompareOp::Eq => Ok(self.0 == other.0),
-            CompareOp::Ne => Ok(self.0 != other.0),
-            _ => Err(pyo3::exceptions::PyNotImplementedError::new_err(
-                "Comparison operator not available for IndexedValues",
-            )),
+impl<'a> FromPyObject<'a> for ToKeyword {
+    fn extract(arg: &'a PyAny) -> PyResult<Self> {
+        if let Ok(keyword) = Keyword::extract(arg) {
+            Ok(Self(keyword.0))
+        } else if let Ok(str) = String::extract(arg) {
+            Ok(Self(KeywordRust::from(str.as_bytes())))
+        } else {
+            Err(pyo3::exceptions::PyValueError::new_err(
+                "Only `Keyword` and `str` can be used to index values in Findex",
+            ))
         }
     }
 }
@@ -131,6 +93,18 @@ impl Label {
     #[staticmethod]
     pub fn from_bytes(label_bytes: Vec<u8>) -> Self {
         Self(LabelRust::from(label_bytes))
+    }
+
+    /// Load from a string.
+    ///
+    /// Args:
+    ///     label_str (str)
+    ///
+    /// Returns:
+    ///     Label
+    #[staticmethod]
+    pub fn from_string(label_str: &str) -> Self {
+        Self(LabelRust::from(label_str))
     }
 
     /// Convert to bytes.

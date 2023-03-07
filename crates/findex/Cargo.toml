@@ -15,7 +15,7 @@ name = "cloudproof_findex"
 [features]
 cloud = ["reqwest", "base64"]
 ffi = ["cosmian_ffi_utils", "base64", "serde_json", "tokio/rt-multi-thread"]
-python = ["pyo3", "futures"]
+python = ["cloud", "futures", "pyo3", "tokio/rt-multi-thread"]
 sqlite = ["base64", "faker_rand", "rand", "rusqlite", "serde", "serde_json"]
 wasm_bindgen = ["cloud", "js-sys", "hex", "wasm-bindgen", "wasm-bindgen-futures"]
 
