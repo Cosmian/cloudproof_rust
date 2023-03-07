@@ -17,5 +17,5 @@ jobs:
       branch-java: develop
       branch-js: develop
       branch-flutter: develop
-      branch-python: feature/cloudproof-rust
+      branch-python: develop
     secrets: inherit
