@@ -86,13 +86,8 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
                 .extract(py)
                 .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (fetch_entry)")))?;
 
-            // Convert python result (HashSet<[u8; UID_LENGTH]>) to
-            // HashSet<Uid<UID_LENGTH>>
-            let entry_table_items = py_result_table
-                .into_iter()
-                .map(Uid::from)
-                .collect::<HashSet<_>>();
-            Ok(entry_table_items)
+            // Convert python result (HashSet<[u8; UID_LENGTH]>) to HashSet<Uid<UID_LENGTH>>
+            Ok(py_result_table.into_iter().map(Uid::from).collect())
         })
     }
 
@@ -115,12 +110,10 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
 
             // Convert python result (HashMap<[u8; UID_LENGTH], Vec<u8>>) to
             // EncryptedEntryTable<UID_LENGTH>
-            let entry_table_items = py_result_table
+            Ok(py_result_table
                 .into_iter()
                 .map(|(k, v)| (Uid::from(k), v))
-                .collect::<HashMap<_, _>>();
-
-            Ok(entry_table_items.into())
+                .collect())
         })
     }
 
@@ -145,11 +138,10 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
 
             // Convert python result (HashMap<[u8; UID_LENGTH], Vec<u8>>) to
             // EncryptedTable<UID_LENGTH>
-            let chain_table_items = py_result_table
+            Ok(py_result_table
                 .into_iter()
                 .map(|(k, v)| (Uid::from(k), v))
-                .collect::<HashMap<_, _>>();
-            Ok(chain_table_items.into())
+                .collect())
         })
     }
 
@@ -181,12 +173,10 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
                 .extract(py)
                 .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (upsert_entry)")))?;
 
-            let rejected_lines = rejected_lines
+            Ok(rejected_lines
                 .into_iter()
                 .map(|(k, v)| (Uid::from(k), v))
-                .collect::<HashMap<_, _>>();
-
-            Ok(rejected_lines.into())
+                .collect())
         })
     }
 

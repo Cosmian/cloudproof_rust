@@ -13,9 +13,11 @@ macro_rules! pyo3_unwrap {
 ///
 /// # Parameters
 ///
-/// - `type_name`   : name of the key type
+/// - `py_type`   : name of the python type
+/// - `rust_type` : name of the wrapped rust type
+/// - `name`      : name of the class to appear in prints
 macro_rules! impl_python_byte {
-    ($py_type:ty, $rust_type:ty, $name:tt) => {
+    ($py_type:ty, $rust_type:ty, $name:literal) => {
         #[pymethods]
         impl $py_type {
             /// Create from bytes.
@@ -51,8 +53,7 @@ macro_rules! impl_python_byte {
 
             /// Converts to int.
             fn __int__(&self) -> PyResult<i64> {
-                let slice: &[u8] = &self.0;
-                let arr: [u8; 8] = slice.try_into()?;
+                let arr: [u8; 8] = self.0.as_ref().try_into()?;
                 Ok(i64::from_be_bytes(arr))
             }
 

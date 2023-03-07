@@ -180,14 +180,16 @@ class FindexCloud:
         indexed_values_and_keywords: IndexedValuesAndKeywords,
         token: str,
         label: Label,
+        base_url: Optional[str] = None,
     ) -> None:
         """Upserts the given relations between `IndexedValue` and `Keyword` into Findex tables.
 
         Args:
             indexed_values_and_keywords (Dict[Location | Keyword, List[Keyword | str]]):
-                map of `IndexedValue` to a list of `Keyword`
-            token (str): Findex token
-            label (Label): label used to allow versioning
+                map of `IndexedValue` to a list of `Keyword`.
+            token (str): Findex token.
+            label (Label): label used to allow versioning.
+            base_url (str, optional): url of Findex backend.
         """
     @staticmethod
     def search(
@@ -197,6 +199,7 @@ class FindexCloud:
         max_result_per_keyword: int = 2**32 - 1,
         max_depth: int = 100,
         fetch_chains_batch_size: int = 0,
+        base_url: Optional[str] = None,
     ) -> SearchResults:
         """Recursively search Findex graphs for `Locations` corresponding to the given `Keyword`.
 
@@ -207,6 +210,7 @@ class FindexCloud:
             max_result_per_keyword (int, optional): maximum number of results to fetch per keyword.
             max_depth (int, optional): maximum recursion level allowed. Defaults to 100.
             fetch_chains_batch_size (int, optional): batch size during fetch chain.
+            base_url (str, optional): url of Findex backend.
 
         Returns:
             Dict[Keyword, List[Location]]: `Locations` found by `Keyword`

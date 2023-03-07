@@ -148,8 +148,7 @@ impl InternalFindex {
     /// - `progress_callback`       : optional callback to process intermediate
     ///   search results.
     ///
-    /// Returns: List[IndexedValue]
-    // use `u32::MAX` for `max_result_per_keyword`
+    /// Returns: `Locations` found by `Keyword`
     #[pyo3(signature = (
             keywords, master_key, label,
         max_result_per_keyword = 4_294_967_295,
@@ -174,7 +173,7 @@ impl InternalFindex {
         };
 
         let keywords_set: HashSet<Keyword> =
-            keywords.iter().map(|keyword| keyword.0.clone()).collect();
+            keywords.into_iter().map(|keyword| keyword.0).collect();
 
         let results = pyo3_unwrap!(
             block_on(
@@ -248,6 +247,7 @@ impl FindexCloud {
     /// - `indexed_values_and_keywords` : map of `IndexedValue` to `Keyword`
     /// - `token`                       : Findex token
     /// - `label`                       : label used to allow versioning
+    /// - `base_url`                    : url of Findex backend (optional)
     #[staticmethod]
     pub fn upsert(
         indexed_values_and_keywords: HashMap<ToIndexedValue, Vec<ToKeyword>>,
@@ -283,8 +283,9 @@ impl FindexCloud {
     ///   keyword
     /// - `max_depth`               : maximum recursion level allowed
     /// - `fetch_chains_batch_size` : batch size during fetch chain
+    /// - `base_url`                : url of Findex backend (optional)
     ///
-    /// Returns: List[IndexedValue]
+    /// Returns: `Locations` found by `Keyword`
     #[staticmethod]
     #[pyo3(signature = (
         keywords,
@@ -309,7 +310,7 @@ impl FindexCloud {
         let master_key = findex.token.findex_master_key.clone();
 
         let keywords_set: HashSet<Keyword> =
-            keywords.iter().map(|keyword| keyword.0.clone()).collect();
+            keywords.into_iter().map(|keyword| keyword.0).collect();
 
         let rt = pyo3_unwrap!(
             tokio::runtime::Runtime::new(),
@@ -335,7 +336,15 @@ impl FindexCloud {
         Ok(search_results_to_python(results))
     }
 
-    /// Generate a new Findex Cloud token with reduced permissions
+    /// Generates a new Findex Cloud token with reduced permissions.
+    ///
+    /// Parameters
+    ///
+    /// - `token`   : Findex token
+    /// - `search`  : add permission to search
+    /// - `index`   : add permission to index data
+    ///
+    /// Returns: updated token
     #[staticmethod]
     pub fn derive_new_token(token: String, search: bool, index: bool) -> PyResult<String> {
         let mut token = pyo3_unwrap!(Token::from_str(&token), "error reading token");
@@ -348,7 +357,7 @@ impl FindexCloud {
         Ok(token.to_string())
     }
 
-    /// Generate a new random Findex Cloud token
+    /// Generates a new random Findex Cloud token.
     #[staticmethod]
     pub fn generate_new_token(
         index_id: String,
