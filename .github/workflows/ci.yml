@@ -4,7 +4,51 @@ name: CI checks
 on: push
 
 jobs:
-  cargo-lint:
+  cargo-nursery-base:
     uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@develop
     with:
       toolchain: nightly-2022-10-28
+
+  dry-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-semver-
+          restore-keys: ${{ runner.os }}-cargo-semver-
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+
+      - name: Install semver
+        if: steps.cache-primes.outputs.cache-hit != 'true'
+        run: cargo install --locked cargo-semver-checks || true
+
+      - name: Verify semver integrity
+        run: |
+          pushd crates/cover_crypt
+          cargo semver-checks check-release
+          popd
+          pushd crates/findex
+          cargo semver-checks check-release
+          popd
+
+      - name: Publishing - dry run
+        run: |
+          pushd crates/cover_crypt
+          cargo publish --dry-run
+          popd
+          pushd crates/findex
+          cargo publish --dry-run
+          popd

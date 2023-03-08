@@ -1,0 +1,24 @@
+[package]
+name = "cloudproof"
+version = "1.0.1"
+authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
+edition = "2021"
+license = "MIT/Apache-2.0"
+description = "Cosmian Cloudproof library"
+
+[lib]
+crate-type = ["cdylib", "rlib", "staticlib"]
+name = "cloudproof"
+
+[features]
+cloud = ["cloudproof_findex/cloud"]
+ffi = ["cloudproof_cover_crypt/ffi", "cloudproof_findex/ffi"]
+python = ["cloudproof_cover_crypt/python", "cloudproof_findex/python"]
+wasm_bindgen = [
+  "cloudproof_cover_crypt/wasm_bindgen",
+  "cloudproof_findex/wasm_bindgen",
+]
+
+[dependencies]
+cloudproof_cover_crypt = { path = "../cover_crypt", optional = true }
+cloudproof_findex = { path = "../findex", optional = true }
