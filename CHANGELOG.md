@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2023-03-08
+
+### Features
+
+- Add the meta crate `cloudproof` in order to build 1 shared library containing both cover_crypt and findex
+
 ## [1.0.0] - 2023-03-07
 
 ### Documentation
