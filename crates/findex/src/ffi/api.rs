@@ -24,7 +24,7 @@ use cosmian_findex::{
 };
 
 #[cfg(feature = "cloud")]
-use crate::cloud::FindexCloud;
+use crate::cloud::{FindexCloud, Token};
 use crate::{
     ffi::{
         core::{
@@ -439,6 +439,87 @@ pub unsafe extern "C" fn h_upsert_cloud(
         label_len,
         indexed_values_and_keywords_ptr,
     )
+}
+
+#[cfg(feature = "cloud")]
+#[no_mangle]
+/// Generate a new Findex token from the provided index ID and signature seeds,
+/// and a randomly generated Findex master key inside Rust.
+///
+/// The token is output inside `token_ptr`, `token_len` is updated to match the
+/// token length (this length should always be the same, right now, the length
+/// is always below 200 bytes)
+///
+/// # Safety
+///
+/// Cannot be safe since using FFI.
+pub unsafe extern "C" fn h_generate_new_token(
+    token_ptr: *mut u8,
+    token_len: *mut c_int,
+    index_id_ptr: *const c_char,
+    fetch_entries_seed_ptr: *const u8,
+    fetch_entries_seed_len: c_int,
+    fetch_chains_seed_ptr: *const u8,
+    fetch_chains_seed_len: c_int,
+    upsert_entries_seed_ptr: *const u8,
+    upsert_entries_seed_len: c_int,
+    insert_chains_seed_ptr: *const u8,
+    insert_chains_seed_len: c_int,
+) -> c_int {
+    let index_id: String = ffi_read_string!("index id", index_id_ptr);
+
+    let fetch_entries_seed = ffi_read_bytes!(
+        "fetch_entries_seed",
+        fetch_entries_seed_ptr,
+        fetch_entries_seed_len
+    );
+    let fetch_chains_seed = ffi_read_bytes!(
+        "fetch_chains_seed",
+        fetch_chains_seed_ptr,
+        fetch_chains_seed_len
+    );
+    let upsert_entries_seed = ffi_read_bytes!(
+        "upsert_entries_seed",
+        upsert_entries_seed_ptr,
+        upsert_entries_seed_len
+    );
+    let insert_chains_seed = ffi_read_bytes!(
+        "insert_chains_seed",
+        insert_chains_seed_ptr,
+        insert_chains_seed_len
+    );
+
+    let token = ffi_unwrap!(
+        Token::random_findex_master_key(
+            index_id,
+            ffi_unwrap!(
+                KeyingMaterial::try_from_bytes(fetch_entries_seed),
+                "fetch_entries_seed is of wrong size"
+            ),
+            ffi_unwrap!(
+                KeyingMaterial::try_from_bytes(fetch_chains_seed),
+                "fetch_chains_seed is of wrong size"
+            ),
+            ffi_unwrap!(
+                KeyingMaterial::try_from_bytes(upsert_entries_seed),
+                "upsert_entries_seed is of wrong size"
+            ),
+            ffi_unwrap!(
+                KeyingMaterial::try_from_bytes(insert_chains_seed),
+                "insert_chains_seed is of wrong size"
+            ),
+        ),
+        "cannot generate random findex master key"
+    );
+
+    ffi_write_bytes!(
+        "search results",
+        token.to_string().as_bytes(),
+        token_ptr,
+        token_len
+    );
+
+    0
 }
 
 /// Helper to merge the cloud and non-cloud implementations
