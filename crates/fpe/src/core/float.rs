@@ -1,7 +1,7 @@
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 
-use crate::{AnoError, Integer};
+use crate::core::{AnoError, Integer};
 
 /// Struct representing a floating point number.
 pub struct Float {
@@ -41,8 +41,8 @@ impl Float {
         // Convert the encrypted BigUint to u64
         let num_bits = ciphertext.to_u64().ok_or_else(|| {
             AnoError::FPE(format!(
-                "Failed converting the ciphertext value: {}, to a number of bits as an u64",
-                ciphertext
+                "Failed converting the ciphertext value: {ciphertext}, to a number of bits as an \
+                 u64"
             ))
         })?;
         // Convert the u64 to f64
@@ -69,8 +69,8 @@ impl Float {
         // Convert the decrypted BigUint to u64
         let num_bits = ciphertext.to_u64().ok_or_else(|| {
             AnoError::FPE(format!(
-                "Failed converting the ciphertext value: {}, to a number of bits as an u64",
-                ciphertext
+                "Failed converting the ciphertext value: {ciphertext}, to a number of bits as an \
+                 u64"
             ))
         })?;
         Ok(f64::from_bits(num_bits))

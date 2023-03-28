@@ -1,29 +1,22 @@
-# Cosmian Cloudproof Data Protection Library
+# Format Preserving Encryption
 
-This library provides multiple data protection techniques for use in a zero-trust environment. The techniques range from simple, less secure modifications of plaintext to quantum-resistant encryption for the best protection.
-
-The primitives offered, from least to most secure, are:
-
-- Aggregation: replaces data with a numerical interval
-- Differential privacy: adds noise to numerical data
-- Format preserving encryption: encryption that preserves the format of the plaintext
-- Hashing: deterministic hashing of a value
-- CoverCrypt: post-quantum encryption with embedded access policies
+This library provides `Format Preserving Encryption` (FPE) techniques for use in a zero-trust environment. These techniques are based on FPE-FF1 which is described in [NIST:800-38G](https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-38g.pdf).
 
 <!-- toc -->
 
 - [Format Preserving Encryption (FPE)](#format-preserving-encryption-fpe)
-  - [Implementation](#implementation)
-  - [Using FPE](#using-fpe)
-    - [Encrypting Text](#encrypting-text)
+  * [Implementation](#implementation)
+  * [Using FPE](#using-fpe)
+    + [Encrypting Text](#encrypting-text)
       - [Encrypting and decrypting an alphanumeric text](#encrypting-and-decrypting-an-alphanumeric-text)
       - [Encrypting and decrypting a credit card number](#encrypting-and-decrypting-a-credit-card-number)
       - [Encrypting and decrypting a Chinese text with spaces](#encrypting-and-decrypting-a-chinese-text-with-spaces)
-    - [Encrypting Integers](#encrypting-integers)
-    - [Encrypting Floats](#encrypting-floats)
+    + [Encrypting Integers](#encrypting-integers)
+    + [Encrypting Floats](#encrypting-floats)
+    + [Tweaks](#tweaks)
 - [Benchmarks](#benchmarks)
-  - [Run quick start](#run-quick-start)
-  - [Run detailed report (Linux, MacOS)](#run-detailed-report-linux-macos)
+  * [Run quick start](#run-quick-start)
+  * [Run detailed report (Linux, MacOS)](#run-detailed-report-linux-macos)
 
 <!-- tocstop -->
 
@@ -40,7 +33,7 @@ The code is based on the `cosmian_fpe` directory found on [GitHub](https://githu
 The implementation also enforces the requirement that `radix^min_len > 1_000_000`. For the `Alphabet` and `Integer` FPE facilities, this requirement is met with the following parameters:
 
 | radix | example alphabet    | min text len |
-| ----- | ------------------- | ------------ |
+|-------|---------------------|--------------|
 | 2     | "01"                | 20           |
 | 10    | "01234567890"       | 6            |
 | 16    | "01234567890abcdef" | 5            |
@@ -207,6 +200,10 @@ assert_eq!(1.170438892319619e91_f64, ciphertext);
 let plaintext = flt.decrypt(&key, tweak, ciphertext).unwrap();
 assert_eq!(123_456.789_f64, plaintext);
 ```
+
+#### Tweaks
+
+`Tweaks` are public parameters that should vary with each instance of the encryption whenever possible. `Tweaks` are described in [NIST:800-38G: Appendix C](https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-38g.pdf). There is no size limit for the `tweak`.
 
 ## Benchmarks
 

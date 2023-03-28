@@ -4,8 +4,7 @@ use rand::{thread_rng, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use rand_distr::Alphanumeric;
 
-use super::{Float, Integer, KEY_LENGTH};
-use crate::{error::AnoError, Alphabet};
+use crate::core::{error::AnoError, Alphabet, Float, Integer, KEY_LENGTH};
 
 /// Generate a random key using a cryptographically
 /// secure random number generator that is suitable for use with FPE
@@ -102,17 +101,17 @@ fn test_readme_examples() -> Result<(), AnoError> {
         let key = [0_u8; 32];
         let tweak = b"unique tweak";
 
-        // decimal number with digits 0-9
-        let radix = 10_u32;
+        // hexadecimal number with digits 0-9
+        let radix = 16_u32;
         // the number of digits of the greatest number = radix^digits -1
-        // In this case 6 decimal digits -> 999_999
+        // In this case 6 decimal digits -> 16_777_215
         let digits = 6;
 
         let itg = Integer::instantiate(radix, digits).unwrap();
         let ciphertext = itg.encrypt(&key, tweak, 123_456_u64).unwrap();
         let plaintext = itg.decrypt(&key, tweak, ciphertext).unwrap();
 
-        assert_eq!(110_655_u64, ciphertext);
+        assert_eq!(1_687_131_u64, ciphertext);
         assert_eq!(123_456_u64, plaintext);
     }
 
