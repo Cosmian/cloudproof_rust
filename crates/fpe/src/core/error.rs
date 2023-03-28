@@ -17,7 +17,7 @@ impl From<std::num::TryFromIntError> for AnoError {
 impl Display for AnoError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Generic(err) => write!(f, "Anonymisation error: {err}"),
+            Self::Generic(err) => write!(f, "Anonymization error: {err}"),
             Self::FPE(err) => write!(f, "FPE error: {err}"),
             Self::KeySize(given, expected) => {
                 write!(f, "Invalid key size {given}, expected: {expected}")
@@ -34,7 +34,7 @@ impl Display for AnoError {
 macro_rules! ano_ensure {
     ($cond:expr, $msg:literal $(,)?) => {
         if !$cond {
-            return ::core::result::Result::Err($crate::error::AnoError::Generic($msg.to_owned()));
+            return ::core::result::Result::Err($crate::core::error::AnoError::Generic($msg.to_owned()));
         }
     };
     ($cond:expr, $err:expr $(,)?) => {
@@ -44,7 +44,7 @@ macro_rules! ano_ensure {
     };
     ($cond:expr, $fmt:expr, $($arg:tt)*) => {
         if !$cond {
-            return ::core::result::Result::Err($crate::error::AnoError::Generic(format!($fmt, $($arg)*)));
+            return ::core::result::Result::Err($crate::core::error::AnoError::Generic(format!($fmt, $($arg)*)));
         }
     };
 }
@@ -67,12 +67,12 @@ macro_rules! ano_error {
 #[macro_export]
 macro_rules! ano_bail {
     ($msg:literal $(,)?) => {
-        return ::core::result::Result::Err($crate::error::AnoError::Generic($msg.to_owned()))
+        return ::core::result::Result::Err($crate::core::error::AnoError::Generic($msg.to_owned()))
     };
     ($err:expr $(,)?) => {
         return ::core::result::Result::Err($err)
     };
     ($fmt:expr, $($arg:tt)*) => {
-        return ::core::result::Result::Err($crate::error::AnoError::Generic(format!($fmt, $($arg)*)))
+        return ::core::result::Result::Err($crate::core::error::AnoError::Generic(format!($fmt, $($arg)*)))
     };
 }

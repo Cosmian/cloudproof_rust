@@ -1,4 +1,4 @@
-use cloudproof_fpe::{Alphabet, Float, Integer, KEY_LENGTH};
+use cloudproof_fpe::core::{Alphabet, Float, Integer, KEY_LENGTH};
 use criterion::{criterion_group, criterion_main, Criterion};
 use num_bigint::BigUint;
 use rand::{RngCore, SeedableRng};

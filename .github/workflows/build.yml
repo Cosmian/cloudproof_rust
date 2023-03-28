@@ -4,7 +4,7 @@ name: Cloudproof build
 on:
   push:
     tags:
-      - "*"
+      - '*'
   pull_request:
 
 jobs:

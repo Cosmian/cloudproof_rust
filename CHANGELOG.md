@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2023-03-30
+
+### Features
+
+- Expose FPE-FF1 in FFI, Wasm and Pyo3 interfaces
+
 ## [1.0.1] - 2023-03-08
 
 ### Features

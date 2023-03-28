@@ -9,7 +9,12 @@ jobs:
     with:
       toolchain: nightly-2023-03-20
 
-  dry-publish:
+  cargo-doc:
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-doc.yml@develop
+    with:
+      toolchain: nightly-2023-03-20
+
+  test_and_dry_publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -35,14 +40,9 @@ jobs:
         if: steps.cache-primes.outputs.cache-hit != 'true'
         run: cargo install --locked cargo-semver-checks || true
 
-      - name: Verify semver integrity
+      - name: Run python tests
         run: |
-          pushd crates/cover_crypt
-          cargo semver-checks check-release
-          popd
-          pushd crates/findex
-          cargo semver-checks check-release
-          popd
+          bash scripts/test_python.sh
 
       - name: Publishing - dry run
         run: |
@@ -51,4 +51,19 @@ jobs:
           popd
           pushd crates/findex
           cargo publish --dry-run
+          popd
+          pushd crates/fpe
+          cargo publish --dry-run
+          popd
+
+      - name: Verify semver integrity
+        run: |
+          pushd crates/cover_crypt
+          cargo semver-checks check-release
+          popd
+          pushd crates/findex
+          cargo semver-checks check-release
+          popd
+          pushd crates/fpe
+          cargo semver-checks check-release
           popd
