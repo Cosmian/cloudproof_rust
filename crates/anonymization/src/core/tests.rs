@@ -7,16 +7,17 @@ fn test_hash_sha2() -> Result<(), AnoError> {
         salt: None,
     };
     let sha2_hash = hasher.apply(b"test sha2")?;
-
-    println!("sha256: {sha2_hash}");
+    assert_eq!(sha2_hash, "Px0txVYqBePXWF5K4xFn0Pa2mhnYA/jfsLtpIF70vJ8=");
 
     let hasher = Hasher {
         method: HashMethod::SHA2,
         salt: Some(b"example salt".to_vec()),
     };
     let sha2_hash_salt = hasher.apply(b"test sha2")?;
-
-    println!("sha256 salt: {sha2_hash_salt}");
+    assert_eq!(
+        sha2_hash_salt,
+        "d32KiG7kpZoaU2/Rqa+gbtaxDIKRA32nIxwhOXCaH1o="
+    );
 
     Ok(())
 }
@@ -37,7 +38,7 @@ fn test_hash_sha3() -> Result<(), AnoError> {
     let sha3_hash_salt = hasher.apply(b"test sha3")?;
     assert_eq!(
         sha3_hash_salt,
-        "vRGxYwLBdNvV8pNyY+2fSdCmCLIz2MnVEOPs5uJX3H4="
+        "UBtIW7mX+cfdh3T3aPl/l465dBUbgKKZvMjZNNjwQ50="
     );
 
     Ok(())

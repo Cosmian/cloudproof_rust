@@ -1,5 +1,6 @@
 use argon2::Argon2;
 use base64::{engine::general_purpose, Engine as _};
+use sha2::{Digest, Sha256};
 use tiny_keccak::{Hasher as _, Sha3};
 
 use crate::{ano_error, core::AnoError};
@@ -18,22 +19,24 @@ pub struct Hasher {
 impl Hasher {
     pub fn apply(&self, data: &[u8]) -> Result<String, AnoError> {
         match self.method {
-            HashMethod::SHA2 => match &self.salt {
-                Some(salt_val) => {
-                    let mut salted_data = salt_val.clone();
-                    salted_data.extend(data);
-                    Ok(sha256::digest(salted_data.as_slice()))
-                }
-                None => Ok(sha256::digest(data)),
-            },
-            HashMethod::SHA3 => {
-                let mut hasher = Sha3::v256();
-                let mut output = [0u8; 32];
-                hasher.update(data);
+            HashMethod::SHA2 => {
+                let mut hasher = Sha256::new();
+
                 if let Some(salt_val) = &self.salt {
                     hasher.update(salt_val);
                 }
+                hasher.update(data);
 
+                Ok(general_purpose::STANDARD.encode(hasher.finalize()))
+            }
+            HashMethod::SHA3 => {
+                let mut hasher = Sha3::v256();
+
+                let mut output = [0u8; 32];
+                if let Some(salt_val) = &self.salt {
+                    hasher.update(salt_val);
+                }
+                hasher.update(data);
                 hasher.finalize(&mut output);
 
                 Ok(general_purpose::STANDARD.encode(output))
