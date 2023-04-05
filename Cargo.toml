@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "crates/anonymization",
   "crates/cloudproof",
   "crates/cover_crypt",
   "crates/ffi_utils",
