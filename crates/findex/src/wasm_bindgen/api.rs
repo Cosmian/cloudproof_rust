@@ -23,7 +23,7 @@ use crate::{
     MAX_RESULTS_PER_KEYWORD,
 };
 
-/// See [`FindexSearch::search()`](crate::core::FindexSearch::search).
+/// See [`FindexSearch::search()`](cosmian_findex::FindexSearch::search).
 ///
 /// # Parameters
 ///
@@ -93,7 +93,7 @@ pub async fn webassembly_search(
     search_results_to_js(&results)
 }
 
-/// See [`FindexUpsert::upsert()`](crate::core::FindexUpsert::upsert).
+/// See [`FindexUpsert::upsert()`](cosmian_findex::FindexUpsert::upsert).
 ///
 /// # Parameters
 ///
@@ -133,7 +133,7 @@ pub async fn webassembly_upsert(
         .map_err(|e| JsValue::from(format!("During Findex upsert: {e}")))
 }
 
-/// See [`FindexSearch::search()`](crate::core::FindexSearch::search).
+/// See [`FindexSearch::search()`](cosmian_findex::FindexSearch::search).
 ///
 /// # Parameters
 ///
@@ -197,7 +197,7 @@ pub async fn webassembly_search_cloud(
     search_results_to_js(&results)
 }
 
-/// See [`FindexUpsert::upsert()`](crate::core::FindexUpsert::upsert).
+/// See [`FindexUpsert::upsert()`](cosmian_findex::FindexUpsert::upsert).
 ///
 /// # Parameters
 ///

@@ -8,8 +8,8 @@ mod types;
 
 pub use types::*;
 
-/// Implements [`FindexSearch`](crate::core::FindexSearch) and
-/// [`FindexUpsert`](crate::core::FindexUpsert).
+/// Implements [`FindexSearch`](cosmian_findex::FindexSearch) and
+/// [`FindexUpsert`](cosmian_findex::FindexUpsert).
 pub struct FindexUser {
     pub(crate) progress: Option<Progress>,
     pub(crate) fetch_entry: Option<Fetch>,

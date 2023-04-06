@@ -4,7 +4,8 @@ use aes::Aes256;
 use fpe::ff1::{FF1h, FlexibleNumeralString};
 use itertools::Itertools;
 
-use crate::{ano_ensure, AnoError, KEY_LENGTH};
+use super::AnoError;
+use crate::{ano_ensure, core::KEY_LENGTH};
 
 /// The recommended threshold according to NIST standards
 pub const RECOMMENDED_THRESHOLD: usize = 1_000_000;
@@ -244,7 +245,7 @@ impl Alphabet {
     /// # Examples
     ///
     /// ```
-    /// use cloudproof_fpe::Alphabet;
+    /// use cloudproof_fpe::core::Alphabet;
     ///
     /// let alphabet = Alphabet::try_from("abcdefghijklmnopqrstuvwxyz").unwrap();
     /// let alphabet = Alphabet::alpha_lower(); //same as above
@@ -294,7 +295,7 @@ impl Alphabet {
     /// # Examples
     ///
     /// ```
-    /// use cloudproof_fpe::Alphabet;
+    /// use cloudproof_fpe::core::Alphabet;
     ///
     /// let alphabet = Alphabet::try_from("abcdefghijklmnopqrstuvwxyz").unwrap();
     /// let alphabet = Alphabet::alpha_lower(); //same as above

@@ -14,3 +14,9 @@ pub use cloudproof_findex::ffi as findex_ffi;
 pub use cloudproof_findex::pyo3 as findex_python;
 #[cfg(feature = "wasm_bindgen")]
 pub use cloudproof_findex::wasm_bindgen as findex_wasm_bindgen;
+#[cfg(feature = "ffi")]
+pub use cloudproof_fpe::ffi as fpe_ffi;
+#[cfg(feature = "python")]
+pub use cloudproof_fpe::pyo3 as fpe_python;
+#[cfg(feature = "wasm_bindgen")]
+pub use cloudproof_fpe::wasm_bindgen as fpe_wasm_bindgen;

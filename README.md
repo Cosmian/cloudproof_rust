@@ -25,16 +25,16 @@ The Cloudproof Rust repository provides these interfaces such as FFI, WebAssembl
 - [Licensing](#licensing)
 - [Cryptographic primitives](#cryptographic-primitives)
 - [Building and testing](#building-and-testing)
-  - [Building the library for `cloudproof_java`](#building-the-library-for-cloudproof_java)
-  - [Building the library for `cloudproof_flutter`](#building-the-library-for-cloudproof_flutter)
-  - [Build the library for `cloudproof_js`](#build-the-library-for-cloudproof_js)
-  - [Build the library for `cloudproof_python`](#build-the-library-for-cloudproof_python)
-  - [Building the library for a different glibc](#building-the-library-for-a-different-glibc)
+  * [Building the library for `cloudproof_java`](#building-the-library-for-cloudproof_java)
+  * [Building the library for `cloudproof_flutter`](#building-the-library-for-cloudproof_flutter)
+  * [Build the library for `cloudproof_js`](#build-the-library-for-cloudproof_js)
+  * [Build the library for `cloudproof_python`](#build-the-library-for-cloudproof_python)
+  * [Building the library for a different glibc](#building-the-library-for-a-different-glibc)
 - [Benchmarks](#benchmarks)
 - [Documentation](#documentation)
-  - [CoverCrypt](#covercrypt)
-  - [Findex](#findex)
-  - [Format Preserving Encryption](#format-preserving-encryption)
+  * [CoverCrypt](#covercrypt)
+  * [Findex](#findex)
+  * [Format Preserving Encryption](#format-preserving-encryption)
 - [Releases](#releases)
 
 <!-- tocstop -->
@@ -55,7 +55,7 @@ policies over these attributes. `CoverCrypt` offers Post-Quantum resistance.
 an untrusted cloud server. Thanks to its encrypted indexes, large databases can
 securely be outsourced without compromising usability.
 
-- [This FPE library](./crates/fpe/README.md) provides multiple data protection techniques for use in a zero-trust environment. The techniques range from simple, less secure modifications of plaintext to quantum-resistant encryption for the best protection.
+- [FPE](./crates/fpe/README.md) provides `Format Preserving Encryption` (FPE) techniques for use in a zero-trust environment. These techniques are based on FPE-FF1 which is described in [NIST:800-38G](https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-38g.pdf).
 
 ## Building and testing
 
@@ -136,8 +136,9 @@ Go to the [build](build/glibc-2.17/) directory for an example on how to build fo
 
 The benchmarks presented in this section are run on a Intel(R) Xeon(R) Platinum 8171M CPU @ 2.60GHz.
 
-- [CoverCrypt classic implementation](https://github.com/Cosmian/cover_crypt/blob/main/benches/BENCHMARKS_classic.md)
-- [CoverCrypt post-quantum implementation](https://github.com/Cosmian/cover_crypt/blob/main/benches/BENCHMARKS_hybridized.md)
+- [CoverCrypt classic](https://github.com/Cosmian/cover_crypt/blob/main/benches/BENCHMARKS_classic.md)
+- [CoverCrypt post-quantum](https://github.com/Cosmian/cover_crypt/blob/main/benches/BENCHMARKS_hybridized.md)
+- [Findex](https://github.com/Cosmian/findex/blob/develop/benches/BENCHMARKS.md)
 - [FPE](./crates/fpe/benches/BENCHMARKS.md)
 
 ## Documentation

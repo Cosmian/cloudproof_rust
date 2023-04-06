@@ -2,7 +2,7 @@
 
 use std::ffi::{c_int, c_uchar, c_uint};
 
-/// See [`FindexCallbacks::progress()`](crate::core::FindexCallbacks::progress).
+/// See [`FindexCallbacks::progress()`](cosmian_findex::FindexCallbacks::progress).
 ///
 /// # Serialization
 ///
@@ -32,7 +32,7 @@ pub type ProgressCallback = extern "C" fn(
     intermediate_results_len: c_uint,
 ) -> c_int;
 
-/// See [`FindexCallbacks::fetch_all_entry_table_uids()`](crate::core::FindexCallbacks::fetch_all_entry_table_uids).
+/// See [`FindexCallbacks::fetch_all_entry_table_uids()`](cosmian_findex::FindexCallbacks::fetch_all_entry_table_uids).
 ///
 /// The output should be deserialized as follows:
 ///
@@ -40,7 +40,7 @@ pub type ProgressCallback = extern "C" fn(
 pub type FetchAllEntryTableUidsCallback =
     extern "C" fn(uids_ptr: *mut c_uchar, uids_len: *mut c_uint) -> c_int;
 
-/// See [`FindexCallbacks::fetch_entry_table()`](crate::core::FindexCallbacks::fetch_entry_table).
+/// See [`FindexCallbacks::fetch_entry_table()`](cosmian_findex::FindexCallbacks::fetch_entry_table).
 ///
 /// # Serialization
 ///
@@ -58,7 +58,7 @@ pub type FetchEntryTableCallback = extern "C" fn(
     uids_len: c_uint,
 ) -> c_int;
 
-/// See [`FindexCallbacks::fetch_chain_table()`](crate::core::FindexCallbacks::fetch_chain_table).
+/// See [`FindexCallbacks::fetch_chain_table()`](cosmian_findex::FindexCallbacks::fetch_chain_table).
 ///
 /// # Serialization
 ///
@@ -76,7 +76,7 @@ pub type FetchChainTableCallback = extern "C" fn(
     uids_len: c_uint,
 ) -> c_int;
 
-/// See [`FindexCallbacks::upsert_entry_table()`](crate::core::FindexCallbacks::upsert_entry_table).
+/// See [`FindexCallbacks::upsert_entry_table()`](cosmian_findex::FindexCallbacks::upsert_entry_table).
 ///
 /// # Serialization
 ///
@@ -97,7 +97,7 @@ pub type UpsertEntryTableCallback = extern "C" fn(
     entries_len: c_uint,
 ) -> c_int;
 
-/// See [`FindexCallbacks::insert_chain_table()`](crate::core::FindexCallbacks::insert_chain_table).
+/// See [`FindexCallbacks::insert_chain_table()`](cosmian_findex::FindexCallbacks::insert_chain_table).
 ///
 /// # Serialization
 ///
@@ -107,7 +107,7 @@ pub type UpsertEntryTableCallback = extern "C" fn(
 pub type InsertChainTableCallback =
     extern "C" fn(chains_ptr: *const c_uchar, chains_len: c_uint) -> c_int;
 
-/// See [`FindexCallbacks::update_lines()`](crate::core::FindexCallbacks::update_lines).
+/// See [`FindexCallbacks::update_lines()`](cosmian_findex::FindexCallbacks::update_lines).
 ///
 /// # Serialization
 ///
@@ -128,7 +128,7 @@ pub type UpdateLinesCallback = extern "C" fn(
 ) -> c_int;
 
 /// See
-/// [`FindexCallbacks::list_removed_locations()`](crate::core::FindexCallbacks::list_removed_locations).
+/// [`FindexCallbacks::list_removed_locations()`](cosmian_findex::FindexCallbacks::list_removed_locations).
 ///
 /// # Serialization
 ///
