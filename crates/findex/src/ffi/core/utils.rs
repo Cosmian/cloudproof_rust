@@ -18,9 +18,8 @@ macro_rules! unwrap_callback {
         $findex
             .$callback
             .as_ref()
-            .ok_or_else(|| FindexFfiError::CallbackErrorCode {
-                name: $callback_name.to_string(),
-                code: ErrorCode::MissingCallback as i32,
+            .ok_or_else(|| FindexFfiError::CallbackNotImplemented {
+                callback_name: $callback_name,
             })?
     };
 }
@@ -119,8 +118,8 @@ pub fn fetch_callback(
     }
 
     if error_code != ErrorCode::Success as i32 {
-        return Err(FindexFfiError::CallbackErrorCode {
-            name: debug_name.to_string(),
+        return Err(FindexFfiError::UserCallbackErrorCode {
+            callback_name: debug_name,
             code: error_code,
         });
     }

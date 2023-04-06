@@ -32,7 +32,7 @@ use crate::{
             FindexUser, InsertChainTableCallback, ListRemovedLocationsCallback, ProgressCallback,
             UpdateLinesCallback, UpsertEntryTableCallback,
         },
-        ErrorCode, FindexFfiError, MAX_DEPTH,
+        MAX_DEPTH,
     },
     ser_de::serialize_set,
     MAX_RESULTS_PER_KEYWORD,
@@ -248,13 +248,10 @@ pub unsafe extern "C" fn h_compact(
         u32::try_from(num_reindexing_before_full_set)
             .ok()
             .and_then(NonZeroU32::new)
-            .ok_or_else(|| FindexFfiError::CallbackErrorCode {
-                name: format!(
-                    "num_reindexing_before_full_set ({num_reindexing_before_full_set}) should be \
-                     a non-zero positive integer."
-                ),
-                code: ErrorCode::BufferTooSmall as i32,
-            }),
+            .ok_or_else(|| format!(
+                "num_reindexing_before_full_set ({num_reindexing_before_full_set}) should be a \
+                 non-zero positive integer."
+            )),
         "error converting num_reindexing_before_full_set"
     );
 
