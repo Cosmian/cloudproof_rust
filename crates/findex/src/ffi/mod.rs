@@ -2,6 +2,8 @@
 
 use ::core::{fmt::Display, num::TryFromIntError};
 
+use self::error::ToErrorCode;
+
 /// Maximum number of bytes used by a LEB128 encoding.
 const LEB128_MAXIMUM_ENCODED_BYTES_NUMBER: usize = 8;
 
@@ -82,6 +84,17 @@ pub enum FindexFfiError {
     },
 }
 
+impl ToErrorCode for FindexFfiError {
+    fn to_error_code(&self) -> i32 {
+        match self {
+            Self::ConversionError(_) => 1,
+            Self::UserCallbackErrorCode { code, .. } => *code,
+            Self::WrappingCallbackSerDeError { .. } => ErrorCode::SerializationError as i32,
+            Self::CallbackNotImplemented { .. } => ErrorCode::MissingCallback as i32,
+        }
+    }
+}
+
 impl From<TryFromIntError> for FindexFfiError {
     fn from(e: TryFromIntError) -> Self {
         Self::ConversionError(e)
@@ -117,3 +130,4 @@ impl cosmian_findex::CallbackError for FindexFfiError {}
 
 pub mod api;
 pub mod core;
+pub mod error;

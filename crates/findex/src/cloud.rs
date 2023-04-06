@@ -71,6 +71,9 @@ pub enum FindexCloudError {
     },
 }
 
+#[cfg(feature = "ffi")]
+impl crate::ffi::error::ToErrorCode for FindexCloudError {}
+
 impl Display for FindexCloudError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

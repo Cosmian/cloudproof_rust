@@ -4,7 +4,7 @@ name: Cloudproof build
 on:
   push:
     tags:
-      - '*'
+      - "*"
   pull_request:
 
 jobs:
@@ -16,6 +16,6 @@ jobs:
       kms-version: 4.3.3
       branch-java: develop
       branch-js: develop
-      branch-flutter: develop
-      branch-python: develop
+      branch-flutter: fix_errors
+      branch-python: upgrade_findex_for_ci
     secrets: inherit

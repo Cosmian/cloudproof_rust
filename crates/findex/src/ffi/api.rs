@@ -19,10 +19,11 @@ use cosmian_findex::{
         DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
         MASTER_KEY_LENGTH, SECURE_FETCH_CHAINS_BATCH_SIZE, TABLE_WIDTH, UID_LENGTH,
     },
-    CallbackError, FindexCompact, FindexSearch, FindexUpsert, IndexedValue, KeyingMaterial,
-    Keyword, Label,
+    CallbackError, Error as FindexError, FindexCompact, FindexSearch, FindexUpsert, IndexedValue,
+    KeyingMaterial, Keyword, Label,
 };
 
+use super::error::ToErrorCode;
 #[cfg(feature = "cloud")]
 use crate::cloud::{FindexCloud, Token};
 use crate::{
@@ -526,7 +527,7 @@ pub unsafe extern "C" fn h_generate_new_token(
 /// Cannot be safe since using FFI.
 #[allow(clippy::too_many_arguments)]
 pub unsafe fn ffi_search<
-    Error: std::error::Error + CallbackError,
+    Error: std::error::Error + CallbackError + ToErrorCode,
     T: FindexSearch<
             UID_LENGTH,
             BLOCK_LENGTH,
@@ -602,6 +603,10 @@ pub unsafe fn ffi_search<
         0,
     )) {
         Ok(results) => results,
+        Err(FindexError::Callback(e)) => {
+            set_last_error(FfiError::Generic(e.to_string()));
+            return e.to_error_code();
+        }
         Err(e) => {
             set_last_error(FfiError::Generic(e.to_string()));
             return 1;
@@ -646,7 +651,7 @@ pub unsafe fn ffi_search<
 ///
 /// Cannot be safe since using FFI.
 unsafe extern "C" fn ffi_upsert<
-    Error: std::error::Error + CallbackError,
+    Error: std::error::Error + CallbackError + ToErrorCode,
     T: FindexUpsert<
             UID_LENGTH,
             BLOCK_LENGTH,
@@ -713,6 +718,10 @@ unsafe extern "C" fn ffi_upsert<
     // do error management client side.
     match rt.block_on(findex.upsert(indexed_values_and_keywords, master_key, &label)) {
         Ok(_) => 0,
+        Err(FindexError::Callback(e)) => {
+            set_last_error(FfiError::Generic(e.to_string()));
+            e.to_error_code()
+        }
         Err(e) => {
             set_last_error(FfiError::Generic(e.to_string()));
             1
