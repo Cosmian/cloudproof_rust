@@ -22,7 +22,7 @@ impl Hasher {
             HashMethod::SHA2 => {
                 let mut hasher = Sha256::new();
 
-                if let Some(salt_val) = &self.salt {
+                if let Some(salt_val) = self.salt.as_deref() {
                     hasher.update(salt_val);
                 }
                 hasher.update(data);
@@ -33,7 +33,7 @@ impl Hasher {
                 let mut hasher = Sha3::v256();
 
                 let mut output = [0u8; 32];
-                if let Some(salt_val) = &self.salt {
+                if let Some(salt_val) = self.salt.as_deref() {
                     hasher.update(salt_val);
                 }
                 hasher.update(data);

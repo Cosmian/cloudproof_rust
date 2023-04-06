@@ -11,6 +11,11 @@ impl From<std::convert::Infallible> for AnoError {
         Self::ConversionError(value.to_string())
     }
 }
+impl From<rand_distr::NormalError> for AnoError {
+    fn from(value: rand_distr::NormalError) -> Self {
+        Self::Generic(value.to_string())
+    }
+}
 impl From<argon2::Error> for AnoError {
     fn from(value: argon2::Error) -> Self {
         Self::Generic(value.to_string())

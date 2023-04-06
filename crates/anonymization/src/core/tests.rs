@@ -1,4 +1,4 @@
-use crate::core::{AnoError, HashMethod, Hasher};
+use crate::core::{AnoError, HashMethod, Hasher, NoiseGenerator, NoiseMethod};
 
 #[test]
 fn test_hash_sha2() -> Result<(), AnoError> {
@@ -60,6 +60,30 @@ fn test_hash_argon2() -> Result<(), AnoError> {
 
     let res = hasher.apply(b"low entropy data");
     assert!(res.is_err());
+
+    Ok(())
+}
+
+#[test]
+fn test_noise_gaussian_f64() -> Result<(), AnoError> {
+    let gaussian_noise_generator = NoiseGenerator::new(NoiseMethod::new_gaussian(), 10.0)?;
+    let (lower_bound, upper_bound) = (40.0, 44.0);
+    let noisy_data =
+        gaussian_noise_generator.apply_on_float(42.0, Some(lower_bound), Some(upper_bound))?;
+
+    assert!(noisy_data >= lower_bound && noisy_data <= upper_bound);
+
+    Ok(())
+}
+
+#[test]
+fn test_noise_laplace_f64() -> Result<(), AnoError> {
+    let laplace_noise_generator = NoiseGenerator::new(NoiseMethod::new_laplace(), 10.0)?;
+    let (lower_bound, upper_bound) = (40.0, 44.0);
+    let noisy_data =
+        laplace_noise_generator.apply_on_float(42.0, Some(lower_bound), Some(upper_bound))?;
+
+    assert!(noisy_data >= lower_bound && noisy_data <= upper_bound);
 
     Ok(())
 }

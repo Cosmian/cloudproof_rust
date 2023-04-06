@@ -24,6 +24,8 @@ base64 = "0.21"
 cosmian_ffi_utils = { version = "0.1.0", optional = true }
 js-sys = { workspace = true, optional = true }
 pyo3 = { workspace = true, features = ["extension-module"], optional = true }
+rand = "0.8"
+rand_distr = "0.4"
 sha2 = "0.10"
 tiny-keccak = { version = "2.0.0", features = ["sha3"] }
 wasm-bindgen = { workspace = true, optional = true }
