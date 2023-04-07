@@ -1,5 +1,6 @@
 use chrono::{DateTime, TimeZone, Utc};
-use rand::{thread_rng, Rng};
+use cosmian_crypto_core::CsRng;
+use rand::{Rng, SeedableRng};
 use rand_distr::{num_traits::Float, Distribution, Standard, StandardNormal};
 
 use crate::{ano_error, core::AnoError};
@@ -80,7 +81,7 @@ where
         lower_bound_opt: Option<N>,
         upper_bound_opt: Option<N>,
     ) -> Result<N, AnoError> {
-        let mut rng = thread_rng();
+        let mut rng = CsRng::from_entropy();
 
         // Sample noise once with std_deviation = 1
         let noise = match &self.method {

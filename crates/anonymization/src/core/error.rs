@@ -26,6 +26,11 @@ impl From<rand_distr::NormalError> for AnoError {
         Self::Generic(value.to_string())
     }
 }
+impl From<rand::Error> for AnoError {
+    fn from(value: rand::Error) -> Self {
+        Self::Generic(value.to_string())
+    }
+}
 impl From<argon2::Error> for AnoError {
     fn from(value: argon2::Error) -> Self {
         Self::Generic(value.to_string())
