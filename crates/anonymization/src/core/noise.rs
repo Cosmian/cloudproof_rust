@@ -1,3 +1,4 @@
+use chrono::{DateTime, TimeZone, Utc};
 use rand::{thread_rng, Rng};
 use rand_distr::{num_traits::Float, Distribution, Standard, StandardNormal};
 
@@ -56,7 +57,7 @@ where
 
 impl<N> NoiseGenerator<N>
 where
-    N: Float + std::convert::From<i32>,
+    N: Float,
     Standard: Distribution<N>,
     StandardNormal: Distribution<N>,
 {
@@ -112,20 +113,50 @@ where
 
         Ok(data + standard_deviation * noise)
     }
-
+}
+impl NoiseGenerator<f64> {
     pub fn apply_on_int(
         &self,
-        data: i32,
-        lower_bound_opt: Option<i32>,
-        upper_bound_opt: Option<i32>,
-    ) -> Result<i32, AnoError> {
+        data: i64,
+        lower_bound_opt: Option<i64>,
+        upper_bound_opt: Option<i64>,
+    ) -> Result<i64, AnoError> {
         let res = self.apply_on_float(
-            N::try_from(data)?,
-            lower_bound_opt.and_then(|i| N::try_from(i).ok()),
-            upper_bound_opt.and_then(|i| N::try_from(i).ok()),
+            data as f64,
+            lower_bound_opt.map(|i| i as f64),
+            upper_bound_opt.map(|i| i as f64),
         )?;
-        res.round()
-            .to_i32()
-            .ok_or(ano_error!("Failed to convert noise result to Integer"))
+        Ok(res.round() as i64)
+    }
+
+    pub fn apply_on_date(
+        &self,
+        date_str: &str,
+        lower_bound_opt: Option<&str>,
+        upper_bound_opt: Option<&str>,
+    ) -> Result<String, AnoError> {
+        let date_unix = DateTime::parse_from_rfc3339(date_str)?
+            .with_timezone(&Utc)
+            .timestamp();
+        let lower_bound_date =
+            lower_bound_opt.and_then(|date_str| DateTime::parse_from_rfc3339(date_str).ok());
+        let upper_bound_date =
+            upper_bound_opt.and_then(|date_str| DateTime::parse_from_rfc3339(date_str).ok());
+
+        let noisy_date_unix = self.apply_on_int(
+            date_unix,
+            lower_bound_date.map(|date| date.with_timezone(&Utc).timestamp()),
+            upper_bound_date.map(|date| date.with_timezone(&Utc).timestamp()),
+        )?;
+        match Utc.timestamp_opt(noisy_date_unix, 0) {
+            chrono::LocalResult::None => {
+                Err(ano_error!("Could not apply noise on date `{}`.", date_str))
+            }
+            chrono::LocalResult::Single(date) => Ok(date.to_rfc3339()),
+            chrono::LocalResult::Ambiguous(_, _) => Err(ano_error!(
+                "Applying noise on date `{}` lead to ambiguous result.",
+                date_str
+            )),
+        }
     }
 }

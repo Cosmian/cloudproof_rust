@@ -1,3 +1,5 @@
+use chrono::{DateTime, Datelike, Duration, Utc};
+
 use crate::core::{AnoError, HashMethod, Hasher, NoiseGenerator, NoiseMethod};
 
 #[test]
@@ -89,7 +91,7 @@ fn test_noise_laplace_f64() -> Result<(), AnoError> {
 }
 
 #[test]
-fn test_noise_gaussian_i32() -> Result<(), AnoError> {
+fn test_noise_gaussian_i64() -> Result<(), AnoError> {
     let gaussian_noise_generator = NoiseGenerator::new(NoiseMethod::new_gaussian(), 10.0)?;
     let (lower_bound, upper_bound) = (40, 44);
     let noisy_data =
@@ -101,7 +103,7 @@ fn test_noise_gaussian_i32() -> Result<(), AnoError> {
 }
 
 #[test]
-fn test_noise_laplace_i32() -> Result<(), AnoError> {
+fn test_noise_laplace_i64() -> Result<(), AnoError> {
     let laplace_noise_generator = NoiseGenerator::new(NoiseMethod::new_laplace(), 10.0)?;
     let (lower_bound, upper_bound) = (40, 44);
     let noisy_data =
@@ -109,5 +111,39 @@ fn test_noise_laplace_i32() -> Result<(), AnoError> {
 
     assert!(noisy_data >= lower_bound && noisy_data <= upper_bound);
 
+    Ok(())
+}
+
+#[test]
+fn test_noise_gaussian_date() -> Result<(), AnoError> {
+    let std_deviation = Duration::days(10).num_seconds() as f64;
+    let gaussian_noise_generator = NoiseGenerator::new(NoiseMethod::new_gaussian(), std_deviation)?;
+    let noisy_date = gaussian_noise_generator.apply_on_date(
+        "2023-04-07T12:34:56Z",
+        Some("2023-04-07T00:00:00Z"),
+        Some("2023-04-07T23:59:59Z"),
+    )?;
+    let date = DateTime::parse_from_rfc3339(&noisy_date)?.with_timezone(&Utc);
+
+    assert_eq!(date.day(), 7);
+    assert_eq!(date.month(), 4);
+    assert_eq!(date.year(), 2023);
+    Ok(())
+}
+
+#[test]
+fn test_noise_laplace_date() -> Result<(), AnoError> {
+    let std_deviation = Duration::days(10).num_seconds() as f64;
+    let laplace_noise_generator = NoiseGenerator::new(NoiseMethod::new_laplace(), std_deviation)?;
+    let noisy_date = laplace_noise_generator.apply_on_date(
+        "2023-04-07T12:34:56Z",
+        Some("2023-04-07T00:00:00Z"),
+        Some("2023-04-07T23:59:59Z"),
+    )?;
+    let date = DateTime::parse_from_rfc3339(&noisy_date)?.with_timezone(&Utc);
+
+    assert_eq!(date.day(), 7);
+    assert_eq!(date.month(), 4);
+    assert_eq!(date.year(), 2023);
     Ok(())
 }
