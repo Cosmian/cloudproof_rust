@@ -16,6 +16,11 @@ impl From<chrono::ParseError> for AnoError {
         Self::ConversionError(value.to_string())
     }
 }
+impl From<regex::Error> for AnoError {
+    fn from(value: regex::Error) -> Self {
+        Self::ConversionError(value.to_string())
+    }
+}
 impl From<rand_distr::NormalError> for AnoError {
     fn from(value: rand_distr::NormalError) -> Self {
         Self::Generic(value.to_string())

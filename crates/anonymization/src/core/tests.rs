@@ -1,5 +1,6 @@
 use chrono::{DateTime, Datelike, Duration, Utc};
 
+use super::WordMasker;
 use crate::core::{AnoError, HashMethod, Hasher, NoiseGenerator, NoiseMethod};
 
 #[test]
@@ -145,5 +146,17 @@ fn test_noise_laplace_date() -> Result<(), AnoError> {
     assert_eq!(date.day(), 7);
     assert_eq!(date.month(), 4);
     assert_eq!(date.year(), 2023);
+    Ok(())
+}
+
+#[test]
+fn test_mask_word() -> Result<(), AnoError> {
+    let input_str = String::from("Confidential: contains -secret- documents");
+    let block_words = vec!["confidential", "SECRET"];
+    let word_masker = WordMasker::new(&block_words);
+
+    let safe_str = word_masker.apply(&input_str)?;
+
+    assert_eq!(safe_str, "XXXX contains XXXX documents");
     Ok(())
 }
