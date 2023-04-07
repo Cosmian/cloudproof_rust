@@ -52,7 +52,7 @@ macro_rules! wrapping_callback_ser_de_error_with_context {
 }
 
 #[derive(Debug)]
-pub enum FindexFfiError {
+pub(crate) enum FindexFfiError {
     ConversionError(TryFromIntError),
     /// This error happen if the FFI callback return an invalid
     /// error code. We don't know what happen inside it (maybe an exception, the

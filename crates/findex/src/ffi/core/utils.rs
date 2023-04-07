@@ -85,7 +85,7 @@ pub const fn get_allocation_size_for_select_chain_request(line_number: usize) ->
 /// - `uids`            : UIDs to fetch (callback input)
 /// - `allocation_size` : size needed to be allocated for the output
 /// - `callback`        : fetch callback
-pub fn fetch_callback(
+pub(crate) fn fetch_callback(
     uids: &[u8],
     allocation_size: usize,
     callback: FetchEntryTableCallback,
