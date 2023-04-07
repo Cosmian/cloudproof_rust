@@ -9,11 +9,13 @@ pub enum NoiseMethod<N: Float> {
 }
 
 impl<N: Float> NoiseMethod<N> {
+    #[must_use]
     pub fn new_gaussian() -> Self {
         // Gaussian(0, 1)
         Self::Gaussian(StandardNormal)
     }
 
+    #[must_use]
     pub fn new_laplace() -> Self {
         // Laplace(0, 1)
         Self::Laplace(Laplace::<N>::new(N::one()))
@@ -54,7 +56,7 @@ where
 
 impl<N> NoiseGenerator<N>
 where
-    N: Float,
+    N: Float + std::convert::From<i32>,
     Standard: Distribution<N>,
     StandardNormal: Distribution<N>,
 {
@@ -104,9 +106,26 @@ where
                 }
             }
             // Reduce standard deviation to fit in the bounds
-            standard_deviation = standard_deviation / N::from(2).unwrap();
+            standard_deviation =
+                standard_deviation / <N as rand_distr::num_traits::NumCast>::from(2).unwrap();
         }
 
         Ok(data + standard_deviation * noise)
+    }
+
+    pub fn apply_on_int(
+        &self,
+        data: i32,
+        lower_bound_opt: Option<i32>,
+        upper_bound_opt: Option<i32>,
+    ) -> Result<i32, AnoError> {
+        let res = self.apply_on_float(
+            N::try_from(data)?,
+            lower_bound_opt.and_then(|i| N::try_from(i).ok()),
+            upper_bound_opt.and_then(|i| N::try_from(i).ok()),
+        )?;
+        res.round()
+            .to_i32()
+            .ok_or(ano_error!("Failed to convert noise result to Integer"))
     }
 }
