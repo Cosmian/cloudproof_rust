@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use chrono::{DateTime, Datelike, Duration, Utc};
 
 use super::WordMasker;
-use crate::core::{AnoError, HashMethod, Hasher, NoiseGenerator, NoiseMethod, WordTokenizer};
+use crate::core::{
+    AnoError, HashMethod, Hasher, NoiseGenerator, NoiseMethod, WordPatternMatcher, WordTokenizer,
+};
 
 #[test]
 fn test_hash_sha2() -> Result<(), AnoError> {
@@ -177,5 +179,21 @@ fn test_token_word() -> Result<(), AnoError> {
     assert!(!words.contains("confidential"));
     assert!(!words.contains("secret"));
     assert!(words.contains("documents"));
+    Ok(())
+}
+
+#[test]
+fn test_word_pattern() -> Result<(), AnoError> {
+    let input_str =
+        String::from("confidential: contains -secret- documents with confidential info");
+    let pattern = r"^(\w+): \w* -(\w+)-";
+    let pattern_matcher = WordPatternMatcher::new(pattern)?;
+
+    let matched_str = pattern_matcher.apply(&input_str)?;
+    assert_eq!(matched_str, "confidential: contains -secret-");
+
+    let res = WordPatternMatcher::new("[");
+    assert!(res.is_err());
+
     Ok(())
 }

@@ -8,7 +8,7 @@ mod noise;
 pub use noise::{NoiseGenerator, NoiseMethod};
 
 mod word;
-pub use word::{WordMasker, WordTokenizer};
+pub use word::{WordMasker, WordPatternMatcher, WordTokenizer};
 
 #[cfg(test)]
 mod tests;

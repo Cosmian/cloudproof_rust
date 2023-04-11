@@ -71,3 +71,25 @@ impl WordMasker {
         Ok(res.join(" "))
     }
 }
+
+pub struct WordPatternMatcher {
+    pattern: Regex,
+}
+
+impl WordPatternMatcher {
+    pub fn new(pattern_regex: &str) -> Result<Self, AnoError> {
+        Ok(Self {
+            pattern: Regex::new(pattern_regex)?,
+        })
+    }
+
+    pub fn apply(&self, data: &str) -> Result<String, AnoError> {
+        match self.pattern.captures(data) {
+            Some(caps) => {
+                println!("DEBUG: {caps:?}");
+                Ok(caps[0].to_string())
+            }
+            None => Ok(String::new()),
+        }
+    }
+}
