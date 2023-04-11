@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use chrono::{DateTime, Datelike, Duration, Utc};
 
-use super::WordMasker;
+use super::{NumberAggregator, WordMasker};
 use crate::core::{
     AnoError, HashMethod, Hasher, NoiseGenerator, NoiseMethod, WordPatternMatcher, WordTokenizer,
 };
@@ -194,6 +194,40 @@ fn test_word_pattern() -> Result<(), AnoError> {
 
     let res = WordPatternMatcher::new("[");
     assert!(res.is_err());
+
+    Ok(())
+}
+
+#[test]
+fn test_float_aggregation() -> Result<(), AnoError> {
+    let float_aggregator = NumberAggregator::new(2);
+
+    let res = float_aggregator.apply_on_float(1234.567);
+
+    assert_eq!(res, 1200.0);
+
+    Ok(())
+}
+
+#[test]
+fn test_int_aggregation() -> Result<(), AnoError> {
+    let int_aggregator = NumberAggregator::new(2);
+
+    let res = int_aggregator.apply_on_int(1234);
+
+    assert_eq!(res, 1200);
+
+    Ok(())
+}
+
+#[test]
+fn test_date_aggregation() -> Result<(), AnoError> {
+    // TODO: precision base 60
+    let date_aggregator = NumberAggregator::new(4);
+
+    let res = date_aggregator.apply_on_date("2023-04-07T12:34:56Z")?;
+
+    println!("date: {res}");
 
     Ok(())
 }

@@ -10,5 +10,8 @@ pub use noise::{NoiseGenerator, NoiseMethod};
 mod word;
 pub use word::{WordMasker, WordPatternMatcher, WordTokenizer};
 
+mod number;
+pub use number::NumberAggregator;
+
 #[cfg(test)]
 mod tests;

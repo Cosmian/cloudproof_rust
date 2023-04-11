@@ -50,7 +50,8 @@ pub struct WordMasker {
 }
 
 impl WordMasker {
-    #[must_use] pub fn new(words_to_block: &[&str]) -> Self {
+    #[must_use]
+    pub fn new(words_to_block: &[&str]) -> Self {
         Self {
             word_list: words_to_block.iter().map(|s| s.to_lowercase()).collect(),
             re_word_separator: Regex::new(r"[[:punct:]\s]+").expect("Regex should always be valid"),
@@ -84,9 +85,10 @@ impl WordPatternMatcher {
     }
 
     pub fn apply(&self, data: &str) -> Result<String, AnoError> {
+        // TODO: use find to match regex/captures to get groups
         match self.pattern.captures(data) {
             Some(caps) => {
-                println!("DEBUG: {caps:?}");
+                //println!("DEBUG: {caps:?}");
                 Ok(caps[0].to_string())
             }
             None => Ok(String::new()),
