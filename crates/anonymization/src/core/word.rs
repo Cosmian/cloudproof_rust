@@ -85,7 +85,7 @@ impl WordPatternMatcher {
     }
 
     pub fn apply(&self, data: &str) -> Result<String, AnoError> {
-        // TODO: use find to match regex/captures to get groups
+        // TODO: use regex to match and replace in WordMasker
         match self.pattern.captures(data) {
             Some(caps) => {
                 //println!("DEBUG: {caps:?}");
