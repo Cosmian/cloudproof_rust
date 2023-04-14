@@ -73,11 +73,11 @@ impl WordMasker {
     }
 }
 
-pub struct WordPatternMatcher {
+pub struct WordPatternMasker {
     pattern: Regex,
 }
 
-impl WordPatternMatcher {
+impl WordPatternMasker {
     pub fn new(pattern_regex: &str) -> Result<Self, AnoError> {
         Ok(Self {
             pattern: Regex::new(pattern_regex)?,
@@ -85,13 +85,6 @@ impl WordPatternMatcher {
     }
 
     pub fn apply(&self, data: &str) -> Result<String, AnoError> {
-        // TODO: use regex to match and replace in WordMasker
-        match self.pattern.captures(data) {
-            Some(caps) => {
-                //println!("DEBUG: {caps:?}");
-                Ok(caps[0].to_string())
-            }
-            None => Ok(String::new()),
-        }
+        Ok(self.pattern.replace(data, "XXXX").into_owned())
     }
 }

@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
-use chrono::{DateTime, Datelike, Duration, Utc};
+use chrono::{DateTime, Datelike, Duration, Timelike, Utc};
 
 use super::{NumberAggregator, WordMasker};
 use crate::core::{
-    AnoError, HashMethod, Hasher, NoiseGenerator, NoiseMethod, WordPatternMatcher, WordTokenizer,
+    AnoError, HashMethod, Hasher, NoiseGenerator, NoiseMethod, WordPatternMasker, WordTokenizer,
 };
 
 #[test]
@@ -155,6 +155,7 @@ fn test_noise_laplace_date() -> Result<(), AnoError> {
 
 #[test]
 fn test_mask_word() -> Result<(), AnoError> {
+    // TODO: Match using https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasick.html
     let input_str = String::from("Confidential: contains -secret- documents");
     let block_words = vec!["confidential", "SECRET"];
     let word_masker = WordMasker::new(&block_words);
@@ -185,14 +186,17 @@ fn test_token_word() -> Result<(), AnoError> {
 #[test]
 fn test_word_pattern() -> Result<(), AnoError> {
     let input_str =
-        String::from("confidential: contains -secret- documents with confidential info");
-    let pattern = r"^(\w+): \w* -(\w+)-";
-    let pattern_matcher = WordPatternMatcher::new(pattern)?;
+        String::from("Confidential: contains -secret- documents with confidential info");
+    let pattern = r"-\w+-";
+    let pattern_matcher = WordPatternMasker::new(pattern)?;
 
     let matched_str = pattern_matcher.apply(&input_str)?;
-    assert_eq!(matched_str, "confidential: contains -secret-");
+    assert_eq!(
+        matched_str,
+        "Confidential: contains XXXX documents with confidential info"
+    );
 
-    let res = WordPatternMatcher::new("[");
+    let res = WordPatternMasker::new("[");
     assert!(res.is_err());
 
     Ok(())
@@ -200,18 +204,19 @@ fn test_word_pattern() -> Result<(), AnoError> {
 
 #[test]
 fn test_float_aggregation() -> Result<(), AnoError> {
-    let float_aggregator = NumberAggregator::new(2);
+    let float_aggregator = NumberAggregator::new(0.1);
 
     let res = float_aggregator.apply_on_float(1234.567);
 
-    assert_eq!(res, 1200.0);
+    // TODO: fix float rounding issue
+    assert_eq!(res, 1234.6);
 
     Ok(())
 }
 
 #[test]
 fn test_int_aggregation() -> Result<(), AnoError> {
-    let int_aggregator = NumberAggregator::new(2);
+    let int_aggregator = NumberAggregator::new(100.0);
 
     let res = int_aggregator.apply_on_int(1234);
 
@@ -222,12 +227,19 @@ fn test_int_aggregation() -> Result<(), AnoError> {
 
 #[test]
 fn test_date_aggregation() -> Result<(), AnoError> {
-    // TODO: precision base 60
-    let date_aggregator = NumberAggregator::new(4);
+    let date_aggregator = NumberAggregator::new(60.0 * 60.0);
 
-    let res = date_aggregator.apply_on_date("2023-04-07T12:34:56Z")?;
+    let date_str = date_aggregator.apply_on_date("2023-04-07T12:34:56Z")?;
 
-    println!("date: {res}");
+    let date = DateTime::parse_from_rfc3339(&date_str)?.with_timezone(&Utc);
+
+    assert_eq!(date.day(), 7);
+    assert_eq!(date.month(), 4);
+    assert_eq!(date.year(), 2023);
+
+    assert_eq!(date.hour(), 13);
+    assert_eq!(date.minute(), 0);
+    assert_eq!(date.second(), 0);
 
     Ok(())
 }

@@ -1,22 +1,20 @@
 use chrono::{DateTime, TimeZone, Utc};
-use rand_distr::num_traits::Pow;
 
 use super::AnoError;
 use crate::ano_error;
 
 pub struct NumberAggregator {
     // TODO: change precision to a power of ten directly
-    precision: u32,
+    precision: f64,
 }
 
 impl NumberAggregator {
-    #[must_use] pub fn new(precision: u32) -> Self {
+    #[must_use] pub fn new(precision: f64) -> Self {
         Self { precision }
     }
 
     #[must_use] pub fn apply_on_float(&self, data: f64) -> f64 {
-        let y = f64::from(10.pow(self.precision));
-        (data / y).round() * y
+        (data / self.precision).round() * self.precision
     }
 
     #[must_use] pub fn apply_on_int(&self, data: i64) -> i64 {

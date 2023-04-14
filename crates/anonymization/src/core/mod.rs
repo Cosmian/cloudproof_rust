@@ -8,7 +8,7 @@ mod noise;
 pub use noise::{NoiseGenerator, NoiseMethod};
 
 mod word;
-pub use word::{WordMasker, WordPatternMatcher, WordTokenizer};
+pub use word::{WordMasker, WordPatternMasker, WordTokenizer};
 
 mod number;
 pub use number::NumberAggregator;
