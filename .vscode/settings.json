@@ -8,5 +8,6 @@
     "Cosmian",
     "Feistel",
     "thiserror"
-  ]
+  ],
+  "rust-analyzer.showUnlinkedFileNotification": false
 }

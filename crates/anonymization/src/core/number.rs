@@ -1,10 +1,12 @@
 use chrono::{DateTime, TimeZone, Utc};
+use cosmian_crypto_core::CsRng;
+use rand::SeedableRng;
+use rand_distr::{Distribution, StandardNormal, Uniform};
 
 use super::AnoError;
 use crate::ano_error;
 
 pub struct NumberAggregator {
-    // TODO: change precision to a power of ten directly
     precision: f64,
 }
 
@@ -38,5 +40,32 @@ impl NumberAggregator {
                 date_str
             )),
         }
+    }
+}
+
+pub struct NumberScaler {
+    mean: f64,
+    std_deviation: f64,
+    rand_uniform: f64,
+    rand_normal: f64,
+}
+
+impl NumberScaler {
+    #[must_use] pub fn new(mean: f64, std_deviation: f64) -> Self {
+        let mut rng = CsRng::from_entropy();
+        let rand_uniform = Uniform::new(1.0, 100.0).sample(&mut rng);
+        let rand_normal = 100.0 * &StandardNormal.sample(&mut rng);
+
+        Self {
+            mean,
+            std_deviation,
+            rand_uniform,
+            rand_normal,
+        }
+    }
+
+    #[must_use] pub fn apply_on_float(&self, data: f64) -> f64 {
+        let normalized_data = (data - self.mean) / self.std_deviation;
+        normalized_data.mul_add(self.rand_uniform, self.rand_normal)
     }
 }

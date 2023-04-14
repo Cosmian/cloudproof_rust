@@ -11,7 +11,7 @@ mod word;
 pub use word::{WordMasker, WordPatternMasker, WordTokenizer};
 
 mod number;
-pub use number::NumberAggregator;
+pub use number::{NumberAggregator, NumberScaler};
 
 #[cfg(test)]
 mod tests;
