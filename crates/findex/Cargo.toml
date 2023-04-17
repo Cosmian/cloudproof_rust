@@ -1,9 +1,7 @@
 [package]
 name = "cloudproof_findex"
 version = "3.0.0"
-authors = [
-  "Théophile Brézot<theophile.brezot@cosmian.com>",
-]
+authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license = "MIT/Apache-2.0"
 description = "Cosmian Findex Cloudproof library"
@@ -17,7 +15,14 @@ cloud = ["reqwest", "base64"]
 ffi = ["cosmian_ffi_utils", "base64", "serde_json", "tokio/rt-multi-thread"]
 python = ["cloud", "futures", "pyo3", "tokio/rt-multi-thread"]
 sqlite = ["base64", "faker_rand", "rand", "rusqlite", "serde", "serde_json"]
-wasm_bindgen = ["cloud", "js-sys", "hex", "wasm-bindgen", "wasm-bindgen-futures"]
+wasm_bindgen = [
+  "cloud",
+  "js-sys",
+  "hex",
+  "wasm-bindgen",
+  "wasm-bindgen-futures",
+]
+default = []
 
 [dependencies]
 cosmian_crypto_core.workspace = true
@@ -32,7 +37,9 @@ hex = { version = "0.4.3", optional = true }
 js-sys = { workspace = true, optional = true }
 pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 rand = { version = "0.8", optional = true }
-reqwest = { version = "0.11.14", features = ["rustls-tls"], default-features = false, optional = true }
+reqwest = { version = "0.11.14", features = [
+  "rustls-tls",
+], default-features = false, optional = true }
 rusqlite = { version = "0.28", features = ["bundled"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0.93", optional = true }
