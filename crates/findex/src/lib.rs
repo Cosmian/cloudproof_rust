@@ -26,5 +26,5 @@ pub mod wasm_bindgen;
 use core::num::NonZeroUsize;
 
 #[cfg(any(feature = "wasm_bindgen", feature = "ffi"))]
-/// Default number of results returned per keyword.
-pub const MAX_RESULTS_PER_KEYWORD: NonZeroUsize = NonZeroUsize::new(65536).unwrap();
+/// Default number of results returned per chain.
+pub const MAX_RESULTS_PER_CHAIN: NonZeroUsize = NonZeroUsize::new(65536).unwrap();

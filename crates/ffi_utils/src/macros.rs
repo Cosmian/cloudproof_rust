@@ -25,7 +25,7 @@ macro_rules! ffi_not_null {
 /// - `msg` : (optional) additional message to use as error
 #[macro_export]
 macro_rules! ffi_unwrap {
-    ($res:expr, $msg:literal) => {
+    ($res:expr, $msg:expr) => {
         match $res {
             Ok(v) => v,
             Err(e) => {

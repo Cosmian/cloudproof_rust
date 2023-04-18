@@ -3,11 +3,11 @@ use std::collections::{HashMap, HashSet};
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
     parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
-        MASTER_KEY_LENGTH, TABLE_WIDTH, UID_LENGTH,
+        DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
+        KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
-    EncryptedTable, FindexCallbacks, FindexSearch, FindexUpsert, IndexedValue, Keyword, Location,
-    Uid, UpsertData,
+    EncryptedTable, FetchChains, FindexCallbacks, FindexSearch, FindexUpsert, IndexedValue,
+    Keyword, Location, Uid, UpsertData,
 };
 use rusqlite::{Connection, OptionalExtension, Result};
 
@@ -31,22 +31,26 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         Ok(true)
     }
 
+    async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, Error> {
+        todo!("`FindexCompact` is not implemented for `RusqliteFindex`")
+    }
+
     async fn fetch_entry_table(
         &self,
-        entry_table_uids: &HashSet<Uid<UID_LENGTH>>,
+        entry_table_uids: HashSet<Uid<UID_LENGTH>>,
     ) -> Result<EncryptedTable<UID_LENGTH>, Error> {
         let serialized_res =
-            sqlite_fetch_entry_table_items(self.connection, &serialize_set(entry_table_uids)?)?;
+            sqlite_fetch_entry_table_items(self.connection, &serialize_set(&entry_table_uids)?)?;
         EncryptedTable::try_from_bytes(&serialized_res).map_err(Error::from)
     }
 
     async fn fetch_chain_table(
         &self,
-        chain_table_uids: &HashSet<Uid<UID_LENGTH>>,
+        chain_table_uids: HashSet<Uid<UID_LENGTH>>,
     ) -> Result<EncryptedTable<UID_LENGTH>, Error> {
         let mut stmt = prepare_statement(
             self.connection,
-            &serialize_set(chain_table_uids)?,
+            &serialize_set(&chain_table_uids)?,
             "chain_table",
         )?;
 
@@ -61,11 +65,11 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
 
     async fn upsert_entry_table(
         &mut self,
-        items: &UpsertData<UID_LENGTH>,
+        items: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, Error> {
         let mut rejected_items = EncryptedTable::default();
         let tx = self.connection.transaction()?;
-        for (uid, (old_value, new_value)) in items.iter() {
+        for (uid, (old_value, new_value)) in items {
             let actual_value = tx
                 .query_row(
                     "SELECT value FROM entry_table WHERE uid = ?1",
@@ -80,7 +84,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
                 )?;
             } else {
                 rejected_items.insert(
-                    uid.clone(),
+                    uid,
                     actual_value.ok_or_else(|| {
                         Error::Other("Index entries cannot be removed while upserting.".to_string())
                     })?,
@@ -91,10 +95,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         Ok(rejected_items)
     }
 
-    async fn insert_chain_table(
-        &mut self,
-        items: &EncryptedTable<UID_LENGTH>,
-    ) -> Result<(), Error> {
+    async fn insert_chain_table(&mut self, items: EncryptedTable<UID_LENGTH>) -> Result<(), Error> {
         let tx = self.connection.transaction()?;
         for (uid, value) in items.iter() {
             tx.execute(
@@ -118,22 +119,45 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
 
     fn list_removed_locations(
         &self,
-        _locations: &HashSet<Location>,
+        _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, Error> {
         // TODO (TBZ): `FindexCompact` is not implemented for `RusqliteFindex`.
         todo!("`FindexCompact` is not implemented for `RusqliteFindex`")
     }
 
-    async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, Error> {
+    fn filter_removed_locations(
+        &self,
+        _locations: HashSet<Location>,
+    ) -> std::result::Result<HashSet<Location>, Error> {
         todo!("`FindexCompact` is not implemented for `RusqliteFindex`")
     }
+
+    async fn delete_chain(
+        &mut self,
+        _uids: HashSet<Uid<UID_LENGTH>>,
+    ) -> std::result::Result<(), Error> {
+        todo!("`FindexCompact` is not implemented for `RusqliteFindex`")
+    }
+}
+
+impl
+    FetchChains<
+        UID_LENGTH,
+        BLOCK_LENGTH,
+        CHAIN_TABLE_WIDTH,
+        KWI_LENGTH,
+        DEM_KEY_LENGTH,
+        DemScheme,
+        Error,
+    > for RusqliteFindex<'_>
+{
 }
 
 impl
     FindexUpsert<
         UID_LENGTH,
         BLOCK_LENGTH,
-        TABLE_WIDTH,
+        CHAIN_TABLE_WIDTH,
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
@@ -149,7 +173,7 @@ impl
     FindexSearch<
         UID_LENGTH,
         BLOCK_LENGTH,
-        TABLE_WIDTH,
+        CHAIN_TABLE_WIDTH,
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,

@@ -1,13 +1,19 @@
-use std::{convert::TryFrom, ffi::c_uchar};
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+    ffi::c_uchar,
+    fmt::Display,
+};
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use cosmian_crypto_core::symmetric_crypto::Dem;
 use cosmian_findex::{
-    parameters::{DemScheme, BLOCK_LENGTH, KWI_LENGTH, TABLE_WIDTH, UID_LENGTH},
-    Keyword,
+    parameters::{DemScheme, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, UID_LENGTH},
+    IndexedValue, Keyword,
 };
 
 use super::callbacks::FetchEntryTableCallback;
-use crate::ffi::{ErrorCode, FindexFfiError, LEB128_MAXIMUM_ENCODED_BYTES_NUMBER};
+use crate::ffi::{ErrorCode, FindexFfiError};
 
 /// Makes sure the given callback exists in the given Findex instance.
 ///
@@ -24,6 +30,12 @@ macro_rules! unwrap_callback {
     };
 }
 
+/// Maximum number of bytes used by a LEB128 encoding.
+///
+/// `8` LEB128 bytes can encode numbers up to `2^56` which should be an upper
+/// bound on the number of table lines
+const LEB128_MAXIMUM_ENCODED_BYTES_NUMBER: usize = 8;
+
 /// Returns an upper-bound on the size of a serialized encrypted Entry Table.
 ///
 /// An Entry Table line is composed of:
@@ -34,8 +46,7 @@ macro_rules! unwrap_callback {
 ///
 /// Therefore the serialized encrypted Entry Table looks like:
 ///
-/// `| LEB128(table.len()) | UID1 | LEB128(encrypted_value1.len()) |
-/// encrypted_value1 | ...`
+/// `| LEB128(table.len()) | UID1 | encrypted_value1 | ...`
 ///
 /// where the size of an encrypted value is:
 ///
@@ -45,9 +56,8 @@ macro_rules! unwrap_callback {
 /// - `line_number` : number of lines in the encrypted Entry Table
 pub const fn get_serialized_encrypted_entry_table_size_bound(line_number: usize) -> usize {
     LEB128_MAXIMUM_ENCODED_BYTES_NUMBER
-        + line_number * UID_LENGTH
         + line_number
-            * (LEB128_MAXIMUM_ENCODED_BYTES_NUMBER
+            * (UID_LENGTH
                 + DemScheme::ENCRYPTION_OVERHEAD
                 + KWI_LENGTH
                 + UID_LENGTH
@@ -58,26 +68,25 @@ pub const fn get_serialized_encrypted_entry_table_size_bound(line_number: usize)
 ///
 /// A Chain Table line is composed of:
 /// - the Chain Table UID;
-/// - `TABLE_WIDTH` blocks of length `BLOCK_LENGTH`
+/// - `CHAIN_TABLE_WIDTH` blocks of length `BLOCK_LENGTH`
 ///
 /// Therefore the serialized encrypted Entry Table looks like:
 ///
-/// `| LEB128(table.len()) | UID1 | LEB128(encrypted_value1.len()) |
-/// encrypted_value1 | ...`
+/// `| LEB128(table.len()) | UID1 | encrypted_value1 | ...`
 ///
 /// where the size of an encrypted value is:
 ///
-/// `ENCRYPTION_OVERHEAD + TABLE_WIDTH * BLOCK_LENGTH`
+/// `ENCRYPTION_OVERHEAD + 1 + CHAIN_TABLE_WIDTH * (1 + BLOCK_LENGTH)`
 ///
 /// # Arguments
 /// - `line_number` : number of lines in the encrypted Entry Table
 pub const fn get_allocation_size_for_select_chain_request(line_number: usize) -> usize {
     LEB128_MAXIMUM_ENCODED_BYTES_NUMBER
-        + line_number * UID_LENGTH
         + line_number
-            * (LEB128_MAXIMUM_ENCODED_BYTES_NUMBER
+            * (UID_LENGTH
                 + DemScheme::ENCRYPTION_OVERHEAD
-                + TABLE_WIDTH * BLOCK_LENGTH)
+                + 1
+                + CHAIN_TABLE_WIDTH * (1 + BLOCK_LENGTH))
 }
 
 /// Call the given fetch callback.
@@ -105,7 +114,7 @@ pub(crate) fn fetch_callback(
         u32::try_from(uids.len())?,
     );
 
-    if error_code == ErrorCode::BufferTooSmall as i32 {
+    if error_code == ErrorCode::BufferTooSmall.code() {
         output_bytes = vec![0_u8; output_len as usize];
         output_ptr = output_bytes.as_mut_ptr().cast::<c_uchar>();
 
@@ -117,7 +126,7 @@ pub(crate) fn fetch_callback(
         );
     }
 
-    if error_code != ErrorCode::Success as i32 {
+    if error_code != ErrorCode::Success.code() {
         return Err(FindexFfiError::UserCallbackErrorCode {
             callback_name: debug_name,
             code: error_code,
@@ -135,4 +144,51 @@ pub(crate) fn fetch_callback(
         std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize).to_vec()
     };
     Ok(output_entries_bytes)
+}
+
+pub(crate) fn parse_indexed_values(
+    serialized_values: &str,
+) -> Result<HashMap<IndexedValue, HashSet<Keyword>>, ParsingError> {
+    // Indexed values and keywords are a map of base64 encoded `IndexedValue` to a
+    // list of base64 encoded keywords. Why that? We should use simple
+    // serialization to pass the data and not depend on JSON+base64 to improve
+    // performances.
+    // <https://github.com/Cosmian/findex/issues/19>
+    let additions_base64: HashMap<String, Vec<String>> =
+        serde_json::from_str(serialized_values).map_err(ParsingError::Json)?;
+
+    let mut additions = HashMap::with_capacity(additions_base64.len());
+    for (indexed_value, keywords_vec) in additions_base64 {
+        let indexed_value_bytes = STANDARD
+            .decode(indexed_value)
+            .map_err(ParsingError::Base64Decode)?;
+        let indexed_value = IndexedValue::try_from(indexed_value_bytes.as_slice())
+            .map_err(|e| ParsingError::Decoding(e.to_string()))?;
+        let mut keywords = HashSet::with_capacity(keywords_vec.len());
+        for keyword in keywords_vec {
+            let keyword_bytes = STANDARD
+                .decode(keyword)
+                .map_err(ParsingError::Base64Decode)?;
+            keywords.insert(Keyword::from(keyword_bytes));
+        }
+        additions.insert(indexed_value, keywords);
+    }
+
+    Ok(additions)
+}
+
+pub(crate) enum ParsingError {
+    Json(serde_json::Error),
+    Base64Decode(base64::DecodeError),
+    Decoding(String),
+}
+
+impl Display for ParsingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Json(e) => write!(f, "Serde error {e}"),
+            Self::Base64Decode(e) => write!(f, "base64 error {e}"),
+            Self::Decoding(e) => write!(f, "bytes error {e}"),
+        }
+    }
 }

@@ -1,16 +1,13 @@
 //! Defines the FFI interface for Findex.
 
-use ::core::{fmt::Display, num::TryFromIntError};
+use std::num::TryFromIntError;
+
+use ::core::fmt::Display;
+use base64::DecodeError;
 
 use self::error::ToErrorCode;
 
-/// Maximum number of bytes used by a LEB128 encoding.
-const LEB128_MAXIMUM_ENCODED_BYTES_NUMBER: usize = 8;
-
 /// Limit on the recursion to use when none is provided.
-// TODO (TBZ): is this parameter really necessary? It is used when the
-// `max_depth` parameter given is less than 0 => shouldn't an error be returned
-// instead ?
 pub const MAX_DEPTH: usize = 100; // 100 should always be enough
 
 #[repr(i32)]
@@ -22,18 +19,32 @@ pub const MAX_DEPTH: usize = 100; // 100 should always be enough
 /// an exception during a callback, save this exception and re-report this
 /// exception at the end of the main call if the response is 42).
 pub enum ErrorCode {
-    Success = 0,
+    Success,
 
     /// <https://github.com/Cosmian/findex/issues/14>
     /// We use 1 here because we used to always retry in case of non-zero error
     /// code. We may want to change this in future major release (reserve 1
     /// for error and specify another error code for asking for a bigger
     /// buffer).
-    BufferTooSmall = 1,
+    BufferTooSmall,
 
-    MissingCallback = 2,
+    MissingCallback,
 
-    SerializationError = 3,
+    SerializationError,
+
+    Other(i32),
+}
+
+impl ErrorCode {
+    pub fn code(&self) -> i32 {
+        match self {
+            Self::Success => 0,
+            Self::BufferTooSmall => 1,
+            Self::MissingCallback => 2,
+            Self::SerializationError => 3,
+            Self::Other(code) => *code,
+        }
+    }
 }
 
 macro_rules! wrapping_callback_ser_de_error_with_context {
@@ -53,7 +64,8 @@ macro_rules! wrapping_callback_ser_de_error_with_context {
 
 #[derive(Debug)]
 pub(crate) enum FindexFfiError {
-    ConversionError(TryFromIntError),
+    IntConversionError(TryFromIntError),
+
     /// This error happen if the FFI callback return an invalid
     /// error code. We don't know what happen inside it (maybe an exception, the
     /// user cannot fetch its database, a user error…).
@@ -87,24 +99,24 @@ pub(crate) enum FindexFfiError {
 impl ToErrorCode for FindexFfiError {
     fn to_error_code(&self) -> i32 {
         match self {
-            Self::ConversionError(_) => 1,
+            Self::IntConversionError(_) => 1,
             Self::UserCallbackErrorCode { code, .. } => *code,
-            Self::WrappingCallbackSerDeError { .. } => ErrorCode::SerializationError as i32,
-            Self::CallbackNotImplemented { .. } => ErrorCode::MissingCallback as i32,
+            Self::WrappingCallbackSerDeError { .. } => ErrorCode::SerializationError.code(),
+            Self::CallbackNotImplemented { .. } => ErrorCode::MissingCallback.code(),
         }
     }
 }
 
 impl From<TryFromIntError> for FindexFfiError {
     fn from(e: TryFromIntError) -> Self {
-        Self::ConversionError(e)
+        Self::IntConversionError(e)
     }
 }
 
 impl Display for FindexFfiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ConversionError(err) => write!(f, "{err}"),
+            Self::IntConversionError(err) => write!(f, "{err}"),
             Self::UserCallbackErrorCode {
                 callback_name,
                 code,

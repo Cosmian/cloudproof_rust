@@ -250,9 +250,10 @@ class InternalFindex:
     ) -> None: ...
     def upsert_wrapper(
         self,
-        indexed_values_and_keywords: IndexedValuesAndKeywords,
         master_key: MasterKey,
         label: Label,
+        additions: IndexedValuesAndKeywords,
+        deletions: IndexedValuesAndKeywords,
     ) -> None: ...
     def search_wrapper(
         self,

@@ -8,8 +8,8 @@ use std::{
 use base64::{engine::general_purpose, Engine};
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
-    parameters::{MASTER_KEY_LENGTH, SECURE_FETCH_CHAINS_BATCH_SIZE},
-    FindexSearch, FindexUpsert, IndexedValue, KeyingMaterial, Keyword, Label, Location,
+    parameters::MASTER_KEY_LENGTH, FindexSearch, FindexUpsert, IndexedValue, KeyingMaterial,
+    Keyword, Label, Location,
 };
 use database::SqliteDatabase;
 use findex::RusqliteFindex;
@@ -36,13 +36,13 @@ pub async fn upsert(sqlite_db_path: &PathBuf, dataset_path: &str) -> Result<(), 
     // securely indexed with Findex.
     //
     let users = SqliteDatabase::select_all_users(&connection)?;
-    let mut locations_and_words = HashMap::new();
+    let mut additions = HashMap::new();
     for (idx, user) in users.iter().enumerate() {
         let mut words = HashSet::new();
         for word in &user.values() {
             words.insert(Keyword::from(word.as_bytes()));
         }
-        locations_and_words.insert(
+        additions.insert(
             IndexedValue::Location(Location::from((idx as i64).to_be_bytes().as_slice())),
             words,
         );
@@ -61,7 +61,7 @@ pub async fn upsert(sqlite_db_path: &PathBuf, dataset_path: &str) -> Result<(), 
     let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(&master_key_bytes)?;
 
     rusqlite_upsert
-        .upsert(locations_and_words, &master_key, &label)
+        .upsert(&master_key, &label, additions, HashMap::new())
         .await?;
 
     connection.close().map_err(|(_, e)| Error::RusqliteError(e))
@@ -83,15 +83,7 @@ pub async fn search(
 
     let label = Label::from(include_bytes!("../../datasets/label").to_vec());
     let results = rusqlite_search
-        .search(
-            &bulk_words,
-            &master_key,
-            &label,
-            10000,
-            usize::MAX,
-            SECURE_FETCH_CHAINS_BATCH_SIZE,
-            0,
-        )
+        .search(&master_key, &label, &bulk_words, 10000, usize::MAX)
         .await?;
     let mut db_uids = Vec::with_capacity(results.len());
     for (_, locations) in results {
