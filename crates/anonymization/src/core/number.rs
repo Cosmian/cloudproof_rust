@@ -1,32 +1,37 @@
-use chrono::{DateTime, TimeZone, Utc};
+
 use cosmian_crypto_core::CsRng;
 use rand::SeedableRng;
-use rand_distr::{Distribution, StandardNormal, Uniform};
+use rand_distr::{num_traits::Pow, Distribution, StandardNormal, Uniform};
 
-use super::AnoError;
-use crate::ano_error;
+
+
 
 pub struct NumberAggregator {
-    precision: f64,
+    power_of_ten: i32,
 }
 
 impl NumberAggregator {
     #[must_use]
-    pub fn new(precision: f64) -> Self {
-        Self { precision }
+    pub fn new(power_of_ten: i32) -> Self {
+        Self { power_of_ten }
     }
 
     #[must_use]
-    pub fn apply_on_float(&self, data: f64) -> f64 {
-        (data / self.precision).round() * self.precision
+    pub fn apply_on_float(&self, data: f64) -> String {
+        if self.power_of_ten < 0 {
+            return format!("{:.1$}", data, -self.power_of_ten as usize);
+        }
+        let r = 10f64.pow(self.power_of_ten);
+        format!("{}", (data / r).round() * r)
     }
 
     #[must_use]
-    pub fn apply_on_int(&self, data: i64) -> i64 {
-        self.apply_on_float(data as f64) as i64
+    pub fn apply_on_int(&self, data: i64) -> String {
+        let r = 10f64.pow(self.power_of_ten);
+        format!("{}", (data as f64 / r).round() * r)
     }
 
-    pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
+    /*pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
         let date_unix = DateTime::parse_from_rfc3339(date_str)?
             .with_timezone(&Utc)
             .timestamp();
@@ -43,7 +48,7 @@ impl NumberAggregator {
                 date_str
             )),
         }
-    }
+    }*/
 }
 
 pub struct NumberScaler {
