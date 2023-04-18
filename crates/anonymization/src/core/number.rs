@@ -11,15 +11,18 @@ pub struct NumberAggregator {
 }
 
 impl NumberAggregator {
-    #[must_use] pub fn new(precision: f64) -> Self {
+    #[must_use]
+    pub fn new(precision: f64) -> Self {
         Self { precision }
     }
 
-    #[must_use] pub fn apply_on_float(&self, data: f64) -> f64 {
+    #[must_use]
+    pub fn apply_on_float(&self, data: f64) -> f64 {
         (data / self.precision).round() * self.precision
     }
 
-    #[must_use] pub fn apply_on_int(&self, data: i64) -> i64 {
+    #[must_use]
+    pub fn apply_on_int(&self, data: i64) -> i64 {
         self.apply_on_float(data as f64) as i64
     }
 
@@ -51,7 +54,8 @@ pub struct NumberScaler {
 }
 
 impl NumberScaler {
-    #[must_use] pub fn new(mean: f64, std_deviation: f64) -> Self {
+    #[must_use]
+    pub fn new(mean: f64, std_deviation: f64) -> Self {
         let mut rng = CsRng::from_entropy();
         let rand_uniform = Uniform::new(1.0, 100.0).sample(&mut rng);
         let rand_normal = 100.0 * &StandardNormal.sample(&mut rng);
@@ -64,7 +68,8 @@ impl NumberScaler {
         }
     }
 
-    #[must_use] pub fn apply_on_float(&self, data: f64) -> f64 {
+    #[must_use]
+    pub fn apply_on_float(&self, data: f64) -> f64 {
         let normalized_data = (data - self.mean) / self.std_deviation;
         normalized_data.mul_add(self.rand_uniform, self.rand_normal)
     }
