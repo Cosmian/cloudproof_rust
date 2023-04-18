@@ -83,6 +83,12 @@ fn test_noise_gaussian_f64() -> Result<(), AnoError> {
     let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
+    let res = NoiseGenerator::new(NoiseMethod::new_gaussian(), 0.0, -1.0);
+    assert!(res.is_err());
+
+    let res = NoiseGenerator::new_bounds(NoiseMethod::new_gaussian(), 1.0, 0.0);
+    assert!(res.is_err());
+
     Ok(())
 }
 
@@ -158,7 +164,6 @@ fn test_noise_laplace_date() -> Result<(), AnoError> {
 
 #[test]
 fn test_mask_word() -> Result<(), AnoError> {
-    // TODO: Match using https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasick.html
     let input_str = String::from("Confidential: contains -secret- documents");
     let block_words = vec!["confidential", "SECRET"];
     let word_masker = WordMasker::new(&block_words);
@@ -191,15 +196,15 @@ fn test_word_pattern() -> Result<(), AnoError> {
     let input_str =
         String::from("Confidential: contains -secret- documents with confidential info");
     let pattern = r"-\w+-";
-    let pattern_matcher = WordPatternMasker::new(pattern)?;
+    let pattern_matcher = WordPatternMasker::new(pattern, "####")?;
 
     let matched_str = pattern_matcher.apply(&input_str)?;
     assert_eq!(
         matched_str,
-        "Confidential: contains XXXX documents with confidential info"
+        "Confidential: contains #### documents with confidential info"
     );
 
-    let res = WordPatternMasker::new("[");
+    let res = WordPatternMasker::new("[", "####");
     assert!(res.is_err());
 
     Ok(())

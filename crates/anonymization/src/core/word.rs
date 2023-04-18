@@ -75,16 +75,18 @@ impl WordMasker {
 
 pub struct WordPatternMasker {
     pattern: Regex,
+    replacer: String,
 }
 
 impl WordPatternMasker {
-    pub fn new(pattern_regex: &str) -> Result<Self, AnoError> {
+    pub fn new(pattern_regex: &str, replace_str: &str) -> Result<Self, AnoError> {
         Ok(Self {
             pattern: Regex::new(pattern_regex)?,
+            replacer: replace_str.to_string(),
         })
     }
 
     pub fn apply(&self, data: &str) -> Result<String, AnoError> {
-        Ok(self.pattern.replace(data, "XXXX").into_owned())
+        Ok(self.pattern.replace(data, &self.replacer).into_owned())
     }
 }
