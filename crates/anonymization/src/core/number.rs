@@ -1,10 +1,10 @@
-
+use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use cosmian_crypto_core::CsRng;
 use rand::SeedableRng;
 use rand_distr::{num_traits::Pow, Distribution, StandardNormal, Uniform};
 
-
-
+use super::AnoError;
+use crate::ano_error;
 
 pub struct NumberAggregator {
     power_of_ten: i32,
@@ -28,27 +28,57 @@ impl NumberAggregator {
     #[must_use]
     pub fn apply_on_int(&self, data: i64) -> String {
         let r = 10f64.pow(self.power_of_ten);
-        format!("{}", (data as f64 / r).round() * r)
+        format!("{:.0}", (data as f64 / r).round() * r)
+    }
+}
+
+pub struct DateAggregator {
+    time_unit: String,
+}
+
+impl DateAggregator {
+    #[must_use] pub fn new(time_unit: &str) -> Self {
+        Self {
+            time_unit: time_unit.to_string(),
+        }
     }
 
-    /*pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
-        let date_unix = DateTime::parse_from_rfc3339(date_str)?
-            .with_timezone(&Utc)
-            .timestamp();
+    pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
+        let date = DateTime::parse_from_rfc3339(date_str)?.with_timezone(&Utc);
 
-        let rounded_date_unix = self.apply_on_int(date_unix);
+        let (y, mo, d, h, mi, s) = match self.time_unit.as_str() {
+            "Second" => Ok((
+                date.year(),
+                date.month(),
+                date.day(),
+                date.hour(),
+                date.minute(),
+                date.second(),
+            )),
+            "Minute" => Ok((
+                date.year(),
+                date.month(),
+                date.day(),
+                date.hour(),
+                date.minute(),
+                0,
+            )),
+            "Hour" => Ok((date.year(), date.month(), date.day(), date.hour(), 0, 0)),
+            "Day" => Ok((date.year(), date.month(), date.day(), 0, 0, 0)),
+            "Month" => Ok((date.year(), date.month(), 1, 0, 0, 0)),
+            "Year" => Ok((date.year(), 1, 1, 0, 0, 0)),
+            _ => Err(ano_error!("Unknown time unit {}", &self.time_unit)),
+        }?;
 
-        match Utc.timestamp_opt(rounded_date_unix, 0) {
-            chrono::LocalResult::None => {
-                Err(ano_error!("Could not apply noise on date `{}`.", date_str))
-            }
+        match Utc.with_ymd_and_hms(y, mo, d, h, mi, s) {
+            chrono::LocalResult::None => Err(ano_error!("Could not round date `{}`.", date_str)),
             chrono::LocalResult::Single(date) => Ok(date.to_rfc3339()),
             chrono::LocalResult::Ambiguous(_, _) => Err(ano_error!(
                 "Rounding date `{}` lead to ambiguous result.",
                 date_str
             )),
         }
-    }*/
+    }
 }
 
 pub struct NumberScaler {

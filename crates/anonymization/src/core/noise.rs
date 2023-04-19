@@ -3,7 +3,6 @@ use cosmian_crypto_core::CsRng;
 use rand::{Rng, SeedableRng};
 use rand_distr::{num_traits::Float, Distribution, Standard, StandardNormal};
 
-use super::date_precision;
 use crate::{ano_error, core::AnoError};
 
 pub enum NoiseMethod<N: Float> {
@@ -46,6 +45,18 @@ where
         } else {
             self.beta * N::ln(p)
         }
+    }
+}
+
+pub fn date_precision(time_unit: &str) -> Result<f64, AnoError> {
+    match time_unit {
+        "Second" => Ok(1.0),
+        "Minute" => Ok(60.0),
+        "Hour" => Ok(3600.0),
+        "Day" => Ok(86400.0),
+        "Month" => Ok(2_628_000.0),
+        "Year" => Ok(31_536_000.0),
+        _ => Err(ano_error!("Unknown time unit {}", time_unit)),
     }
 }
 

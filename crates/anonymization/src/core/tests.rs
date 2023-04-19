@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{DateTime, Datelike, Timelike, Utc};
 
 use super::{NumberAggregator, WordMasker};
 use crate::core::{
-    AnoError, HashMethod, Hasher, NoiseGenerator, NoiseMethod, NumberScaler, WordPatternMasker,
-    WordTokenizer,
+    AnoError, DateAggregator, HashMethod, Hasher, NoiseGenerator, NoiseMethod, NumberScaler,
+    WordPatternMasker, WordTokenizer,
 };
 
 #[test]
@@ -211,9 +211,20 @@ fn test_word_pattern() -> Result<(), AnoError> {
 #[test]
 fn test_float_aggregation() -> Result<(), AnoError> {
     let float_aggregator = NumberAggregator::new(-1);
-
     let res = float_aggregator.apply_on_float(1234.567);
     assert_eq!(res, "1234.6");
+
+    let float_aggregator = NumberAggregator::new(2);
+    let res = float_aggregator.apply_on_float(1234.567);
+    assert_eq!(res, "1200");
+
+    let float_aggregator = NumberAggregator::new(10);
+    let res = float_aggregator.apply_on_float(1234.567);
+    assert_eq!(res, "0");
+
+    let float_aggregator = NumberAggregator::new(-10);
+    let res = float_aggregator.apply_on_float(1234.567);
+    assert_eq!(res, "1234.5670000000");
 
     Ok(())
 }
@@ -221,31 +232,49 @@ fn test_float_aggregation() -> Result<(), AnoError> {
 #[test]
 fn test_int_aggregation() -> Result<(), AnoError> {
     let int_aggregator = NumberAggregator::new(2);
-
     let res = int_aggregator.apply_on_int(1234);
     assert_eq!(res, "1200");
+
+    let int_aggregator = NumberAggregator::new(-2);
+    let res = int_aggregator.apply_on_int(1234);
+    assert_eq!(res, "1234");
 
     Ok(())
 }
 
-/*#[test]
-fn test_date_aggregation() -> Result<(), AnoError> {
-    let date_aggregator = NumberAggregator::new(60.0 * 60.0);
-
-    let date_str = date_aggregator.apply_on_date("2023-04-07T12:34:56Z")?;
-
+#[test]
+fn test_time_aggregation() -> Result<(), AnoError> {
+    let time_aggregator = DateAggregator::new("Hour");
+    let date_str = time_aggregator.apply_on_date("2023-04-07T12:34:56Z")?;
     let date = DateTime::parse_from_rfc3339(&date_str)?.with_timezone(&Utc);
 
     assert_eq!(date.day(), 7);
     assert_eq!(date.month(), 4);
     assert_eq!(date.year(), 2023);
 
-    assert_eq!(date.hour(), 13);
+    assert_eq!(date.hour(), 12);
     assert_eq!(date.minute(), 0);
     assert_eq!(date.second(), 0);
 
     Ok(())
-}*/
+}
+
+#[test]
+fn test_date_aggregation() -> Result<(), AnoError> {
+    let date_aggregator = DateAggregator::new("Month");
+    let date_str = date_aggregator.apply_on_date("2023-04-07T12:34:56Z")?;
+    let date = DateTime::parse_from_rfc3339(&date_str)?.with_timezone(&Utc);
+
+    assert_eq!(date.day(), 1);
+    assert_eq!(date.month(), 4);
+    assert_eq!(date.year(), 2023);
+
+    assert_eq!(date.hour(), 0);
+    assert_eq!(date.minute(), 0);
+    assert_eq!(date.second(), 0);
+
+    Ok(())
+}
 
 #[test]
 fn test_float_scale() -> Result<(), AnoError> {
