@@ -37,7 +37,8 @@ pub struct DateAggregator {
 }
 
 impl DateAggregator {
-    #[must_use] pub fn new(time_unit: &str) -> Self {
+    #[must_use]
+    pub fn new(time_unit: &str) -> Self {
         Self {
             time_unit: time_unit.to_string(),
         }
@@ -90,10 +91,10 @@ pub struct NumberScaler {
 
 impl NumberScaler {
     #[must_use]
-    pub fn new(mean: f64, std_deviation: f64) -> Self {
+    pub fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Self {
         let mut rng = CsRng::from_entropy();
-        let rand_uniform = Uniform::new(1.0, 100.0).sample(&mut rng);
-        let rand_normal = 100.0 * &StandardNormal.sample(&mut rng);
+        let rand_uniform = scale * Uniform::new(0.0001, 1.0).sample(&mut rng);
+        let rand_normal = translate * &StandardNormal.sample(&mut rng);
 
         Self {
             mean,

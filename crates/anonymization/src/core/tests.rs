@@ -4,8 +4,8 @@ use chrono::{DateTime, Datelike, Timelike, Utc};
 
 use super::{NumberAggregator, WordMasker};
 use crate::core::{
-    AnoError, DateAggregator, HashMethod, Hasher, NoiseGenerator, NoiseMethod, NumberScaler,
-    WordPatternMasker, WordTokenizer,
+    AnoError, DateAggregator, HashMethod, Hasher, NoiseGenerator, NumberScaler, WordPatternMasker,
+    WordTokenizer,
 };
 
 #[test]
@@ -74,19 +74,18 @@ fn test_hash_argon2() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_gaussian_f64() -> Result<(), AnoError> {
-    let gaussian_noise_generator = NoiseGenerator::new(NoiseMethod::new_gaussian(), 0.0, 2.0)?;
+    let gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 2.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
-    let gaussian_noise_generator =
-        NoiseGenerator::new_bounds(NoiseMethod::new_gaussian(), -10.0, 10.0)?;
+    let gaussian_noise_generator = NoiseGenerator::new_with_bounds("Gaussian", -10.0, 10.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
-    let res = NoiseGenerator::new(NoiseMethod::new_gaussian(), 0.0, -1.0);
+    let res = NoiseGenerator::new_with_parameters("Gaussian", 0.0, -1.0);
     assert!(res.is_err());
 
-    let res = NoiseGenerator::new_bounds(NoiseMethod::new_gaussian(), 1.0, 0.0);
+    let res = NoiseGenerator::new_with_bounds("Gaussian", 1.0, 0.0);
     assert!(res.is_err());
 
     Ok(())
@@ -94,12 +93,23 @@ fn test_noise_gaussian_f64() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_laplace_f64() -> Result<(), AnoError> {
-    let laplace_noise_generator = NoiseGenerator::new(NoiseMethod::new_laplace(), 0.0, 1.0)?;
+    let laplace_noise_generator = NoiseGenerator::new_with_parameters("Laplace", 0.0, 1.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
-    let laplace_noise_generator =
-        NoiseGenerator::new_bounds(NoiseMethod::new_laplace(), -5.0, 5.0)?;
+    let laplace_noise_generator = NoiseGenerator::new_with_bounds("Laplace", -10.0, 10.0)?;
+    let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
+    assert!((30.0..=50.0).contains(&noisy_data));
+
+    Ok(())
+}
+
+#[test]
+fn test_noise_uniform_f64() -> Result<(), AnoError> {
+    let res = NoiseGenerator::new_with_parameters("Uniform", 0.0, 1.0);
+    assert!(res.is_err());
+
+    let laplace_noise_generator = NoiseGenerator::new_with_bounds("Uniform", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
@@ -108,12 +118,11 @@ fn test_noise_laplace_f64() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_gaussian_i64() -> Result<(), AnoError> {
-    let gaussian_noise_generator = NoiseGenerator::new(NoiseMethod::new_gaussian(), 0.0, 2.0)?;
+    let gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 2.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
-    let gaussian_noise_generator =
-        NoiseGenerator::new_bounds(NoiseMethod::new_gaussian(), -10.0, 10.0)?;
+    let gaussian_noise_generator = NoiseGenerator::new_with_bounds("Gaussian", -10.0, 10.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
@@ -122,12 +131,20 @@ fn test_noise_gaussian_i64() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_laplace_i64() -> Result<(), AnoError> {
-    let laplace_noise_generator = NoiseGenerator::new(NoiseMethod::new_laplace(), 0.0, 1.0)?;
+    let laplace_noise_generator = NoiseGenerator::new_with_parameters("Laplace", 0.0, 1.0)?;
     let noisy_data = laplace_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
-    let laplace_noise_generator =
-        NoiseGenerator::new_bounds(NoiseMethod::new_laplace(), -5.0, 5.0)?;
+    let laplace_noise_generator = NoiseGenerator::new_with_bounds("Laplace", -10.0, 10.0)?;
+    let noisy_data = laplace_noise_generator.apply_on_int(40)?;
+    assert!((30..=50).contains(&noisy_data));
+
+    Ok(())
+}
+
+#[test]
+fn test_noise_uniform_i64() -> Result<(), AnoError> {
+    let laplace_noise_generator = NoiseGenerator::new_with_bounds("Uniform", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
@@ -137,7 +154,7 @@ fn test_noise_laplace_i64() -> Result<(), AnoError> {
 #[test]
 fn test_noise_gaussian_date() -> Result<(), AnoError> {
     let gaussian_noise_generator =
-        NoiseGenerator::new_date(NoiseMethod::new_gaussian(), 0.0, 2.0, "Hour")?;
+        NoiseGenerator::new_date_with_parameters("Gaussian", 0.0, 2.0, "Hour")?;
     let noisy_date = gaussian_noise_generator.apply_on_date("2023-04-07T12:34:56Z")?;
     let date = DateTime::parse_from_rfc3339(&noisy_date)?.with_timezone(&Utc);
 
@@ -150,7 +167,7 @@ fn test_noise_gaussian_date() -> Result<(), AnoError> {
 #[test]
 fn test_noise_laplace_date() -> Result<(), AnoError> {
     let laplace_noise_generator =
-        NoiseGenerator::new_date(NoiseMethod::new_laplace(), 0.0, 2.0, "Hour")?;
+        NoiseGenerator::new_date_with_parameters("Laplace", 0.0, 2.0, "Hour")?;
     let noisy_date = laplace_noise_generator.apply_on_date("2023-04-07T12:34:56Z")?;
     let date = DateTime::parse_from_rfc3339(&noisy_date)?.with_timezone(&Utc);
 
@@ -278,7 +295,7 @@ fn test_date_aggregation() -> Result<(), AnoError> {
 
 #[test]
 fn test_float_scale() -> Result<(), AnoError> {
-    let float_scaler = NumberScaler::new(10.0, 5.0);
+    let float_scaler = NumberScaler::new(10.0, 5.0, 2.0, -50.0);
 
     let n1 = float_scaler.apply_on_float(20.0);
     let n2 = float_scaler.apply_on_float(19.5);
