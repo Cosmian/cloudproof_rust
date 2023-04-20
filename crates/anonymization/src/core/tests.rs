@@ -178,6 +178,25 @@ fn test_noise_laplace_date() -> Result<(), AnoError> {
 }
 
 #[test]
+fn test_correlated_noise_gaussian_f64() -> Result<(), AnoError> {
+    let gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 10.0, 2.0)?;
+    let values = vec![1.0, 1.0, 1.0];
+    let factors = vec![1.0, 2.0, 4.0];
+    let noisy_values = gaussian_noise_generator.apply_correlated_noise(&values, &factors)?;
+    assert_eq!(
+        (noisy_values[0] - values[0]) / factors[0],
+        (noisy_values[1] - values[1]) / factors[1]
+    );
+    assert_eq!(
+        (noisy_values[0] - values[0]) / factors[0],
+        (noisy_values[2] - values[2]) / factors[2]
+    );
+    // Ordering only holds if noise is positive
+    assert!(noisy_values[0] < noisy_values[1]);
+    assert!(noisy_values[1] < noisy_values[2]);
+    Ok(())
+}
+#[test]
 fn test_mask_word() -> Result<(), AnoError> {
     let input_str = String::from("Confidential: contains -secret- documents");
     let block_words = vec!["confidential", "SECRET"];
@@ -301,6 +320,18 @@ fn test_float_scale() -> Result<(), AnoError> {
     let n2 = float_scaler.apply_on_float(19.5);
 
     assert!(n1 > n2);
+
+    Ok(())
+}
+
+#[test]
+fn test_int_scale() -> Result<(), AnoError> {
+    let int_scaler = NumberScaler::new(10.0, 5.0, 20.0, -50.0);
+
+    let n1 = int_scaler.apply_on_int(20);
+    let n2 = int_scaler.apply_on_int(19);
+
+    assert!(n1 >= n2);
 
     Ok(())
 }

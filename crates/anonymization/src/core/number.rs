@@ -1,6 +1,6 @@
 use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use cosmian_crypto_core::CsRng;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_distr::{num_traits::Pow, Distribution, StandardNormal, Uniform};
 
 use super::AnoError;
@@ -94,7 +94,7 @@ impl NumberScaler {
     pub fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Self {
         let mut rng = CsRng::from_entropy();
         let rand_uniform = scale * Uniform::new(0.0001, 1.0).sample(&mut rng);
-        let rand_normal = translate * &StandardNormal.sample(&mut rng);
+        let rand_normal = translate * rng.sample::<f64, _>(StandardNormal);
 
         Self {
             mean,
@@ -108,5 +108,10 @@ impl NumberScaler {
     pub fn apply_on_float(&self, data: f64) -> f64 {
         let normalized_data = (data - self.mean) / self.std_deviation;
         normalized_data.mul_add(self.rand_uniform, self.rand_normal)
+    }
+
+    #[must_use]
+    pub fn apply_on_int(&self, data: i64) -> i64 {
+        self.apply_on_float(data as f64) as i64
     }
 }

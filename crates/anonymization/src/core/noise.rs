@@ -88,21 +88,7 @@ where
         date_unit: &str,
     ) -> Result<Self, AnoError> {
         let scaled_std_dev = std_dev * N::from(date_precision(date_unit)?).unwrap();
-        if scaled_std_dev.is_zero() || scaled_std_dev.is_sign_negative() {
-            return Err(ano_error!(
-                "Standard Deviation must be greater than 0 to generate noise."
-            ));
-        }
-
-        let method = match method_name {
-            "Gaussian" => Ok(NoiseMethod::Gaussian(Normal::new(mean, scaled_std_dev)?)),
-            "Laplace" => Ok(NoiseMethod::Laplace(Laplace::<N>::new(
-                mean,
-                scaled_std_dev,
-            ))),
-            _ => Err(ano_error!("No supported distribution {}.", method_name)),
-        }?;
-        Ok(Self { method })
+        Self::new_with_parameters(method_name, mean, scaled_std_dev)
     }
 
     pub fn new_with_bounds(
@@ -140,6 +126,23 @@ where
         };
         // Add noise to the raw data
         Ok(data + noise)
+    }
+
+    pub fn apply_correlated_noise(&self, data: &[N], factors: &[N]) -> Result<Vec<N>, AnoError> {
+        let mut rng = CsRng::from_entropy();
+
+        // Sample noise once with std_deviation = 1
+        let noise = match &self.method {
+            NoiseMethod::Gaussian(distr) => distr.sample(&mut rng),
+            NoiseMethod::Laplace(distr) => distr.sample(&mut rng),
+            NoiseMethod::Uniform(distr) => distr.sample(&mut rng),
+        };
+        // Add noise to the raw data
+        Ok(data
+            .iter()
+            .zip(factors.iter())
+            .map(|(val, factor)| noise.mul_add(*factor, *val))
+            .collect())
     }
 }
 impl NoiseGenerator<f64> {
