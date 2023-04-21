@@ -16,7 +16,7 @@ impl Hasher {
             _ => Err(PyException::new_err("Not a valid hash method specified.")),
         }?;
 
-        Ok(Self(HasherRust { method, salt }))
+        Ok(Self(HasherRust::new(method, salt)))
     }
 
     pub fn apply(&self, data: &[u8]) -> PyResult<String> {

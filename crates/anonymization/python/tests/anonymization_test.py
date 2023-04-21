@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from cloudproof_anonymization import Hasher
+from cloudproof_anonymization import Hasher, NoiseGenerator
 
 
 class TestHasher(unittest.TestCase):
@@ -32,6 +32,33 @@ class TestHasher(unittest.TestCase):
         hasher = Hasher('Argon2', b'example salt')
         res = hasher.apply(b'low entropy data')
         self.assertEqual(res, 'JXiQyIYJAIMZoDKhA/BOKTo+142aTkDvtITEI7NXDEM=')
+
+
+class TestNoiseGen(unittest.TestCase):
+    def test_gaussian_float(self) -> None:
+        gaussian_noise_generator = NoiseGenerator.new_with_parameters(
+            'Gaussian', 0.0, 2.0
+        )
+        noisy_data = gaussian_noise_generator.apply_on_float(40.0)
+        self.assertGreaterEqual(noisy_data, 30.0)
+        self.assertLessEqual(noisy_data, 50.0)
+
+        gaussian_noise_generator = NoiseGenerator.new_with_bounds(
+            'Gaussian', -10.0, 10.0
+        )
+        noisy_data = gaussian_noise_generator.apply_on_float(40.0)
+        self.assertGreaterEqual(noisy_data, 30.0)
+        self.assertLessEqual(noisy_data, 50.0)
+
+        with self.assertRaises(Exception):
+            gaussian_noise_generator = NoiseGenerator.new_with_parameters(
+                'Gaussian', 0.0, -1.0
+            )
+
+        with self.assertRaises(Exception):
+            gaussian_noise_generator = NoiseGenerator.new_with_bounds(
+                'Gaussian', 1.0, 0.0
+            )
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ use rand_distr::{num_traits::Float, Distribution, Normal, Standard, StandardNorm
 
 use crate::{ano_error, core::AnoError};
 
+// Represent the different Noise methods.
 pub enum NoiseMethod<N>
 where
     N: Float + rand_distr::uniform::SampleUniform,
@@ -15,6 +16,7 @@ where
     Uniform(Uniform<N>),
 }
 
+/// Laplace Distribution
 pub struct Laplace<N> {
     mean: N,
     beta: N,
@@ -30,16 +32,18 @@ impl<N: Float> Distribution<N> for Laplace<N>
 where
     Standard: Distribution<N>,
 {
+    // A function to generate samples of the Laplace Noise.
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> N {
         let p = rng.gen();
         if rng.gen_bool(0.5) {
-            self.mean + -self.beta * N::ln(N::one() - p)
+            self.mean - self.beta * N::ln(N::one() - p)
         } else {
             self.mean + self.beta * N::ln(p)
         }
     }
 }
 
+// Returns the time unit equivalent in seconds.
 pub fn date_precision(time_unit: &str) -> Result<f64, AnoError> {
     match time_unit {
         "Second" => Ok(1.0),
@@ -48,6 +52,7 @@ pub fn date_precision(time_unit: &str) -> Result<f64, AnoError> {
         "Day" => Ok(86400.0),
         "Month" => Ok(2_628_000.0),
         "Year" => Ok(31_536_000.0),
+        // Time unit not recognized
         _ => Err(ano_error!("Unknown time unit {}", time_unit)),
     }
 }
@@ -66,6 +71,14 @@ where
     Standard: Distribution<N>,
     StandardNormal: Distribution<N>,
 {
+    /// Instantiate a `NoiseGenerator` using mean and standard deviation.
+    ///
+    /// # Arguments
+    ///
+    /// * `method_name` - the noise distribution to use ("Gaussian" or
+    ///   "Laplace").
+    /// * `mean` - mean of the noise distribution
+    /// * `std_dev` - the standard deviation of the noise distribution.
     pub fn new_with_parameters(method_name: &str, mean: N, std_dev: N) -> Result<Self, AnoError> {
         if std_dev.is_zero() || std_dev.is_sign_negative() {
             return Err(ano_error!(
@@ -73,6 +86,7 @@ where
             ));
         }
 
+        // Select the appropriate distribution method
         let method = match method_name {
             "Gaussian" => Ok(NoiseMethod::Gaussian(Normal::new(mean, std_dev)?)),
             "Laplace" => Ok(NoiseMethod::Laplace(Laplace::<N>::new(mean, std_dev))),
@@ -81,6 +95,15 @@ where
         Ok(Self { method })
     }
 
+    /// Instantiate a `NoiseGenerator` for date anonymization.
+    ///
+    /// # Arguments
+    ///
+    /// * `method_name`: The noise distribution to use
+    /// * `mean`: The mean of the noise distribution.
+    /// * `std_dev`: The standard deviation of the noise distribution to scale
+    ///   based on the `date_unit`.
+    /// * `date_unit`: The unit of the date
     pub fn new_date_with_parameters(
         method_name: &str,
         mean: N,
@@ -91,6 +114,15 @@ where
         Self::new_with_parameters(method_name, mean, scaled_std_dev)
     }
 
+    /// Instantiate a `NoiseGenerator` with bound constraints.
+    ///
+    /// # Arguments
+    ///
+    /// * `method_name`: The noise distribution to use
+    /// * `min_bound`: The lower bound of the range of possible generated noise
+    ///   values
+    /// * `max_bound`: The upper bound of the range of possible generated noise
+    ///   values
     pub fn new_with_bounds(
         method_name: &str,
         min_bound: N,
@@ -100,14 +132,17 @@ where
             return Err(ano_error!("Min bound must be inferior to Max bound."));
         }
 
+        // Select the appropriate distribution method
         let method = match method_name {
             "Gaussian" => Ok(NoiseMethod::Gaussian(Normal::new(
                 (max_bound + min_bound) / N::from(2).unwrap(),
+                // 5 sigma => 99.99994% of values will be in the bounds
                 (max_bound - min_bound) / N::from(5).unwrap(),
             )?)),
             "Laplace" => Ok(NoiseMethod::Laplace(Laplace::<N>::new(
                 (max_bound + min_bound) / N::from(2).unwrap(),
-                (max_bound - min_bound) / N::from(10).unwrap(),
+                // 10 sigma => 99.99995% of values will be in the bounds
+                N::from(10).unwrap() / (max_bound - min_bound),
             ))),
             "Uniform" => Ok(NoiseMethod::Uniform(Uniform::new(min_bound, max_bound))),
             _ => Err(ano_error!("No supported distribution {}.", method_name)),
@@ -115,10 +150,19 @@ where
         Ok(Self { method })
     }
 
+    /// Adds noise generated from a chosen distribution to the input data.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - A single float value to which noise will be added.
+    ///
+    /// # Returns
+    ///
+    /// Original data with added noise
     pub fn apply_on_float(&self, data: N) -> Result<N, AnoError> {
         let mut rng = CsRng::from_entropy();
 
-        // Sample noise once with std_deviation = 1
+        // Sample noise
         let noise = match &self.method {
             NoiseMethod::Gaussian(distr) => distr.sample(&mut rng),
             NoiseMethod::Laplace(distr) => distr.sample(&mut rng),
@@ -128,16 +172,29 @@ where
         Ok(data + noise)
     }
 
+    /// Applies correlated noise to a vector of data, based on precomputed
+    /// factors. The noise is sampled once and then applied to each data
+    /// point, scaled by a corresponding factor.
+    ///
+    /// # Arguments
+    ///
+    /// * `data`: Data to add noise to.
+    /// * `factors`: Factors to scale the noise with, one for each data point.
+    ///
+    /// # Returns
+    ///
+    /// A vector containing the original data with added noise
     pub fn apply_correlated_noise(&self, data: &[N], factors: &[N]) -> Result<Vec<N>, AnoError> {
         let mut rng = CsRng::from_entropy();
 
-        // Sample noise once with std_deviation = 1
+        // Sample noise once
         let noise = match &self.method {
             NoiseMethod::Gaussian(distr) => distr.sample(&mut rng),
             NoiseMethod::Laplace(distr) => distr.sample(&mut rng),
             NoiseMethod::Uniform(distr) => distr.sample(&mut rng),
         };
-        // Add noise to the raw data
+
+        // Add noise to the raw data, scaled by the corresponding factor
         Ok(data
             .iter()
             .zip(factors.iter())
@@ -145,12 +202,31 @@ where
             .collect())
     }
 }
+
 impl NoiseGenerator<f64> {
+    /// Adds noise generated from a chosen distribution to the input data.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - A single int value to which noise will be added.
+    ///
+    /// # Returns
+    ///
+    /// Original data with added noise
     pub fn apply_on_int(&self, data: i64) -> Result<i64, AnoError> {
         let res = self.apply_on_float(data as f64)?;
         Ok(res.round() as i64)
     }
 
+    /// Applies the selected noise method on a given date string.
+    ///
+    /// # Arguments
+    ///
+    /// * `date_str` -  - A date string in the RFC3339 format.
+    ///
+    /// # Returns
+    ///
+    ///  The resulting noisy date string
     pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
         let date_unix = DateTime::parse_from_rfc3339(date_str)?
             .with_timezone(&Utc)

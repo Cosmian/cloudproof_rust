@@ -5,6 +5,7 @@ use tiny_keccak::{Hasher as _, Sha3};
 
 use crate::{ano_error, core::AnoError};
 
+// Available hashing methods
 pub enum HashMethod {
     SHA2,
     SHA3,
@@ -12,11 +13,25 @@ pub enum HashMethod {
 }
 
 pub struct Hasher {
-    pub method: HashMethod,
-    pub salt: Option<Vec<u8>>,
+    method: HashMethod,    // The selected hash method
+    salt: Option<Vec<u8>>, // An optional salt
 }
 
 impl Hasher {
+    #[must_use]
+    pub fn new(method: HashMethod, salt: Option<Vec<u8>>) -> Self {
+        Self { method, salt }
+    }
+
+    /// Applies the chosen hash method to the input data
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - A byte slice representing the input data to be hashed.
+    ///
+    /// # Returns
+    ///
+    /// The base64-encoded hash string.
     pub fn apply(&self, data: &[u8]) -> Result<String, AnoError> {
         match self.method {
             HashMethod::SHA2 => {
@@ -47,7 +62,7 @@ impl Hasher {
                     .as_deref()
                     .ok_or(ano_error!("Argon2 requires Salt"))?;
 
-                let mut output = [0u8; 32]; // Can be any desired size
+                let mut output = [0u8; 32];
                 Argon2::default().hash_password_into(data, salt_val, &mut output)?;
 
                 Ok(general_purpose::STANDARD.encode(output))
