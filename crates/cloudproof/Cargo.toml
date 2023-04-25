@@ -22,6 +22,11 @@ wasm_bindgen = [
   "cloudproof_findex/wasm_bindgen",
   "cloudproof_fpe/wasm_bindgen",
 ]
+default = [
+  "cloudproof_cover_crypt/default",
+  "cloudproof_findex/default",
+  "cloudproof_fpe/default",
+]
 
 [dependencies]
 cloudproof_cover_crypt = { path = "../cover_crypt", optional = true }
