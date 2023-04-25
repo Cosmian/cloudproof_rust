@@ -72,7 +72,6 @@ class TestPolicy(unittest.TestCase):
         self.assertEqual(secrecy_axis.get_name(), 'Secrecy')
 
     def test_policy_creation_rotation(self) -> None:
-
         policy = self.policy()
         # test attributes
         attributes = policy.attributes()

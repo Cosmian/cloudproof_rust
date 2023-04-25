@@ -120,6 +120,7 @@ repos:
   - repo: https://github.com/Cosmian/git-hooks.git
     rev: v1.0.7
     hooks:
+      - id: dprint-toml-fix
       - id: cargo-format
       - id: cargo-update
       - id: cargo-outdated
@@ -131,4 +132,3 @@ repos:
       - id: clippy-all-targets-all-features
       # - id: cargo-dry-publish
       # args: [--allow-dirty]
-      - id: dprint-toml-fix
