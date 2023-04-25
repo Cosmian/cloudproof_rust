@@ -1,9 +1,7 @@
 [package]
 name = "cloudproof_cover_crypt"
 version = "11.0.0"
-authors = [
-  "Théophile Brézot<theophile.brezot@cosmian.com>",
-]
+authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license = "MIT/Apache-2.0"
 description = "Cosmian CoverCrypt Cloudproof library"
@@ -16,6 +14,7 @@ name = "cloudproof_cover_crypt"
 ffi = ["cosmian_ffi_utils", "lazy_static"]
 python = ["pyo3"]
 wasm_bindgen = ["js-sys", "wasm-bindgen"]
+default = []
 
 [dependencies]
 cosmian_cover_crypt = { version = "11.0.0", features = ["serialization"] }

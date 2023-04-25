@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof"
-version = "1.1.0"
+version = "1.2.0"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license = "MIT/Apache-2.0"
@@ -21,6 +21,11 @@ wasm_bindgen = [
   "cloudproof_cover_crypt/wasm_bindgen",
   "cloudproof_findex/wasm_bindgen",
   "cloudproof_fpe/wasm_bindgen",
+]
+default = [
+  "cloudproof_cover_crypt/default",
+  "cloudproof_findex/default",
+  "cloudproof_fpe/default",
 ]
 
 [dependencies]

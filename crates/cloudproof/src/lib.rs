@@ -20,3 +20,11 @@ pub use cloudproof_fpe::ffi as fpe_ffi;
 pub use cloudproof_fpe::pyo3 as fpe_python;
 #[cfg(feature = "wasm_bindgen")]
 pub use cloudproof_fpe::wasm_bindgen as fpe_wasm_bindgen;
+
+// re-export of CoverCrypt and Crypto Core
+// so that projects that use their low level functionalities
+// do  not have to depend on them directly, avoiding version conflicts.
+#[cfg(feature = "default")]
+pub mod reexport {
+    pub use cloudproof_cover_crypt::reexport::{cover_crypt, crypto_core};
+}
