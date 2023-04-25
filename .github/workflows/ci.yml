@@ -38,7 +38,7 @@ jobs:
 
       - name: Install semver
         if: steps.cache-primes.outputs.cache-hit != 'true'
-        run: cargo install --locked cargo-semver-checks || true
+        run: cargo install --locked cargo-semver-checks --version 0.19.0 || true
 
       - name: Run python tests
         run: |
