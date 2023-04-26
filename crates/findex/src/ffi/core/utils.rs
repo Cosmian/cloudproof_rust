@@ -148,27 +148,27 @@ pub(crate) fn fetch_callback(
 
 pub(crate) fn parse_indexed_values(
     serialized_values: &str,
-) -> Result<HashMap<IndexedValue, HashSet<Keyword>>, ParsingError> {
+) -> Result<HashMap<IndexedValue, HashSet<Keyword>>, ParseIndexedValuesError> {
     // Indexed values and keywords are a map of base64 encoded `IndexedValue` to a
     // list of base64 encoded keywords. Why that? We should use simple
     // serialization to pass the data and not depend on JSON+base64 to improve
     // performances.
     // <https://github.com/Cosmian/findex/issues/19>
     let additions_base64: HashMap<String, Vec<String>> =
-        serde_json::from_str(serialized_values).map_err(ParsingError::Json)?;
+        serde_json::from_str(serialized_values).map_err(ParseIndexedValuesError::Json)?;
 
     let mut additions = HashMap::with_capacity(additions_base64.len());
     for (indexed_value, keywords_vec) in additions_base64 {
         let indexed_value_bytes = STANDARD
             .decode(indexed_value)
-            .map_err(ParsingError::Base64Decode)?;
+            .map_err(ParseIndexedValuesError::Base64Decode)?;
         let indexed_value = IndexedValue::try_from(indexed_value_bytes.as_slice())
-            .map_err(|e| ParsingError::Decoding(e.to_string()))?;
+            .map_err(|e| ParseIndexedValuesError::Decoding(e.to_string()))?;
         let mut keywords = HashSet::with_capacity(keywords_vec.len());
         for keyword in keywords_vec {
             let keyword_bytes = STANDARD
                 .decode(keyword)
-                .map_err(ParsingError::Base64Decode)?;
+                .map_err(ParseIndexedValuesError::Base64Decode)?;
             keywords.insert(Keyword::from(keyword_bytes));
         }
         additions.insert(indexed_value, keywords);
@@ -177,16 +177,16 @@ pub(crate) fn parse_indexed_values(
     Ok(additions)
 }
 
-pub(crate) enum ParsingError {
+pub(crate) enum ParseIndexedValuesError {
     Json(serde_json::Error),
     Base64Decode(base64::DecodeError),
     Decoding(String),
 }
 
-impl Display for ParsingError {
+impl Display for ParseIndexedValuesError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Json(e) => write!(f, "Serde error {e}"),
+            Self::Json(e) => write!(f, "json error {e}"),
             Self::Base64Decode(e) => write!(f, "base64 error {e}"),
             Self::Decoding(e) => write!(f, "bytes error {e}"),
         }

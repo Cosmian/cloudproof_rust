@@ -4,7 +4,6 @@ use std::num::TryFromIntError;
 
 use ::core::fmt::Display;
 
-
 use self::error::ToErrorCode;
 
 /// Limit on the recursion to use when none is provided.
@@ -64,6 +63,9 @@ macro_rules! wrapping_callback_ser_de_error_with_context {
 
 #[derive(Debug)]
 pub(crate) enum FindexFfiError {
+    /// FFI use u32 as a base type for the callbacks (why?) but the input value
+    /// is often a Rust `usize`. Even if these kind of errors should never
+    /// happen in real code, we need a variant to encode these.
     IntConversionError(TryFromIntError),
 
     /// This error happen if the FFI callback return an invalid
@@ -73,16 +75,15 @@ pub(crate) enum FindexFfiError {
         callback_name: &'static str,
         code: i32,
     },
+
     /// Findex wrap the FFI callback inside it's own callback that manage the
     /// serialization/deserialization of the results.
     ///
     /// These operations can fail (if there is a bug inside our code or if the
     /// callbacks returns us invalid bytes) so we should return the maximum
     /// information to the user so it can fix it's implementation.
-    WrappingCallbackSerDeError {
-        context: String,
-        error: String,
-    },
+    WrappingCallbackSerDeError { context: String, error: String },
+
     /// It is here because instead of implementing one trait for each type of
     /// request (search/upsert/compact), we've created only one trait with
     /// `Option<Callback>` so we fail at runtime if one of the callback wasn't
@@ -91,9 +92,7 @@ pub(crate) enum FindexFfiError {
     /// We should check that all required
     /// callback are set in the upper function so this error should never
     /// happen.
-    CallbackNotImplemented {
-        callback_name: &'static str,
-    },
+    CallbackNotImplemented { callback_name: &'static str },
 }
 
 impl ToErrorCode for FindexFfiError {
