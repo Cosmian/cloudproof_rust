@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Display};
 
 use aes::Aes256;
-use fpe::ff1::{FF1h, FlexibleNumeralString};
+use cosmian_fpe::ff1::{FF1h, FlexibleNumeralString};
 use itertools::Itertools;
 
 use super::AnoError;
