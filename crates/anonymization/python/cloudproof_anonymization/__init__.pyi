@@ -95,3 +95,63 @@ class NoiseGenerator:
         Returns:
         - The resulting noisy date string
         """
+
+class WordMasker:
+    def __init__(self, words_to_block: List[str]) -> None:
+        """
+        Creates a new WordMasker instance.
+
+        Args:
+        - words_to_block: A list of strings containing the words to be masked in the text.
+        """
+        self.word_list = set(word.lower() for word in words_to_block)
+    def apply(self, data: str) -> str:
+        """
+        Masks the specified words in the given text.
+
+        Args:
+        - data: A string containing the text to be masked.
+
+        Returns:
+        - Text without the sensitive words.
+        """
+
+class WordTokenizer:
+    def __init__(self, words_to_block: List[str]) -> None:
+        """
+        Creates a new instance of WordTokenizer.
+
+        Args:
+            words_to_block: A list of strings representing the words to be replaced with tokens.
+        """
+    def apply(self, data: str) -> str:
+        """
+        Remove sensitive words from a text by replacing them with tokens.
+
+        Args:
+            data: A string representing the input text.
+
+        Returns:
+            A string containing tokens in place of sensitive words.
+        """
+
+class WordPatternMasker:
+    def __init__(self, pattern_regex: str, replace_str: str) -> None:
+        """
+        Creates a new instance of `WordPatternMasker` with the provided pattern
+        regex and replace string.
+
+        Args:
+            pattern_regex: The pattern regex to search for.
+            replace_str: The string to replace the matched patterns.
+        """
+    def apply(self, data: str) -> str:
+        """
+        Applies the pattern mask to the provided data.
+
+        Args:
+            data: The data to be masked.
+
+        Returns:
+            Text with the matched pattern replaced.
+        """

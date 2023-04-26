@@ -201,21 +201,19 @@ fn test_mask_word() -> Result<(), AnoError> {
 
     let safe_str = word_masker.apply(&input_str)?;
 
-    assert_eq!(safe_str, "XXXX contains XXXX documents");
+    assert_eq!(safe_str, "XXXX: contains -XXXX- documents");
     Ok(())
 }
 
 #[test]
 fn test_token_word() -> Result<(), AnoError> {
-    let input_str =
-        String::from("confidential: contains -secret- documents with confidential info");
+    let input_str = String::from("confidential : contains secret documents with confidential info");
     let block_words = vec!["confidential", "SECRET"];
     let word_tokenizer = WordTokenizer::new(&block_words)?;
 
     let safe_str = word_tokenizer.apply(&input_str)?;
 
     let words: HashSet<&str> = safe_str.split(' ').collect();
-
     assert!(!words.contains("confidential"));
     assert!(!words.contains("secret"));
     assert!(words.contains("documents"));
@@ -310,25 +308,21 @@ fn test_date_aggregation() -> Result<(), AnoError> {
 }
 
 #[test]
-fn test_float_scale() -> Result<(), AnoError> {
+fn test_float_scale() {
     let float_scaler = NumberScaler::new(10.0, 5.0, 2.0, -50.0);
 
     let n1 = float_scaler.apply_on_float(20.0);
     let n2 = float_scaler.apply_on_float(19.5);
 
     assert!(n1 > n2);
-
-    Ok(())
 }
 
 #[test]
-fn test_int_scale() -> Result<(), AnoError> {
+fn test_int_scale() {
     let int_scaler = NumberScaler::new(10.0, 5.0, 20.0, -50.0);
 
     let n1 = int_scaler.apply_on_int(20);
     let n2 = int_scaler.apply_on_int(19);
 
     assert!(n1 >= n2);
-
-    Ok(())
 }

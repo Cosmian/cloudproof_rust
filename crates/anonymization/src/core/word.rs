@@ -7,11 +7,17 @@ use regex::Regex;
 use super::AnoError;
 
 pub struct WordTokenizer {
+    /// A mapping of words to UUIDs.
     word_token_mapping: HashMap<String, String>,
-    re_word_separator: Regex,
 }
 
 impl WordTokenizer {
+    /// Creates a new instance of `WordTokenizer`.
+    ///
+    /// # Arguments
+    ///
+    /// * `words_to_block`: a slice of strings representing the words to be
+    ///   replaced with UUIDs.
     pub fn new(words_to_block: &[&str]) -> Result<Self, AnoError> {
         let mut mapping = HashMap::new();
         let mut rng = CsRng::from_entropy();
@@ -23,53 +29,68 @@ impl WordTokenizer {
         }
         Ok(Self {
             word_token_mapping: mapping,
-            re_word_separator: Regex::new(r"[[:punct:]\s]+").expect("Regex should always be valid"),
         })
     }
 
+    /// Remove sensitive words from a text by replacing them with tokens.
+    ///
+    /// # Arguments
+    ///
+    /// * `data`: a string representing the input text.
+    ///
+    /// # Returns
+    ///
+    /// Texts containing tokens in place of sensitive words.
     pub fn apply(&self, data: &str) -> Result<String, AnoError> {
-        let split_vec: Vec<&str> = self.re_word_separator.split(data).collect();
-
-        let res: Vec<String> = split_vec
-            .iter()
-            .map(
-                |word| match self.word_token_mapping.get(&word.to_lowercase()) {
-                    Some(uuid) => uuid.to_string(),
-                    None => (*word).to_string(),
-                },
-            )
-            .collect();
-
-        Ok(res.join(" "))
+        let re = Regex::new(r"\b\w+\b").unwrap();
+        let result = re.replace_all(data, |caps: &regex::Captures| {
+            match self.word_token_mapping.get(&caps[0].to_lowercase()) {
+                Some(token) => token.to_string(),
+                None => caps[0].to_string(),
+            }
+        });
+        Ok(result.into_owned())
     }
 }
 
 pub struct WordMasker {
+    /// A set of words to be masked in the text.
     word_list: HashSet<String>,
-    re_word_separator: Regex,
 }
 
 impl WordMasker {
+    /// Creates a new `WordMasker` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `words_to_block`: A slice of string references containing the words to
+    ///   be masked in the text.
     #[must_use]
     pub fn new(words_to_block: &[&str]) -> Self {
         Self {
             word_list: words_to_block.iter().map(|s| s.to_lowercase()).collect(),
-            re_word_separator: Regex::new(r"[[:punct:]\s]+").expect("Regex should always be valid"),
         }
     }
 
+    /// Masks the specified words in the given text.
+    ///
+    /// # Arguments
+    ///
+    /// * `data`: A string slice containing the text to be masked.
+    ///
+    /// # Returns
+    ///
+    /// Text without the sensitive words.
     pub fn apply(&self, data: &str) -> Result<String, AnoError> {
-        let split_vec: Vec<&str> = self.re_word_separator.split(data).collect();
-
-        let res: Vec<&str> = split_vec
-            .iter()
-            .map(|word| match self.word_list.contains(&word.to_lowercase()) {
-                true => "XXXX",
-                false => word,
-            })
-            .collect();
-
-        Ok(res.join(" "))
+        let re = Regex::new(r"\b\w+\b").unwrap();
+        let result = re.replace_all(data, |caps: &regex::Captures| {
+            if self.word_list.contains(&caps[0].to_lowercase()) {
+                "XXXX".to_string()
+            } else {
+                caps[0].to_string()
+            }
+        });
+        Ok(result.into_owned())
     }
 }
 
@@ -79,6 +100,13 @@ pub struct WordPatternMasker {
 }
 
 impl WordPatternMasker {
+    /// Creates a new instance of `WordPatternMasker` with the provided pattern
+    /// regex and replace string.
+    ///
+    /// # Arguments
+    ///
+    /// * `pattern_regex` - The pattern regex to search for.
+    /// * `replace_str` - The string to replace the matched patterns.
     pub fn new(pattern_regex: &str, replace_str: &str) -> Result<Self, AnoError> {
         Ok(Self {
             pattern: Regex::new(pattern_regex)?,
@@ -86,6 +114,15 @@ impl WordPatternMasker {
         })
     }
 
+    /// Applies the pattern mask to the provided data.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - The data to be masked.
+    ///
+    /// # Returns
+    ///
+    /// Text with the matched pattern replaced.
     pub fn apply(&self, data: &str) -> Result<String, AnoError> {
         Ok(self.pattern.replace(data, &self.replacer).into_owned())
     }

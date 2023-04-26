@@ -2,7 +2,13 @@
 import unittest
 from datetime import datetime
 
-from cloudproof_anonymization import Hasher, NoiseGenerator
+from cloudproof_anonymization import (
+    Hasher,
+    NoiseGenerator,
+    WordMasker,
+    WordPatternMasker,
+    WordTokenizer,
+)
 
 
 class TestHasher(unittest.TestCase):
@@ -143,6 +149,40 @@ class TestNoiseGen(unittest.TestCase):
         self.assertEqual(
             (res[0] - values[0]) / factors[0], (res[2] - values[2]) / factors[2]
         )
+
+
+class TestWordMasking(unittest.TestCase):
+    def test_word_masker(self) -> None:
+        word_masker = WordMasker(['quick', 'brown', 'dog'])
+        data = 'The Quick! brown fox, Jumps over the lazy dog.'
+        expected_result = 'The XXXX! XXXX fox, Jumps over the lazy XXXX.'
+        self.assertEqual(expected_result, word_masker.apply(data))
+
+    def test_word_tokenizer(self) -> None:
+        word_tokenizer = WordTokenizer(['password', 'secret'])
+        text = 'My password is secret'
+        masked_text = word_tokenizer.apply(text)
+        self.assertNotIn('password', masked_text)
+        self.assertNotIn('secret', masked_text)
+
+    def test_word_pattern_masker(self) -> None:
+        pattern = r'\b\d{4}-\d{2}-\d{2}\b'
+        replace_str = 'DATE'
+        masker = WordPatternMasker(pattern, replace_str)
+
+        # Test case where pattern is present
+        data = 'On 2022-04-01, the company announced its plans for expansion.'
+        expected_output = 'On DATE, the company announced its plans for expansion.'
+        self.assertEqual(masker.apply(data), expected_output)
+
+        # Test case where pattern is not present
+        data = 'The quick brown fox jumps over the lazy dog.'
+        expected_output = 'The quick brown fox jumps over the lazy dog.'
+        self.assertEqual(masker.apply(data), expected_output)
+
+        # Invalid regex
+        with self.assertRaises(Exception):
+            WordPatternMasker('(', 'XXX')
 
 
 if __name__ == '__main__':
