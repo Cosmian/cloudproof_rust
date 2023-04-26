@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_findex"
-version = "3.0.0"
+version = "3.0.1"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license = "MIT/Apache-2.0"
