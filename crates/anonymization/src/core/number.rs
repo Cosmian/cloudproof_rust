@@ -1,7 +1,5 @@
 use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
-use cosmian_crypto_core::CsRng;
-use rand::{Rng, SeedableRng};
-use rand_distr::{num_traits::Pow, Distribution, StandardNormal, Uniform};
+use rand_distr::num_traits::Pow;
 
 use super::AnoError;
 use crate::ano_error;
@@ -85,29 +83,25 @@ impl DateAggregator {
 pub struct NumberScaler {
     mean: f64,
     std_deviation: f64,
-    rand_uniform: f64,
-    rand_normal: f64,
+    scale: f64,
+    translate: f64,
 }
 
 impl NumberScaler {
     #[must_use]
     pub fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Self {
-        let mut rng = CsRng::from_entropy();
-        let rand_uniform = scale * Uniform::new(0.0001, 1.0).sample(&mut rng);
-        let rand_normal = translate * rng.sample::<f64, _>(StandardNormal);
-
         Self {
             mean,
             std_deviation,
-            rand_uniform,
-            rand_normal,
+            scale,
+            translate,
         }
     }
 
     #[must_use]
     pub fn apply_on_float(&self, data: f64) -> f64 {
         let normalized_data = (data - self.mean) / self.std_deviation;
-        normalized_data.mul_add(self.rand_uniform, self.rand_normal)
+        normalized_data.mul_add(self.scale, self.translate)
     }
 
     #[must_use]

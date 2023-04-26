@@ -16,7 +16,10 @@ impl Hasher {
             _ => Err(PyException::new_err("Not a valid hash method specified.")),
         }?;
 
-        Ok(Self(HasherRust::new(method, salt)))
+        Ok(Self(pyo3_unwrap!(
+            HasherRust::new(method, salt),
+            "Error initializing the hasher"
+        )))
     }
 
     pub fn apply(&self, data: &[u8]) -> PyResult<String> {

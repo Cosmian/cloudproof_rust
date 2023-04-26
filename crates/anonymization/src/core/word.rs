@@ -7,7 +7,7 @@ use regex::Regex;
 use super::AnoError;
 
 pub struct WordTokenizer {
-    word_token_mapping: HashMap<String, [u8; 16]>,
+    word_token_mapping: HashMap<String, String>,
     re_word_separator: Regex,
 }
 
@@ -19,7 +19,7 @@ impl WordTokenizer {
         for word in words_to_block {
             let mut uuid = [0; 16];
             rng.try_fill_bytes(&mut uuid)?;
-            mapping.insert(word.to_lowercase(), uuid);
+            mapping.insert(word.to_lowercase(), hex::encode_upper(uuid));
         }
         Ok(Self {
             word_token_mapping: mapping,
@@ -34,7 +34,7 @@ impl WordTokenizer {
             .iter()
             .map(
                 |word| match self.word_token_mapping.get(&word.to_lowercase()) {
-                    Some(uuid) => hex::encode_upper(uuid),
+                    Some(uuid) => uuid.to_string(),
                     None => (*word).to_string(),
                 },
             )

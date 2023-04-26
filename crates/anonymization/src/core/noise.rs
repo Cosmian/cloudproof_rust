@@ -43,20 +43,6 @@ where
     }
 }
 
-// Returns the time unit equivalent in seconds.
-pub fn date_precision(time_unit: &str) -> Result<f64, AnoError> {
-    match time_unit {
-        "Second" => Ok(1.0),
-        "Minute" => Ok(60.0),
-        "Hour" => Ok(3600.0),
-        "Day" => Ok(86400.0),
-        "Month" => Ok(2_628_000.0),
-        "Year" => Ok(31_536_000.0),
-        // Time unit not recognized
-        _ => Err(ano_error!("Unknown time unit {}", time_unit)),
-    }
-}
-
 pub struct NoiseGenerator<N>
 where
     N: Float + rand_distr::uniform::SampleUniform,
@@ -95,34 +81,16 @@ where
         Ok(Self { method })
     }
 
-    /// Instantiate a `NoiseGenerator` for date anonymization.
-    ///
-    /// # Arguments
-    ///
-    /// * `method_name`: The noise distribution to use
-    /// * `mean`: The mean of the noise distribution.
-    /// * `std_dev`: The standard deviation of the noise distribution to scale
-    ///   based on the `date_unit`.
-    /// * `date_unit`: The unit of the date
-    pub fn new_date_with_parameters(
-        method_name: &str,
-        mean: N,
-        std_dev: N,
-        date_unit: &str,
-    ) -> Result<Self, AnoError> {
-        let scaled_std_dev = std_dev * N::from(date_precision(date_unit)?).unwrap();
-        Self::new_with_parameters(method_name, mean, scaled_std_dev)
-    }
-
     /// Instantiate a `NoiseGenerator` with bound constraints.
     ///
     /// # Arguments
     ///
-    /// * `method_name`: The noise distribution to use
+    /// * `method_name`: The noise distribution to use ("Uniform", "Gaussian",
+    ///   or "Laplace").
     /// * `min_bound`: The lower bound of the range of possible generated noise
-    ///   values
+    ///   values.
     /// * `max_bound`: The upper bound of the range of possible generated noise
-    ///   values
+    ///   values.
     pub fn new_with_bounds(
         method_name: &str,
         min_bound: N,

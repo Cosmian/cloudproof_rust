@@ -6,6 +6,7 @@ use tiny_keccak::{Hasher as _, Sha3};
 use crate::{ano_error, core::AnoError};
 
 // Available hashing methods
+#[derive(PartialEq, Eq)]
 pub enum HashMethod {
     SHA2,
     SHA3,
@@ -18,9 +19,23 @@ pub struct Hasher {
 }
 
 impl Hasher {
-    #[must_use]
-    pub fn new(method: HashMethod, salt: Option<Vec<u8>>) -> Self {
-        Self { method, salt }
+    /// Creates a new `Hasher` instance using the specified hash method and an
+    /// optional salt.
+    ///
+    /// # Arguments
+    ///
+    /// * `method` - The hash method to use. This can be one of the following:
+    ///   * `SHA2` Fast and secure, but vulnerable to brute-force attacks.
+    ///   * `SHA3` Secure and resistant to brute-force attacks, but slower than
+    ///     SHA-256 and not as widely supported.
+    ///   * `Argon2` Highly resistant to brute-force attacks, but can be slower
+    ///     than other hash functions and may require more memory.
+    /// * `salt` - An optional salt to use. Required with Argon2
+    pub fn new(method: HashMethod, salt: Option<Vec<u8>>) -> Result<Self, AnoError> {
+        if method == HashMethod::Argon2 && salt.is_none() {
+            return Err(ano_error!("Argon2 requires a salt value."));
+        }
+        Ok(Self { method, salt })
     }
 
     /// Applies the chosen hash method to the input data
@@ -60,7 +75,7 @@ impl Hasher {
                 let salt_val = self
                     .salt
                     .as_deref()
-                    .ok_or(ano_error!("Argon2 requires Salt"))?;
+                    .ok_or(ano_error!("Argon2 requires a salt value."))?;
 
                 let mut output = [0u8; 32];
                 Argon2::default().hash_password_into(data, salt_val, &mut output)?;
