@@ -22,7 +22,7 @@ default = []
 
 [dependencies]
 aes = { version = "0.8" }
-fpe = { git = "https://github.com/Cosmian/cosmian_fpe" }
+cosmian_fpe = { version = "0.5.2" }
 itertools = { version = "0.10" }
 num-bigint = { version = "0.4", default-features = false }
 num-integer = { version = "0.1", default-features = false }
