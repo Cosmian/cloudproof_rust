@@ -46,7 +46,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
                 format!("serializing keyword {keyword:?} for progress callback")
             );
             let indexed_values_bytes = wrapping_callback_ser_de_error_with_context!(
-                serialize_set(&indexed_values),
+                serialize_set(indexed_values),
                 format!("serializing indexed values {indexed_values:?} for progress callback")
             );
             wrapping_callback_ser_de_error_with_context!(
@@ -75,7 +75,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
                     std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize)
                 };
                 return Ok(wrapping_callback_ser_de_error_with_context!(
-                    deserialize_set(&uids_bytes),
+                    deserialize_set(uids_bytes),
                     "deserializing uids from fetch all entries callback"
                 ));
             } else {
@@ -283,7 +283,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             unsafe { std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize) };
 
         let locations_to_remove = wrapping_callback_ser_de_error_with_context!(
-            deserialize_set(&output_locations_bytes),
+            deserialize_set(output_locations_bytes),
             format!(
                 "deserializing locations to remove bytes returned by the list removed location \
                  callback"
@@ -332,7 +332,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             unsafe { std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize) };
 
         let locations = wrapping_callback_ser_de_error_with_context!(
-            deserialize_set(&output_locations_bytes),
+            deserialize_set(output_locations_bytes),
             "deserializing existing locations from filter removed locations callback"
         )
         .into_iter()

@@ -20,7 +20,7 @@ use cosmian_findex::{
         DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
         KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
-    CallbackError, Error as FindexError, FindexCompact, FindexSearch, FindexUpsert, IndexedValue,
+    CallbackError, Error as FindexError, FindexCompact, FindexSearch, FindexUpsert,
     KeyingMaterial, Keyword, Label,
 };
 

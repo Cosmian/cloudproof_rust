@@ -3,7 +3,7 @@
 use std::num::TryFromIntError;
 
 use ::core::fmt::Display;
-use base64::DecodeError;
+
 
 use self::error::ToErrorCode;
 
