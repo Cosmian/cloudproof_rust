@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2023-04-26
+
+### Features
+
+- Make cloudproof crate publishable and publish it in CI on tags
+
 ## [1.2.0] - 2023-04-25
 
 ### Features
