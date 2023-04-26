@@ -30,7 +30,6 @@ use crate::{
 /// - `label_bytes`             : bytes of the public label used for hashing
 /// - `keywords`                : list of keyword bytes to search
 /// - `max_results_per_chain`   : maximum results returned for a chain
-/// - `max_depth`               : maximum recursion level allowed
 /// - `fetch_chains_batch_size` : increase this value to improve performances
 ///   but decrease security by batching fetch chains calls
 /// - `progress`                : progress callback
@@ -43,7 +42,6 @@ pub async fn webassembly_search(
     label_bytes: Uint8Array,
     keywords: ArrayOfKeywords,
     max_results_per_chain: i32,
-    max_depth: i32,
     progress: Progress,
     fetch_entry: Fetch,
     fetch_chain: Fetch,
@@ -71,13 +69,7 @@ pub async fn webassembly_search(
     };
 
     let results = wasm_search
-        .search(
-            &master_key,
-            &label,
-            &keywords,
-            max_results_per_chain.into(),
-            max_depth.try_into().unwrap_or(usize::MAX),
-        )
+        .search(&master_key, &label, keywords, max_results_per_chain.into())
         .await
         .map_err(|e| JsValue::from(format!("During Findex search: {e}")))?;
 
@@ -150,7 +142,6 @@ pub async fn webassembly_search_cloud(
     label_bytes: Uint8Array,
     keywords: ArrayOfKeywords,
     max_results_per_chain: i32,
-    max_depth: i32,
     base_url: Option<String>,
 ) -> Result<SearchResults, JsValue> {
     let mut findex_cloud = FindexCloud::new(&token, base_url)?;
@@ -172,13 +163,7 @@ pub async fn webassembly_search_cloud(
         .unwrap_or(MAX_RESULTS_PER_CHAIN);
 
     let results = findex_cloud
-        .search(
-            &master_key,
-            &label,
-            &keywords,
-            max_results_per_chain.into(),
-            max_depth.try_into().unwrap_or(usize::MAX),
-        )
+        .search(&master_key, &label, keywords, max_results_per_chain.into())
         .await
         .map_err(|e| JsValue::from(format!("During Findex search: {e}")))?;
 

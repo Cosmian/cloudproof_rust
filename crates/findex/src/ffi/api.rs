@@ -30,14 +30,11 @@ use crate::cloud::{FindexCloud, Token};
 #[cfg(feature = "compact_live")]
 use crate::ffi::core::DeleteChainCallback;
 use crate::{
-    ffi::{
-        core::{
-            utils::parse_indexed_values, FetchAllEntryTableUidsCallback, FetchChainTableCallback,
-            FetchEntryTableCallback, FindexUser, InsertChainTableCallback,
-            ListRemovedLocationsCallback, ProgressCallback, UpdateLinesCallback,
-            UpsertEntryTableCallback,
-        },
-        MAX_DEPTH,
+    ffi::core::{
+        utils::parse_indexed_values, FetchAllEntryTableUidsCallback, FetchChainTableCallback,
+        FetchEntryTableCallback, FindexUser, InsertChainTableCallback,
+        ListRemovedLocationsCallback, ProgressCallback, UpdateLinesCallback,
+        UpsertEntryTableCallback,
     },
     ser_de::serialize_set,
     MAX_RESULTS_PER_CHAIN,
@@ -75,7 +72,6 @@ pub unsafe extern "C" fn get_last_error(error_ptr: *mut c_char, error_len: *mut 
 /// - `label`                   : public information used to derive UIDs
 /// - `keywords`                : `serde` serialized list of base64 keywords
 /// - `max_results_per_chain`   : maximum number of results returned per keyword
-/// - `max_depth`               : maximum recursion depth allowed
 /// - `progress_callback`       : callback used to retrieve intermediate results
 ///   and transmit user interrupt
 /// - `fetch_entry_callback`    : callback used to fetch the Entry Table
@@ -93,7 +89,6 @@ pub unsafe extern "C" fn h_search(
     label_len: c_int,
     keywords_ptr: *const c_char,
     max_results_per_chain: c_int,
-    max_depth: c_int,
     progress_callback: ProgressCallback,
     fetch_entry_callback: FetchEntryTableCallback,
     fetch_chain_callback: FetchChainTableCallback,
@@ -128,7 +123,6 @@ pub unsafe extern "C" fn h_search(
         label_len,
         keywords_ptr,
         max_results_per_chain,
-        max_depth,
     )
 }
 
@@ -417,7 +411,6 @@ pub unsafe extern "C" fn h_compact(
 /// - `label`                   : public information used to derive UIDs
 /// - `keywords`                : `serde` serialized list of base64 keywords
 /// - `max_results_per_chain`   : maximum number of results returned per chain
-/// - `max_depth`               : maximum recursion depth allowed
 /// - `base_url`                : base URL for Findex Cloud (with http prefix
 ///   and port if required). If null, use the default Findex Cloud server.
 ///
@@ -432,7 +425,6 @@ pub unsafe extern "C" fn h_search_cloud(
     label_len: c_int,
     keywords_ptr: *const c_char,
     max_results_per_chain: c_int,
-    max_depth: c_int,
     base_url_ptr: *const c_char,
 ) -> c_int {
     let token = ffi_read_string!("keywords", token_ptr);
@@ -458,7 +450,6 @@ pub unsafe extern "C" fn h_search_cloud(
         label_len,
         keywords_ptr,
         max_results_per_chain,
-        max_depth,
     )
 }
 
@@ -640,7 +631,6 @@ unsafe fn ffi_search<
     label_len: c_int,
     keywords_ptr: *const c_char,
     max_results_per_chain: c_int,
-    max_depth: c_int,
 ) -> c_int {
     let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
     let label = Label::from(label_bytes);
@@ -649,8 +639,6 @@ unsafe fn ffi_search<
         .ok()
         .and_then(NonZeroUsize::new)
         .unwrap_or(MAX_RESULTS_PER_CHAIN);
-
-    let max_depth = usize::try_from(max_depth).unwrap_or(MAX_DEPTH);
 
     // Why keywords are JSON array of base64 strings? We should change this to send
     // raw bytes with leb128 prefix or something like that.
@@ -681,9 +669,8 @@ unsafe fn ffi_search<
     let results = match rt.block_on(findex.search(
         master_key,
         &label,
-        &keywords,
+        keywords,
         max_results_per_chain.into(),
-        max_depth,
     )) {
         Ok(results) => results,
         Err(FindexError::Callback(e)) => {
