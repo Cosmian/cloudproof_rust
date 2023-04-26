@@ -526,7 +526,7 @@ pub unsafe extern "C" fn h_generate_new_token(
 ///
 /// Cannot be safe since using FFI.
 #[allow(clippy::too_many_arguments)]
-pub unsafe fn ffi_search<
+unsafe fn ffi_search<
     Error: std::error::Error + CallbackError + ToErrorCode,
     T: FindexSearch<
             UID_LENGTH,
