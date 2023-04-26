@@ -18,9 +18,8 @@ macro_rules! unwrap_callback {
         $findex
             .$callback
             .as_ref()
-            .ok_or_else(|| FindexFfiError::CallbackErrorCode {
-                name: $callback_name.to_string(),
-                code: ErrorCode::MissingCallback as i32,
+            .ok_or_else(|| FindexFfiError::CallbackNotImplemented {
+                callback_name: $callback_name,
             })?
     };
 }
@@ -86,7 +85,7 @@ pub const fn get_allocation_size_for_select_chain_request(line_number: usize) ->
 /// - `uids`            : UIDs to fetch (callback input)
 /// - `allocation_size` : size needed to be allocated for the output
 /// - `callback`        : fetch callback
-pub fn fetch_callback(
+pub(crate) fn fetch_callback(
     uids: &[u8],
     allocation_size: usize,
     callback: FetchEntryTableCallback,
@@ -119,8 +118,8 @@ pub fn fetch_callback(
     }
 
     if error_code != ErrorCode::Success as i32 {
-        return Err(FindexFfiError::CallbackErrorCode {
-            name: debug_name.to_string(),
+        return Err(FindexFfiError::UserCallbackErrorCode {
+            callback_name: debug_name,
             code: error_code,
         });
     }

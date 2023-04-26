@@ -34,15 +34,22 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     ) -> Result<bool, FindexFfiError> {
         let progress = unwrap_callback!("progress", self, progress);
         let mut serializer = Serializer::new();
-        to_error_with_code!(
+        wrapping_callback_ser_de_error_with_context!(
             serializer.write_leb128_u64(results.len() as u64),
-            ErrorCode::SerializationError
+            "write results length for progress callback"
         );
         for (keyword, indexed_values) in results {
-            to_error_with_code!(serializer.write_vec(keyword), ErrorCode::SerializationError);
-            to_error_with_code!(
-                serializer.write_array(&serialize_set(indexed_values)?),
-                ErrorCode::SerializationError
+            wrapping_callback_ser_de_error_with_context!(
+                serializer.write_vec(keyword),
+                format!("serializing keyword {keyword:?} for progress callback")
+            );
+            let indexed_values_bytes = wrapping_callback_ser_de_error_with_context!(
+                serialize_set(indexed_values),
+                format!("serializing indexed values {indexed_values:?} for progress callback")
+            );
+            wrapping_callback_ser_de_error_with_context!(
+                serializer.write_array(&indexed_values_bytes),
+                format!("writing serialized indexed values for progress callback")
             );
         }
         let results = serializer.finalize();
@@ -65,7 +72,10 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
                 let uids_bytes = unsafe {
                     std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize)
                 };
-                return deserialize_set(uids_bytes).map_err(FindexFfiError::from);
+                return Ok(wrapping_callback_ser_de_error_with_context!(
+                    deserialize_set(uids_bytes),
+                    "deserializing uids from fetch all entries callback"
+                ));
             } else {
                 allocation_size = output_len as usize;
             }
@@ -78,7 +88,10 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexFfiError> {
         let fetch_entry = unwrap_callback!("fetch_entry", self, fetch_entry);
 
-        let serialized_uids = serialize_set(entry_table_uids)?;
+        let serialized_uids = wrapping_callback_ser_de_error_with_context!(
+            serialize_set(entry_table_uids),
+            "serializing entries uids to send to fetch entries callback"
+        );
         let res = fetch_callback(
             &serialized_uids,
             get_serialized_encrypted_entry_table_size_bound(entry_table_uids.len()),
@@ -86,9 +99,9 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             "fetch entries",
         )?;
 
-        let encrypted_table = to_error_with_code!(
+        let encrypted_table = wrapping_callback_ser_de_error_with_context!(
             EncryptedTable::try_from_bytes(&res),
-            ErrorCode::SerializationError
+            "deserializing entries from fetch entries callback"
         );
 
         Ok(encrypted_table)
@@ -99,16 +112,19 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         chain_uids: &HashSet<Uid<UID_LENGTH>>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexFfiError> {
         let fetch_chain = unwrap_callback!("fetch_chain", self, fetch_chain);
-        let serialized_chain_uids = serialize_set(chain_uids)?;
+        let serialized_chain_uids = wrapping_callback_ser_de_error_with_context!(
+            serialize_set(chain_uids),
+            "serializing entries uids to send to fetch entries callback"
+        );
         let res = fetch_callback(
             &serialized_chain_uids,
             get_allocation_size_for_select_chain_request(chain_uids.len()),
             *fetch_chain,
             "fetch chains",
         )?;
-        let encrypted_table = to_error_with_code!(
+        let encrypted_table = wrapping_callback_ser_de_error_with_context!(
             EncryptedTable::try_from_bytes(&res),
-            ErrorCode::SerializationError
+            "deserializing chains from fetch chains callback"
         );
         Ok(encrypted_table)
     }
@@ -120,8 +136,10 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         let upsert_entry = unwrap_callback!("upsert_entry", self, upsert_entry);
 
         // Callback input
-        let serialized_upsert_data =
-            to_error_with_code!(modifications.try_to_bytes(), ErrorCode::SerializationError);
+        let serialized_upsert_data = wrapping_callback_ser_de_error_with_context!(
+            modifications.try_to_bytes(),
+            "serializing upsert data to send to upsert entries callback"
+        );
 
         // Callback output
         let allocation_size = get_serialized_encrypted_entry_table_size_bound(modifications.len());
@@ -139,8 +157,8 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         );
 
         if error_code != ErrorCode::Success as i32 {
-            return Err(FindexFfiError::CallbackErrorCode {
-                name: "upsert entries".to_string(),
+            return Err(FindexFfiError::UserCallbackErrorCode {
+                callback_name: "upsert entries",
                 code: error_code,
             });
         }
@@ -150,9 +168,9 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             serialized_rejected_items.set_len(serialized_rejected_items_len as usize);
         }
 
-        let encrypted_table = to_error_with_code!(
+        let encrypted_table = wrapping_callback_ser_de_error_with_context!(
             EncryptedTable::try_from_bytes(&serialized_rejected_items),
-            ErrorCode::SerializationError
+            "deserializing rejected items from upsert entries callback response"
         );
 
         Ok(encrypted_table)
@@ -165,8 +183,10 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         let insert_chain = unwrap_callback!("insert_chain", self, insert_chain);
 
         // Callback input
-        let serialized_items =
-            to_error_with_code!(items.try_to_bytes(), ErrorCode::SerializationError);
+        let serialized_items = wrapping_callback_ser_de_error_with_context!(
+            items.try_to_bytes(),
+            "serializing data to send to insert entries callback"
+        );
 
         // FFI callback
         insert_chain(serialized_items.as_ptr(), serialized_items.len() as u32);
@@ -182,14 +202,17 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     ) -> Result<(), FindexFfiError> {
         let update_lines = unwrap_callback!("update_lines", self, update_lines);
 
-        let serialized_chain_table_uids_to_remove = serialize_set(&chain_table_uids_to_remove)?;
-        let serialized_new_encrypted_entry_table_items = to_error_with_code!(
-            new_encrypted_entry_table_items.try_to_bytes(),
-            ErrorCode::SerializationError
+        let serialized_chain_table_uids_to_remove = wrapping_callback_ser_de_error_with_context!(
+            serialize_set(&chain_table_uids_to_remove),
+            "serializing chains uids to remove to send to update lines callback"
         );
-        let serialized_new_encrypted_chain_table_items = to_error_with_code!(
+        let serialized_new_encrypted_entry_table_items = wrapping_callback_ser_de_error_with_context!(
+            new_encrypted_entry_table_items.try_to_bytes(),
+            "serializing new entries to send to update lines callback"
+        );
+        let serialized_new_encrypted_chain_table_items = wrapping_callback_ser_de_error_with_context!(
             new_encrypted_chain_table_items.try_to_bytes(),
-            ErrorCode::SerializationError
+            "serializing new chains to send to update lines callback"
         );
 
         let error_code = update_lines(
@@ -202,8 +225,8 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         );
 
         if error_code != ErrorCode::Success as i32 {
-            return Err(FindexFfiError::CallbackErrorCode {
-                name: "update lines".to_string(),
+            return Err(FindexFfiError::UserCallbackErrorCode {
+                callback_name: "update lines",
                 code: error_code,
             });
         }
@@ -218,23 +241,27 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         let list_removed_locations =
             unwrap_callback!("list_removed_locations", self, list_removed_locations);
 
-        let locations_as_bytes = locations.iter().cloned().collect::<HashSet<_>>();
-        let serialized_chain_table_uids_to_remove = serialize_set(&locations_as_bytes)?;
+        let locations_as_bytes = wrapping_callback_ser_de_error_with_context!(
+            serialize_set(locations),
+            format!(
+                "serializing locations {locations:?} to send to list removed location callback"
+            )
+        );
 
-        let mut output_bytes = vec![0_u8; serialized_chain_table_uids_to_remove.len()];
+        let mut output_bytes = vec![0_u8; locations_as_bytes.len()];
         let output_ptr = output_bytes.as_mut_ptr().cast::<c_uchar>();
-        let mut output_len = u32::try_from(serialized_chain_table_uids_to_remove.len())?;
+        let mut output_len = u32::try_from(locations_as_bytes.len())?;
 
         let error_code = list_removed_locations(
             output_ptr,
             &mut output_len,
-            serialized_chain_table_uids_to_remove.as_ptr(),
-            u32::try_from(serialized_chain_table_uids_to_remove.len())?,
+            locations_as_bytes.as_ptr(),
+            u32::try_from(locations_as_bytes.len())?,
         );
 
         if error_code != ErrorCode::Success as i32 {
-            return Err(FindexFfiError::CallbackErrorCode {
-                name: "list removed locations".to_string(),
+            return Err(FindexFfiError::UserCallbackErrorCode {
+                callback_name: "list removed locations",
                 code: error_code,
             });
         }
@@ -246,11 +273,15 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         let output_locations_bytes =
             unsafe { std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize) };
 
-        let locations = deserialize_set(output_locations_bytes)?
-            .into_iter()
-            .collect();
+        let locations_to_remove = wrapping_callback_ser_de_error_with_context!(
+            deserialize_set(output_locations_bytes),
+            format!(
+                "deserializing locations to remove bytes returned by the list removed location \
+                 callback"
+            )
+        );
 
-        Ok(locations)
+        Ok(locations_to_remove)
     }
 }
 
