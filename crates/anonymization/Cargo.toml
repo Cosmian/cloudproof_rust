@@ -20,7 +20,7 @@ wasm_bindgen = ["js-sys", "wasm-bindgen"]
 [dependencies]
 argon2 = "0.5"
 base64 = { workspace = true }
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock", "wasmbind"] }
 cosmian_crypto_core = { workspace = true }
 hex = { workspace = true }
 rand = { workspace = true }

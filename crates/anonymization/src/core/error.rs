@@ -51,24 +51,24 @@ impl Display for AnoError {
 /// This macro is equivalent to `if !$cond { return Err(From::from($err)); }`.
 #[macro_export]
 macro_rules! ano_ensure {
-    ($cond:expr, $msg:literal $(,)?) => {
+    ($cond:expr, $msg:literal) => {
         if !$cond {
             return ::core::result::Result::Err($crate::core::error::AnoError::Generic($msg.to_owned()));
         }
     };
-    ($cond:expr, $err:expr $(,)?) => {
+    ($cond:expr, $err:expr) => {
         if !$cond {
             return ::core::result::Result::Err($err);
         }
     };
-    ($cond:expr, $fmt:expr, $($arg:tt)*) => {
+    ($cond:expr, $fmt:expr, $($arg:tt $(,)?)+) => {
         if !$cond {
             return ::core::result::Result::Err($crate::core::error::AnoError::Generic(format!($fmt, $($arg)*)));
         }
     };
 }
 
-/// Construct a server error from a string.
+/// Construct a generic error from a string.
 #[macro_export]
 macro_rules! ano_error {
     ($msg:literal $(,)?) => {
@@ -82,7 +82,7 @@ macro_rules! ano_error {
     };
 }
 
-/// Return early with an error if a condition is not satisfied.
+/// Return early with an error.
 #[macro_export]
 macro_rules! ano_bail {
     ($msg:literal $(,)?) => {

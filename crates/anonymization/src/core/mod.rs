@@ -5,7 +5,7 @@ mod hash;
 pub use hash::{HashMethod, Hasher};
 
 mod noise;
-pub use noise::{NoiseGenerator, NoiseMethod};
+pub use noise::{Laplace, NoiseGenerator, NoiseMethod};
 
 mod word;
 pub use word::{WordMasker, WordPatternMasker, WordTokenizer};

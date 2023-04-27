@@ -19,7 +19,7 @@ impl WordTokenizer {
     /// * `words_to_block`: a slice of strings representing the words to be
     ///   replaced with UUIDs.
     pub fn new(words_to_block: &[&str]) -> Result<Self, AnoError> {
-        let mut mapping = HashMap::new();
+        let mut mapping = HashMap::with_capacity(words_to_block.len());
         let mut rng = CsRng::from_entropy();
 
         for word in words_to_block {
@@ -123,7 +123,8 @@ impl WordPatternMasker {
     /// # Returns
     ///
     /// Text with the matched pattern replaced.
-    pub fn apply(&self, data: &str) -> Result<String, AnoError> {
-        Ok(self.pattern.replace(data, &self.replacer).into_owned())
+    #[must_use]
+    pub fn apply(&self, data: &str) -> String {
+        self.pattern.replace(data, &self.replacer).into_owned()
     }
 }

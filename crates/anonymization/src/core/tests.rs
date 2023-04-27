@@ -227,7 +227,7 @@ fn test_word_pattern() -> Result<(), AnoError> {
     let pattern = r"-\w+-";
     let pattern_matcher = WordPatternMasker::new(pattern, "####")?;
 
-    let matched_str = pattern_matcher.apply(&input_str)?;
+    let matched_str = pattern_matcher.apply(&input_str);
     assert_eq!(
         matched_str,
         "Confidential: contains #### documents with confidential info"
@@ -241,32 +241,35 @@ fn test_word_pattern() -> Result<(), AnoError> {
 
 #[test]
 fn test_float_aggregation() -> Result<(), AnoError> {
-    let float_aggregator = NumberAggregator::new(-1);
+    let float_aggregator = NumberAggregator::new(-1)?;
     let res = float_aggregator.apply_on_float(1234.567);
     assert_eq!(res, "1234.6");
 
-    let float_aggregator = NumberAggregator::new(2);
+    let float_aggregator = NumberAggregator::new(2)?;
     let res = float_aggregator.apply_on_float(1234.567);
     assert_eq!(res, "1200");
 
-    let float_aggregator = NumberAggregator::new(10);
+    let float_aggregator = NumberAggregator::new(10)?;
     let res = float_aggregator.apply_on_float(1234.567);
     assert_eq!(res, "0");
 
-    let float_aggregator = NumberAggregator::new(-10);
+    let float_aggregator = NumberAggregator::new(-10)?;
     let res = float_aggregator.apply_on_float(1234.567);
     assert_eq!(res, "1234.5670000000");
+
+    let res = NumberAggregator::new(309);
+    assert!(res.is_err());
 
     Ok(())
 }
 
 #[test]
 fn test_int_aggregation() -> Result<(), AnoError> {
-    let int_aggregator = NumberAggregator::new(2);
+    let int_aggregator = NumberAggregator::new(2)?;
     let res = int_aggregator.apply_on_int(1234);
     assert_eq!(res, "1200");
 
-    let int_aggregator = NumberAggregator::new(-2);
+    let int_aggregator = NumberAggregator::new(-2)?;
     let res = int_aggregator.apply_on_int(1234);
     assert_eq!(res, "1234");
 

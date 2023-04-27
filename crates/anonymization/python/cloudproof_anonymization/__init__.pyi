@@ -155,3 +155,59 @@ class WordPatternMasker:
         Returns:
             Text with the matched pattern replaced.
         """
+
+class NumberAggregator:
+    """
+    A class to round numbers to a desired power of ten.
+    """
+
+    def __init__(self, power_of_ten_exponent: int) -> None:
+        """
+        Initializes a new instance of `NumberAggregator`.
+
+        Args:
+            power_of_ten_exponent (int): The power of ten to round the numbers to.
+        """
+    def apply_on_float(self, data: float) -> str:
+        """
+        Rounds a floating point number to the desired power of ten.
+
+        Args:
+            data (float): The floating point number to round.
+
+        Returns:
+        - A string representation of the rounded number.
+        """
+    def apply_on_int(self, data: int) -> str:
+        """
+        Rounds an integer to the desired power of ten.
+
+        Args:
+            data (int): The integer to round.
+
+        Returns:
+            A string representation of the rounded number.
+        """
+
+class DateAggregator:
+    """
+    A class for rounding dates based on the specified time unit.
+    """
+
+    def __init__(self, time_unit: str) -> None:
+        """
+        Creates a new instance of `DateAggregator` with the provided time unit.
+
+        Args:
+        - time_unit (str): the unit of time to round the date to.
+        """
+    def apply_on_date(self, date_str: str) -> str:
+        """
+        Applies the date rounding to the provided date string based on the unit of time.
+
+        Args:
+        - date_str (str): A string representing the date to be rounded.
+
+        Returns:
+        - The rounded date in RFC 3339.
+        """

@@ -47,11 +47,11 @@ impl WordPatternMasker {
     pub fn new(pattern_regex: &str, replace_str: &str) -> PyResult<Self> {
         Ok(Self(pyo3_unwrap!(
             WordPatternMaskerRust::new(pattern_regex, replace_str),
-            "Error initializing WordPatternMasker"
+            "Error with the given Regex"
         )))
     }
 
-    pub fn apply(&self, data: &str) -> PyResult<String> {
-        Ok(pyo3_unwrap!(self.0.apply(data), "Error matching pattern"))
+    pub fn apply(&self, data: &str) -> String {
+        self.0.apply(data)
     }
 }

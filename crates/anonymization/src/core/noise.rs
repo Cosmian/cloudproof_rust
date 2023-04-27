@@ -16,13 +16,32 @@ where
     Uniform(Uniform<N>),
 }
 
-/// Laplace Distribution
+/// A Laplace distribution, used to generate random numbers following the
+/// Laplace distribution.
+///
+/// # Example
+/// ```
+/// use cloudproof_anonymization::core::Laplace;
+/// use rand::prelude::*;
+/// use rand_distr::Distribution;
+///
+/// let laplace = Laplace::new(0.0, 1.0);
+/// let mut rng = thread_rng();
+///
+/// let v = laplace.sample(&mut rng);
+/// ```
 pub struct Laplace<N> {
     mean: N,
     beta: N,
 }
 
 impl<N: Float> Laplace<N> {
+    /// Creates a new Laplace distribution with a given mean and beta parameter.
+    ///
+    /// # Arguments
+    ///
+    /// * `mean` - The mean of the Laplace distribution.
+    /// * `beta` - The scale parameter of the Laplace distribution.
     pub fn new(mean: N, beta: N) -> Self {
         Self { mean, beta }
     }
@@ -32,7 +51,11 @@ impl<N: Float> Distribution<N> for Laplace<N>
 where
     Standard: Distribution<N>,
 {
-    // A function to generate samples of the Laplace Noise.
+    /// Generates a random number following the Laplace distribution.
+    ///
+    /// # Arguments
+    ///
+    /// * `rng` - The random number generator used to generate the number.
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> N {
         let p = rng.gen();
         if rng.gen_bool(0.5) {
@@ -76,7 +99,10 @@ where
         let method = match method_name {
             "Gaussian" => Ok(NoiseMethod::Gaussian(Normal::new(mean, std_dev)?)),
             "Laplace" => Ok(NoiseMethod::Laplace(Laplace::<N>::new(mean, std_dev))),
-            _ => Err(ano_error!("No supported distribution {}.", method_name)),
+            _ => Err(ano_error!(
+                "{} is not a supported distribution.",
+                method_name
+            )),
         }?;
         Ok(Self { method })
     }
