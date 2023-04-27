@@ -98,7 +98,11 @@ where
         // Select the appropriate distribution method
         let method = match method_name {
             "Gaussian" => Ok(NoiseMethod::Gaussian(Normal::new(mean, std_dev)?)),
-            "Laplace" => Ok(NoiseMethod::Laplace(Laplace::<N>::new(mean, std_dev))),
+            "Laplace" => {
+                // σ = β * sqrt(2)
+                let beta = std_dev / N::from(2).unwrap().sqrt();
+                Ok(NoiseMethod::Laplace(Laplace::<N>::new(mean, beta)))
+            }
             _ => Err(ano_error!(
                 "{} is not a supported distribution.",
                 method_name
@@ -127,17 +131,20 @@ where
         }
 
         // Select the appropriate distribution method
+
         let method = match method_name {
-            "Gaussian" => Ok(NoiseMethod::Gaussian(Normal::new(
-                (max_bound + min_bound) / N::from(2).unwrap(),
-                // 5 sigma => 99.99994% of values will be in the bounds
-                (max_bound - min_bound) / N::from(5).unwrap(),
-            )?)),
-            "Laplace" => Ok(NoiseMethod::Laplace(Laplace::<N>::new(
-                (max_bound + min_bound) / N::from(2).unwrap(),
-                // 10 sigma => 99.99995% of values will be in the bounds
-                N::from(10).unwrap() / (max_bound - min_bound),
-            ))),
+            "Gaussian" => {
+                let mean = (max_bound + min_bound) / N::from(2).unwrap();
+                // 5σ => 99.99994% of values will be in the bounds
+                let std_dev = (mean - min_bound) / N::from(5).unwrap();
+                Ok(NoiseMethod::Gaussian(Normal::new(mean, std_dev)?))
+            }
+            "Laplace" => {
+                let mean = (max_bound + min_bound) / N::from(2).unwrap();
+                // confidence interval at 1-a: μ ± β * ln(1/a)
+                let beta = (mean - min_bound) / -N::ln(N::from(0.00005).unwrap());
+                Ok(NoiseMethod::Laplace(Laplace::<N>::new(mean, beta)))
+            }
             "Uniform" => Ok(NoiseMethod::Uniform(Uniform::new(min_bound, max_bound))),
             _ => Err(ano_error!("No supported distribution {}.", method_name)),
         }?;

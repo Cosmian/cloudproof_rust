@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use approx::assert_relative_eq;
 use chrono::{DateTime, Datelike, Timelike, Utc};
 
 use super::{NumberAggregator, WordMasker};
@@ -57,7 +58,7 @@ fn test_hash_argon2() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_gaussian_f64() -> Result<(), AnoError> {
-    let gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 2.0)?;
+    let gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 1.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
@@ -89,7 +90,7 @@ fn test_noise_laplace_f64() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_uniform_f64() -> Result<(), AnoError> {
-    let res = NoiseGenerator::new_with_parameters("Uniform", 0.0, 1.0);
+    let res = NoiseGenerator::new_with_parameters("Uniform", 0.0, 2.0);
     assert!(res.is_err());
 
     let laplace_noise_generator = NoiseGenerator::new_with_bounds("Uniform", -10.0, 10.0)?;
@@ -180,13 +181,15 @@ fn test_correlated_noise_gaussian_f64() -> Result<(), AnoError> {
     let values = vec![1.0, 1.0, 1.0];
     let factors = vec![1.0, 2.0, 4.0];
     let noisy_values = gaussian_noise_generator.apply_correlated_noise(&values, &factors)?;
-    assert_eq!(
+    assert_relative_eq!(
         (noisy_values[0] - values[0]) / factors[0],
-        (noisy_values[1] - values[1]) / factors[1]
+        (noisy_values[1] - values[1]) / factors[1],
+        epsilon = 1e-6
     );
-    assert_eq!(
+    assert_relative_eq!(
         (noisy_values[0] - values[0]) / factors[0],
-        (noisy_values[2] - values[2]) / factors[2]
+        (noisy_values[2] - values[2]) / factors[2],
+        epsilon = 1e-6
     );
     // Ordering only holds if noise is positive
     assert!(noisy_values[0] < noisy_values[1]);

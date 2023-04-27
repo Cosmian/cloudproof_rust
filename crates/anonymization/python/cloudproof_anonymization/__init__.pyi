@@ -7,11 +7,10 @@ class Hasher:
 
         Args:
             method (str): The hash method to use. This can be one of the following:
-                - `SHA2`: Fast and secure, but vulnerable to brute-force attacks.
-                - `SHA3`: Secure and resistant to brute-force attacks, but slower than SHA-256 and not as widely supported.
+                - `SHA2`  : Fast but vulnerable to brute-force attacks.
+                - `SHA3`  : Resistant to brute-force attacks, but slower than SHA-256 and not as widely supported.
                 - `Argon2`: Highly resistant to brute-force attacks, but can be slower than other hash functions and may require more memory.
             salt (bytes, optional): An optional salt to use. Required with Argon2.
-
         """
     def apply(self, data: bytes) -> str:
         """
@@ -21,7 +20,8 @@ class Hasher:
             data (bytes): A byte slice representing the input data to be hashed.
 
         Returns:
-            str: The base64-encoded hash string."""
+            str: The base64-encoded hash string.
+        """
 
 class NoiseGenerator:
     @staticmethod
@@ -34,7 +34,8 @@ class NoiseGenerator:
         Args:
             method_name (str): The noise distribution to use ("Gaussian" or "Laplace").
             mean (float): Mean of the noise distribution.
-            std_dev (float): The standard deviation of the noise distribution."""
+            std_dev (float): The standard deviation of the noise distribution.
+        """
     @staticmethod
     def new_with_bounds(
         method_name: str, min_bound: float, max_bound: float
@@ -79,21 +80,21 @@ class NoiseGenerator:
         """
         Adds noise generated from a chosen distribution to the input data.
 
-        Arguments:
-        - data: An integer value to which noise will be added.
+        Args:
+            data (int): An integer value to which noise will be added.
 
         Returns:
-        - Original data with added noise
+            int: Original data with added noise
         """
     def apply_on_date(self, date: str) -> str:
         """
         Applies the selected noise method on a given date string.
 
-        Arguments:
-        - date_str: A date string in the RFC3339 format.
+        Args:
+            date_str (str): A date string in the RFC3339 format.
 
         Returns:
-        - The resulting noisy date string
+            str: The resulting noisy date string
         """
 
 class WordMasker:
@@ -102,7 +103,7 @@ class WordMasker:
         Creates a new WordMasker instance.
 
         Args:
-        - words_to_block: A list of strings containing the words to be masked in the text.
+            words_to_block (List[str]): A list of strings containing the words to be masked in the text.
         """
         self.word_list = set(word.lower() for word in words_to_block)
     def apply(self, data: str) -> str:
@@ -110,10 +111,10 @@ class WordMasker:
         Masks the specified words in the given text.
 
         Args:
-        - data: A string containing the text to be masked.
+            data (str): A string containing the text to be masked.
 
         Returns:
-        - Text without the sensitive words.
+            str: Text without the sensitive words.
         """
 
 class WordTokenizer:
@@ -122,17 +123,17 @@ class WordTokenizer:
         Creates a new instance of WordTokenizer.
 
         Args:
-            words_to_block: A list of strings representing the words to be replaced with tokens.
+            words_to_block (List[str]): A list of strings representing the words to be replaced with tokens.
         """
     def apply(self, data: str) -> str:
         """
         Remove sensitive words from a text by replacing them with tokens.
 
         Args:
-            data: A string representing the input text.
+            data (str): A string representing the input text.
 
         Returns:
-            A string containing tokens in place of sensitive words.
+            str: A string containing tokens in place of sensitive words.
         """
 
 class WordPatternMasker:
@@ -142,18 +143,18 @@ class WordPatternMasker:
         regex and replace string.
 
         Args:
-            pattern_regex: The pattern regex to search for.
-            replace_str: The string to replace the matched patterns.
+            pattern_regex (str): The pattern regex to search for.
+            replace_str (str): The string to replace the matched patterns.
         """
     def apply(self, data: str) -> str:
         """
         Applies the pattern mask to the provided data.
 
         Args:
-            data: The data to be masked.
+            data (str): The data to be masked.
 
         Returns:
-            Text with the matched pattern replaced.
+            str: Text with the matched pattern replaced.
         """
 
 class NumberAggregator:
@@ -176,7 +177,7 @@ class NumberAggregator:
             data (float): The floating point number to round.
 
         Returns:
-        - A string representation of the rounded number.
+            str: A string representation of the rounded number.
         """
     def apply_on_int(self, data: int) -> str:
         """
@@ -186,7 +187,7 @@ class NumberAggregator:
             data (int): The integer to round.
 
         Returns:
-            A string representation of the rounded number.
+            str: A string representation of the rounded number.
         """
 
 class DateAggregator:
@@ -199,17 +200,17 @@ class DateAggregator:
         Creates a new instance of `DateAggregator` with the provided time unit.
 
         Args:
-        - time_unit (str): the unit of time to round the date to.
+            time_unit (str): the unit of time to round the date to.
         """
     def apply_on_date(self, date_str: str) -> str:
         """
         Applies the date rounding to the provided date string based on the unit of time.
 
         Args:
-        - date_str (str): A string representing the date to be rounded.
+            date_str (str): A string representing the date to be rounded.
 
         Returns:
-        - The rounded date in RFC 3339.
+            str: The rounded date in RFC 3339.
         """
 
 class NumberScaler:
@@ -237,7 +238,7 @@ class NumberScaler:
             data (float): A floating-point number to be scaled.
 
         Returns:
-            The scaled value (float).
+            float: The scaled value.
         """
     def apply_on_int(self, data: int) -> int:
         """
@@ -247,5 +248,5 @@ class NumberScaler:
             data (int): An integer to be scaled.
 
         Returns:
-            The scaled value as an integer.
+            int: The scaled value as an integer.
         """
