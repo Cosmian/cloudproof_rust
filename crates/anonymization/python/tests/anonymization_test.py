@@ -7,6 +7,7 @@ from cloudproof_anonymization import (
     Hasher,
     NoiseGenerator,
     NumberAggregator,
+    NumberScaler,
     WordMasker,
     WordPatternMasker,
     WordTokenizer,
@@ -189,7 +190,7 @@ class TestWordMasking(unittest.TestCase):
             WordPatternMasker('(', 'XXX')
 
 
-class TestNumberAnonymize(unittest.TestCase):
+class TestAggregator(unittest.TestCase):
     def test_number_aggregator_with_invalid_exponent(self) -> None:
         with self.assertRaises(Exception):
             NumberAggregator(500)
@@ -247,6 +248,34 @@ class TestNumberAnonymize(unittest.TestCase):
         aggregator = DateAggregator('InvalidUnit')
         with self.assertRaises(Exception):
             aggregator.apply_on_date('2023-04-27T16:23:45Z')
+
+
+class TestNumberScaler(unittest.TestCase):
+    def test_apply_on_float(self):
+        # Test with scaling factor of 2 and translation factor of 1
+        scaler = NumberScaler(0, 1, 2, 1)
+        self.assertAlmostEqual(scaler.apply_on_float(1.0), 3.0)
+        self.assertAlmostEqual(scaler.apply_on_float(-1.0), -1.0)
+        self.assertAlmostEqual(scaler.apply_on_float(0.0), 1.0)
+
+        # Test with scaling factor of 0.5 and translation factor of 0
+        scaler = NumberScaler(10, 1, 0.5, 0)
+        self.assertAlmostEqual(scaler.apply_on_float(10.0), 0.0)
+        self.assertAlmostEqual(scaler.apply_on_float(9.0), -0.5)
+        self.assertAlmostEqual(scaler.apply_on_float(11.0), 0.5)
+
+    def test_apply_on_int(self):
+        # Test with scaling factor of 2 and translation factor of 1
+        scaler = NumberScaler(0, 1, 2, 1)
+        self.assertEqual(scaler.apply_on_int(1), 3)
+        self.assertEqual(scaler.apply_on_int(-1), -1)
+        self.assertEqual(scaler.apply_on_int(0), 1)
+
+        # Test with scaling factor of 0.5 and translation factor of 0
+        scaler = NumberScaler(10, 1, 0.5, 0)
+        self.assertEqual(scaler.apply_on_int(10), 0)
+        self.assertEqual(scaler.apply_on_int(9), -1)
+        self.assertEqual(scaler.apply_on_int(11), 1)
 
 
 if __name__ == '__main__':

@@ -16,7 +16,7 @@ mod py_word;
 use py_word::{WordMasker, WordPatternMasker, WordTokenizer};
 
 mod py_number;
-use py_number::{DateAggregator, NumberAggregator};
+use py_number::{DateAggregator, NumberAggregator, NumberScaler};
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -28,6 +28,7 @@ fn cloudproof_anonymization(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<WordTokenizer>()?;
     m.add_class::<NumberAggregator>()?;
     m.add_class::<DateAggregator>()?;
+    m.add_class::<NumberScaler>()?;
 
     Ok(())
 }

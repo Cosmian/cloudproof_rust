@@ -1,6 +1,9 @@
 use pyo3::prelude::*;
 
-use crate::core::{DateAggregator as DateAggregatorRust, NumberAggregator as NumberAggregatorRust};
+use crate::core::{
+    DateAggregator as DateAggregatorRust, NumberAggregator as NumberAggregatorRust,
+    NumberScaler as NumberScalerRust,
+};
 
 #[pyclass]
 pub struct NumberAggregator(NumberAggregatorRust);
@@ -39,5 +42,24 @@ impl DateAggregator {
             self.0.apply_on_date(date_str),
             "Error rounding date"
         ))
+    }
+}
+
+#[pyclass]
+pub struct NumberScaler(NumberScalerRust);
+
+#[pymethods]
+impl NumberScaler {
+    #[new]
+    pub fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Self {
+        Self(NumberScalerRust::new(mean, std_deviation, scale, translate))
+    }
+
+    pub fn apply_on_float(&self, data: f64) -> f64 {
+        self.0.apply_on_float(data)
+    }
+
+    pub fn apply_on_int(&self, data: i64) -> i64 {
+        self.0.apply_on_int(data)
     }
 }

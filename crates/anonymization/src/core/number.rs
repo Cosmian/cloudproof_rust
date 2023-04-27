@@ -12,7 +12,7 @@ use crate::ano_error;
 /// ```
 /// use cloudproof_anonymization::core::NumberAggregator;
 ///
-/// let num_agg = NumberAggregator::new(2);
+/// let num_agg = NumberAggregator::new(2).unwrap();
 /// let anonymized_float = num_agg.apply_on_float(1234.5678); // returns "1200"
 /// let anonymized_int = num_agg.apply_on_int(56789); // returns "56800"
 /// ```
@@ -202,6 +202,6 @@ impl NumberScaler {
     /// The scaled value as an integer.
     #[must_use]
     pub fn apply_on_int(&self, data: i64) -> i64 {
-        self.apply_on_float(data as f64) as i64
+        self.apply_on_float(data as f64).round() as i64
     }
 }

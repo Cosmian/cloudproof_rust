@@ -211,3 +211,41 @@ class DateAggregator:
         Returns:
         - The rounded date in RFC 3339.
         """
+
+class NumberScaler:
+    """
+    A class to scale and translate floating-point or integer values.
+    """
+
+    def __init__(
+        self, mean: float, std_deviation: float, scale: float, translate: float
+    ):
+        """
+        Initializes a new instance of `NumberScaler`.
+
+        Args:
+            mean (float): The mean of the data distribution.
+            std_deviation (float): The standard deviation of the data distribution.
+            scale (float): The scaling factor.
+            translate (float): The translation factor.
+        """
+    def apply_on_float(self, data: float) -> float:
+        """
+        Applies the scaling and translation on a floating-point number.
+
+        Args:
+            data (float): A floating-point number to be scaled.
+
+        Returns:
+            The scaled value (float).
+        """
+    def apply_on_int(self, data: int) -> int:
+        """
+        Applies the scaling and translation on an integer.
+
+        Args:
+            data (int): An integer to be scaled.
+
+        Returns:
+            The scaled value as an integer.
+        """
