@@ -2,7 +2,7 @@ use pyo3::{pymodule, types::PyModule, PyResult, Python};
 
 macro_rules! pyo3_unwrap {
     ($res:expr, $msg:literal) => {
-        $res.map_err(|e| pyo3::exceptions::PyTypeError::new_err(format!("{}: {e:?}", $msg)))?
+        $res.map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}: {e:?}", $msg)))?
     };
 }
 
