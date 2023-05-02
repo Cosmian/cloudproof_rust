@@ -237,14 +237,14 @@ class TestFindex(unittest.TestCase):
         )
 
         res = self.findex_interface.search_wrapper(
-            [Keyword.from_bytes(b'Martial')], self.msk, self.label
+            self.msk, self.label, [Keyword.from_bytes(b'Martial')]
         )
         self.assertEqual(len(res), 1)
         self.assertEqual(len(res[Keyword.from_string('Martial')]), 1)
         self.assertEqual(int(res['Martial'][0]), 2)
 
         res = self.findex_interface.search_wrapper(
-            ['Sheperd', 'Wilkins'], self.msk, self.label
+            self.msk, self.label, ['Sheperd', 'Wilkins']
         )
         self.assertEqual(len(res['Sheperd']), 2)
         self.assertEqual(len(res['Wilkins']), 1)
@@ -280,7 +280,7 @@ class TestFindex(unittest.TestCase):
         self.assertEqual(len(self.findex_backend.entry_table), 9)
         self.assertEqual(len(self.findex_backend.chain_table), 9)
 
-        res = self.findex_interface.search_wrapper(['Mar'], self.msk, self.label)
+        res = self.findex_interface.search_wrapper(self.msk, self.label, ['Mar'])
         # 2 names starting with Mar
         self.assertEqual(len(res['Mar']), 2)
 
@@ -290,7 +290,7 @@ class TestFindex(unittest.TestCase):
             return False
 
         res = self.findex_interface.search_wrapper(
-            ['Mar'], self.msk, self.label, progress_callback=false_progress_callback
+            self.msk, self.label, ['Mar'], progress_callback=false_progress_callback
         )
         # no locations returned since the progress_callback stopped the recursion
         self.assertEqual(len(res['Mar']), 0)
@@ -301,9 +301,9 @@ class TestFindex(unittest.TestCase):
             return True
 
         res = self.findex_interface.search_wrapper(
-            ['Mar'],
             self.msk,
             self.label,
+            ['Mar'],
             progress_callback=early_stop_progress_callback,
         )
         # only one location found after early stopping
@@ -336,24 +336,24 @@ class TestFindex(unittest.TestCase):
         )
 
         new_label = Label.random()
-        res = self.findex_interface.search_wrapper(['Sheperd'], self.msk, new_label)
+        res = self.findex_interface.search_wrapper(self.msk, new_label, ['Sheperd'])
         # new_label cannot search before compacting
         self.assertEqual(len(res['Sheperd']), 0)
 
         # removing 2nd db line
         del self.db[2]
-        self.findex_interface.compact_wrapper(1, self.msk, self.msk, new_label)
+        self.findex_interface.compact_wrapper(self.msk, self.msk, new_label, 1)
 
         # now new_label can perform search
-        res = self.findex_interface.search_wrapper(['Sheperd'], self.msk, new_label)
+        res = self.findex_interface.search_wrapper(self.msk, new_label, ['Sheperd'])
         self.assertEqual(len(res['Sheperd']), 2)
         # but not the previous label
-        res = self.findex_interface.search_wrapper(['Sheperd'], self.msk, self.label)
+        res = self.findex_interface.search_wrapper(self.msk, self.label, ['Sheperd'])
         self.assertEqual(len(res['Sheperd']), 0)
 
         # and the keywords corresponding to the 2nd line have been removed
         res = self.findex_interface.search_wrapper(
-            ['Martial', 'Wilkins'], self.msk, new_label
+            self.msk, new_label, ['Martial', 'Wilkins']
         )
         assert len(res['Martial']) == 0
         assert len(res['Wilkins']) == 0

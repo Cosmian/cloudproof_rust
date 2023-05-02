@@ -139,27 +139,26 @@ impl InternalFindex {
     ///
     /// Parameters
     ///
-    /// - `keywords`                : keywords to search using Findex
     /// - `master_key`              : user secret key
     /// - `label`                   : public label used in keyword hashing
+    /// - `keywords`                : keywords to search using Findex
     /// - `max_results_per_chain`   : maximum number of results to fetch per
     ///   chain
-    /// - `fetch_chains_batch_size` : batch size during fetch chain
     /// - `progress_callback`       : optional callback to process intermediate
     ///   search results.
     ///
     /// Returns: `Locations` found by `Keyword`
     #[pyo3(signature = (
-            keywords, master_key, label,
+            master_key, label, keywords,
         max_result_per_chain = 4_294_967_295,
         progress_callback = None
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn search_wrapper(
         &mut self,
-        keywords: Vec<ToKeyword>,
         master_key: &MasterKeyPy,
         label: &LabelPy,
+        keywords: Vec<ToKeyword>,
         max_result_per_chain: usize,
         progress_callback: Option<PyObject>,
     ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
@@ -188,10 +187,10 @@ impl InternalFindex {
     ///
     /// Parameters
     ///
-    /// - `num_reindexing_before_full_set` : see below
     /// - `master_key`                     : master key
     /// - `new_master_key`                 : newly generated key
     /// - `new_label`                      : newly generated label
+    /// - `num_reindexing_before_full_set` : see below
     ///
     /// `num_reindexing_before_full_set`: if you compact the
     /// indexes every night this is the number of days to wait before
@@ -199,10 +198,10 @@ impl InternalFindex {
     /// (see the coupon problem to understand why it's not 100% sure)
     pub fn compact_wrapper(
         &mut self,
-        num_reindexing_before_full_set: u32,
         master_key: &MasterKeyPy,
         new_master_key: &MasterKeyPy,
         new_label: &LabelPy,
+        num_reindexing_before_full_set: u32,
     ) -> PyResult<()> {
         pyo3_unwrap!(
             block_on(self.compact(
@@ -229,9 +228,10 @@ impl FindexCloud {
     ///
     /// Parameters
     ///
-    /// - `indexed_values_and_keywords` : map of `IndexedValue` to `Keyword`
     /// - `token`                       : Findex token
     /// - `label`                       : label used to allow versioning
+    /// - `additions`                   : map of `IndexedValue` to `Keyword`
+    /// - `deletions`                   : map of `IndexedValue` to `Keyword`
     /// - `base_url`                    : url of Findex backend (optional)
     #[staticmethod]
     pub fn upsert(
@@ -263,28 +263,27 @@ impl FindexCloud {
     ///
     /// Parameters
     ///
-    /// - `keywords`                : keywords to search using Findex
     /// - `token`                   : Findex token
     /// - `label`                   : public label used in keyword hashing
+    /// - `keywords`                : keywords to search using Findex
     /// - `max_results_per_chain`   : maximum number of results to fetch per
     ///   chain
-    /// - `fetch_chains_batch_size` : batch size during fetch chain
     /// - `base_url`                : url of Findex backend (optional)
     ///
     /// Returns: `Locations` found by `Keyword`
     #[staticmethod]
     #[pyo3(signature = (
-        keywords,
         token,
         label,
+        keywords,
         max_result_per_keyword = 4_294_967_295,
         base_url = None
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn search(
-        keywords: Vec<ToKeyword>,
         token: &str,
         label: &LabelPy,
+        keywords: Vec<ToKeyword>,
         max_result_per_keyword: usize,
         base_url: Option<String>,
     ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {

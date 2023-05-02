@@ -177,39 +177,38 @@ class FindexCloud:
 
     @staticmethod
     def upsert(
-        indexed_values_and_keywords: IndexedValuesAndKeywords,
         token: str,
         label: Label,
+        additions: IndexedValuesAndKeywords,
+        deletions: IndexedValuesAndKeywords,
         base_url: Optional[str] = None,
     ) -> None:
         """Upserts the given relations between `IndexedValue` and `Keyword` into Findex tables.
 
         Args:
-            indexed_values_and_keywords (Dict[Location | Keyword, List[Keyword | str]]):
-                map of `IndexedValue` to a list of `Keyword`.
             token (str): Findex token.
             label (Label): label used to allow versioning.
+            additions (Dict[Location | Keyword, List[Keyword | str]]):
+                map of `IndexedValue` to a list of `Keyword`.
+            deletions (Dict[Location | Keyword, List[Keyword | str]]):
+                map of `IndexedValue` to a list of `Keyword`.
             base_url (str, optional): url of Findex backend.
         """
     @staticmethod
     def search(
-        keywords: Sequence[Union[Keyword, str]],
         token: str,
         label: Label,
+        keywords: Sequence[Union[Keyword, str]],
         max_result_per_keyword: int = 2**32 - 1,
-        max_depth: int = 100,
-        fetch_chains_batch_size: int = 0,
         base_url: Optional[str] = None,
     ) -> SearchResults:
         """Recursively search Findex graphs for `Locations` corresponding to the given `Keyword`.
 
         Args:
-            keywords (List[Keyword | str]): keywords to search using Findex.
             token (str): Findex token.
             label (Label): public label used in keyword hashing.
+            keywords (List[Keyword | str]): keywords to search using Findex.
             max_result_per_keyword (int, optional): maximum number of results to fetch per keyword.
-            max_depth (int, optional): maximum recursion level allowed. Defaults to 100.
-            fetch_chains_batch_size (int, optional): batch size during fetch chain.
             base_url (str, optional): url of Findex backend.
 
         Returns:
@@ -257,18 +256,16 @@ class InternalFindex:
     ) -> None: ...
     def search_wrapper(
         self,
-        keywords: Sequence[Union[Keyword, str]],
         msk: MasterKey,
         label: Label,
+        keywords: Sequence[Union[Keyword, str]],
         max_result_per_keyword: int = 2**32 - 1,
-        max_depth: int = 100,
-        fetch_chains_batch_size: int = 0,
         progress_callback: Optional[Callable] = None,
     ) -> SearchResults: ...
     def compact_wrapper(
         self,
-        num_reindexing_before_full_set: int,
         master_key: MasterKey,
         new_master_key: MasterKey,
         new_label: Label,
+        num_reindexing_before_full_set: int,
     ) -> None: ...
