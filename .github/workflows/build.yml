@@ -17,5 +17,5 @@ jobs:
       branch-java: v5.0.0
       branch-js: v8.1.0
       branch-flutter: v6.0.2
-      branch-python: v3.1.0
+      branch-python: cloudproof_rust_1.3.0
     secrets: inherit
