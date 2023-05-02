@@ -61,13 +61,12 @@ class NoiseGenerator:
         Returns:
             float: Original data with added noise.
         """
-    def apply_correlated_noise(
+    def apply_correlated_noise_on_floats(
         self, data: List[float], factors: List[float]
     ) -> List[float]:
         """
-        Applies correlated noise to a vector of data, based on precomputed
-        factors. The noise is sampled once and then applied to each data
-        point, scaled by a corresponding factor.
+        Applies correlated noise to a vector of data.
+        The noise is sampled once and then applied to each data point, scaled by a corresponding factor.
 
         Args:
             data (List[float]): Data to add noise to.
@@ -86,6 +85,20 @@ class NoiseGenerator:
         Returns:
             int: Original data with added noise
         """
+    def apply_correlated_noise_on_ints(
+        self, data: List[int], factors: List[float]
+    ) -> List[int]:
+        """
+        Applies correlated noise to a vector of data.
+        The noise is sampled once and then applied to each data point, scaled by a corresponding factor.
+
+        Args:
+            data (List[int]): Data to add noise to.
+            factors (List[float]): Factors to scale the noise with, one for each data point.
+
+        Returns:
+            List[int]: A vector containing the original data with added noise.
+        """
     def apply_on_date(self, date: str) -> str:
         """
         Applies the selected noise method on a given date string.
@@ -95,6 +108,20 @@ class NoiseGenerator:
 
         Returns:
             str: The resulting noisy date string
+        """
+    def apply_correlated_noise_on_dates(
+        self, data: List[str], factors: List[float]
+    ) -> List[str]:
+        """
+        Applies correlated noise to a vector of data.
+        The noise is sampled once and then applied to each data point, scaled by a corresponding factor.
+
+        Args:
+            data (List[str]): Data to add noise to.
+            factors (List[float]): Factors to scale the noise with, one for each data point.
+
+        Returns:
+            List[str]: A vector containing the original data with added noise.
         """
 
 class WordMasker:

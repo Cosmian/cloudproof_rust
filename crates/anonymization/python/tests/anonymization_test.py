@@ -142,18 +142,45 @@ class TestNoiseGen(unittest.TestCase):
         self.assertEqual(dt.month, 4)
         self.assertEqual(dt.year, 2023)
 
-    def test_correlated_noise(self) -> None:
+    def test_correlated_noise_gaussian_floats(self) -> None:
         noise_generator = NoiseGenerator.new_with_parameters('Gaussian', 10.0, 2.0)
         values = [1.0, 1.0, 1.0]
         factors = [1.0, 2.0, 4.0]
 
-        res = noise_generator.apply_correlated_noise(values, factors)
+        res = noise_generator.apply_correlated_noise_on_floats(values, factors)
         self.assertEqual(
-            (res[0] - values[0]) / factors[0], (res[1] - values[1]) / factors[1]
+            (res[0] - values[0]) * factors[1], (res[1] - values[1]) * factors[0]
         )
         self.assertEqual(
-            (res[0] - values[0]) / factors[0], (res[2] - values[2]) / factors[2]
+            (res[0] - values[0]) * factors[2], (res[2] - values[2]) * factors[0]
         )
+
+    def test_correlated_noise_laplace_ints(self) -> None:
+        noise_generator = NoiseGenerator.new_with_parameters('Laplace', 10.0, 2.0)
+        values = [1, 1, 1]
+        factors = [1.0, 2.0, 4.0]
+
+        res = noise_generator.apply_correlated_noise_on_ints(values, factors)
+        # Ordering only holds if noise is positive
+        self.assertLessEqual(res[0], res[1])
+        self.assertLessEqual(res[1], res[2])
+
+    def test_correlated_noise_uniform_date(self) -> None:
+        noise_generator = NoiseGenerator.new_with_bounds('Uniform', 0.0, 10.0)
+        values = [
+            '2023-05-02T00:00:00Z',
+            '2023-05-02T00:00:00Z',
+            '2023-05-02T00:00:00Z',
+        ]
+        factors = [1.0, 2.0, 4.0]
+        noisy_values = noise_generator.apply_correlated_noise_on_dates(values, factors)
+
+        date1 = datetime.fromisoformat(noisy_values[0])
+        date2 = datetime.fromisoformat(noisy_values[1])
+        date3 = datetime.fromisoformat(noisy_values[2])
+        # Ordering only holds if noise is positive
+        self.assertLessEqual(date1.second, date2.second)
+        self.assertLessEqual(date2.second, date3.second)
 
 
 class TestWordMasking(unittest.TestCase):

@@ -177,18 +177,18 @@ fn test_noise_uniform_date() -> Result<(), AnoError> {
 
 #[test]
 fn test_correlated_noise_gaussian_f64() -> Result<(), AnoError> {
-    let gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 10.0, 2.0)?;
+    let noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 10.0, 2.0)?;
     let values = vec![1.0, 1.0, 1.0];
     let factors = vec![1.0, 2.0, 4.0];
-    let noisy_values = gaussian_noise_generator.apply_correlated_noise(&values, &factors)?;
+    let noisy_values = noise_generator.apply_correlated_noise_on_floats(&values, &factors)?;
     assert_relative_eq!(
-        (noisy_values[0] - values[0]) / factors[0],
-        (noisy_values[1] - values[1]) / factors[1],
+        (noisy_values[0] - values[0]) * factors[1],
+        (noisy_values[1] - values[1]) * factors[0],
         epsilon = 1e-6
     );
     assert_relative_eq!(
-        (noisy_values[0] - values[0]) / factors[0],
-        (noisy_values[2] - values[2]) / factors[2],
+        (noisy_values[0] - values[0]) * factors[2],
+        (noisy_values[2] - values[2]) * factors[0],
         epsilon = 1e-6
     );
     // Ordering only holds if noise is positive
@@ -196,6 +196,39 @@ fn test_correlated_noise_gaussian_f64() -> Result<(), AnoError> {
     assert!(noisy_values[1] < noisy_values[2]);
     Ok(())
 }
+
+#[test]
+fn test_correlated_noise_laplace_i64() -> Result<(), AnoError> {
+    let noise_generator = NoiseGenerator::new_with_parameters("Laplace", 10.0, 2.0)?;
+    let values = vec![1, 1, 1];
+    let factors = vec![1.0, 2.0, 4.0];
+    let noisy_values = noise_generator.apply_correlated_noise_on_ints(&values, &factors)?;
+    // Ordering only holds if noise is positive
+    assert!(noisy_values[0] <= noisy_values[1]);
+    assert!(noisy_values[1] <= noisy_values[2]);
+    Ok(())
+}
+
+#[test]
+fn test_correlated_noise_uniform_date() -> Result<(), AnoError> {
+    let noise_generator = NoiseGenerator::new_with_bounds("Uniform", 0.0, 10.0)?;
+    let values = vec![
+        "2023-05-02T00:00:00Z",
+        "2023-05-02T00:00:00Z",
+        "2023-05-02T00:00:00Z",
+    ];
+    let factors = vec![1.0, 2.0, 4.0];
+    let noisy_values = noise_generator.apply_correlated_noise_on_dates(&values, &factors)?;
+
+    let date1 = DateTime::parse_from_rfc3339(&noisy_values[0])?.with_timezone(&Utc);
+    let date2 = DateTime::parse_from_rfc3339(&noisy_values[1])?.with_timezone(&Utc);
+    let date3 = DateTime::parse_from_rfc3339(&noisy_values[2])?.with_timezone(&Utc);
+    // Ordering only holds if noise is positive
+    assert!(date1.second() <= date2.second());
+    assert!(date2.second() <= date3.second());
+    Ok(())
+}
+
 #[test]
 fn test_mask_word() -> Result<(), AnoError> {
     let input_str = String::from("Confidential: contains -secret- documents");

@@ -173,19 +173,23 @@ where
         Ok(data + noise)
     }
 
-    /// Applies correlated noise to a vector of data, based on precomputed
-    /// factors. The noise is sampled once and then applied to each data
-    /// point, scaled by a corresponding factor.
+    /// Applies correlated noise to a vector of data.
+    /// The noise is sampled once and then applied to each data point, scaled by
+    /// a corresponding factor.
     ///
     /// # Arguments
     ///
-    /// * `data`: Data to add noise to.
+    /// * `data`: List of floats to add noise to.
     /// * `factors`: Factors to scale the noise with, one for each data point.
     ///
     /// # Returns
     ///
     /// A vector containing the original data with added noise
-    pub fn apply_correlated_noise(&self, data: &[N], factors: &[N]) -> Result<Vec<N>, AnoError> {
+    pub fn apply_correlated_noise_on_floats(
+        &self,
+        data: &[N],
+        factors: &[N],
+    ) -> Result<Vec<N>, AnoError> {
         let mut rng = CsRng::from_entropy();
 
         // Sample noise once
@@ -219,6 +223,31 @@ impl NoiseGenerator<f64> {
         Ok(res.round() as i64)
     }
 
+    /// Applies correlated noise to a vector of data.
+    /// The noise is sampled once and then applied to each data point, scaled by
+    /// a corresponding factor.
+    ///
+    /// # Arguments
+    ///
+    /// * `data`: List of ints to add noise to.
+    /// * `factors`: Factors to scale the noise with.
+    ///
+    /// # Returns
+    ///
+    /// A vector containing the original data with added noise
+    pub fn apply_correlated_noise_on_ints(
+        &self,
+        data: &[i64],
+        factors: &[f64],
+    ) -> Result<Vec<i64>, AnoError> {
+        let input_floats: Vec<f64> = data.iter().map(|val: &i64| *val as f64).collect();
+        Ok(self
+            .apply_correlated_noise_on_floats(&input_floats, factors)?
+            .iter()
+            .map(|val| val.round() as i64)
+            .collect())
+    }
+
     /// Applies the selected noise method on a given date string.
     ///
     /// # Arguments
@@ -229,19 +258,37 @@ impl NoiseGenerator<f64> {
     ///
     ///  The resulting noisy date string
     pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
-        let date_unix = DateTime::parse_from_rfc3339(date_str)?
-            .with_timezone(&Utc)
-            .timestamp();
+        let date_unix = datestring_to_timestamp!(date_str)?;
         let noisy_date_unix = self.apply_on_int(date_unix)?;
-        match Utc.timestamp_opt(noisy_date_unix, 0) {
-            chrono::LocalResult::None => {
-                Err(ano_error!("Could not apply noise on date `{}`.", date_str))
-            }
-            chrono::LocalResult::Single(date) => Ok(date.to_rfc3339()),
-            chrono::LocalResult::Ambiguous(_, _) => Err(ano_error!(
-                "Applying noise on date `{}` lead to ambiguous result.",
-                date_str
-            )),
-        }
+        timestamp_to_datestring!(noisy_date_unix, date_str)
+    }
+
+    /// Applies correlated noise to a vector of data.
+    /// The noise is sampled once and then applied to each data point, scaled by
+    /// a corresponding factor.
+    ///
+    /// # Arguments
+    ///
+    /// * `data`: List of dates string to add noise to.
+    /// * `factors`: Factors to scale the noise with.
+    ///
+    /// # Returns
+    ///
+    /// A vector containing the original data with added noise
+    pub fn apply_correlated_noise_on_dates(
+        &self,
+        data: &[&str],
+        factors: &[f64],
+    ) -> Result<Vec<String>, AnoError> {
+        let input_timestamps: Result<Vec<_>, _> = data
+            .iter()
+            .map(|date_str| datestring_to_timestamp!(date_str))
+            .collect();
+
+        self.apply_correlated_noise_on_ints(&input_timestamps?, factors)?
+            .into_iter()
+            .enumerate()
+            .map(|(i, val)| timestamp_to_datestring!(val, data.get(i).unwrap()))
+            .collect()
     }
 }
