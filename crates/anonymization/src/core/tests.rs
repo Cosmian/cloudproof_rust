@@ -11,11 +11,11 @@ use crate::core::{
 
 #[test]
 fn test_hash_sha2() -> Result<(), AnoError> {
-    let hasher = Hasher::new(HashMethod::SHA2, None)?;
+    let hasher = Hasher::new(HashMethod::SHA2(None));
     let sha2_hash = hasher.apply(b"test sha2")?;
     assert_eq!(sha2_hash, "Px0txVYqBePXWF5K4xFn0Pa2mhnYA/jfsLtpIF70vJ8=");
 
-    let hasher = Hasher::new(HashMethod::SHA2, Some(b"example salt".to_vec()))?;
+    let hasher = Hasher::new(HashMethod::SHA2(Some(b"example salt".to_vec())));
     let sha2_hash_salt = hasher.apply(b"test sha2")?;
     assert_eq!(
         sha2_hash_salt,
@@ -27,11 +27,11 @@ fn test_hash_sha2() -> Result<(), AnoError> {
 
 #[test]
 fn test_hash_sha3() -> Result<(), AnoError> {
-    let hasher = Hasher::new(HashMethod::SHA3, None)?;
+    let hasher = Hasher::new(HashMethod::SHA3(None));
     let sha3_hash = hasher.apply(b"test sha3")?;
     assert_eq!(sha3_hash, "b8rRtRqnSFs8s12jsKSXHFcLf5MeHx8g6m4tvZq04/I=");
 
-    let hasher = Hasher::new(HashMethod::SHA3, Some(b"example salt".to_vec()))?;
+    let hasher = Hasher::new(HashMethod::SHA3(Some(b"example salt".to_vec())));
     let sha3_hash_salt = hasher.apply(b"test sha3")?;
     assert_eq!(
         sha3_hash_salt,
@@ -43,15 +43,9 @@ fn test_hash_sha3() -> Result<(), AnoError> {
 
 #[test]
 fn test_hash_argon2() -> Result<(), AnoError> {
-    let hasher = Hasher::new(HashMethod::Argon2, Some(b"example salt".to_vec()))?;
+    let hasher = Hasher::new(HashMethod::Argon2(b"example salt".to_vec()));
     let argon2_hash = hasher.apply(b"low entropy data")?;
     assert_eq!(argon2_hash, "JXiQyIYJAIMZoDKhA/BOKTo+142aTkDvtITEI7NXDEM=");
-
-    let res = Hasher::new(
-        HashMethod::Argon2,
-        None, // should fail without salt
-    );
-    assert!(res.is_err());
 
     Ok(())
 }
@@ -145,6 +139,9 @@ fn test_noise_gaussian_date() -> Result<(), AnoError> {
     assert_eq!(date.day(), 7);
     assert_eq!(date.month(), 4);
     assert_eq!(date.year(), 2023);
+
+    let res = gaussian_noise_generator.apply_on_date("AAAA");
+    assert!(res.is_err());
     Ok(())
 }
 
@@ -325,6 +322,9 @@ fn test_time_aggregation() -> Result<(), AnoError> {
     assert_eq!(date.hour(), 12);
     assert_eq!(date.minute(), 0);
     assert_eq!(date.second(), 0);
+
+    let res = time_aggregator.apply_on_date("AAAA");
+    assert!(res.is_err());
 
     Ok(())
 }

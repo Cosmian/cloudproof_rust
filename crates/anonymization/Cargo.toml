@@ -17,8 +17,11 @@ ffi = ["cosmian_ffi_utils"]
 python = ["pyo3"]
 wasm_bindgen = ["js-sys", "wasm-bindgen"]
 
+# waiting for ffi and js
+[package.metadata.cargo-udeps.ignore]
+normal = ["cosmian_ffi_utils", "js-sys", "wasm-bindgen"]
+
 [dependencies]
-approx = "0.5"
 argon2 = "0.5"
 base64 = { workspace = true }
 chrono = { version = "0.4", default-features = false, features = ["clock", "wasmbind"] }
@@ -37,4 +40,5 @@ pyo3 = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
+approx = "0.5.1"
 wasm-bindgen-test = "0.3.34"

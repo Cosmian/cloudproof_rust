@@ -1,6 +1,6 @@
 use chrono::{DateTime, TimeZone, Utc};
-use cosmian_crypto_core::CsRng;
-use rand::{Rng, SeedableRng};
+use cosmian_crypto_core::{reexport::rand_core::SeedableRng, CsRng};
+use rand::{CryptoRng, Rng};
 use rand_distr::{num_traits::Float, Distribution, Normal, Standard, StandardNormal, Uniform};
 
 use crate::{ano_error, core::AnoError};
@@ -9,11 +9,26 @@ use crate::{ano_error, core::AnoError};
 pub enum NoiseMethod<N>
 where
     N: Float + rand_distr::uniform::SampleUniform,
-    rand_distr::StandardNormal: rand_distr::Distribution<N>,
+    StandardNormal: Distribution<N>,
 {
     Gaussian(Normal<N>),
     Laplace(Laplace<N>),
     Uniform(Uniform<N>),
+}
+
+impl<N> NoiseMethod<N>
+where
+    N: Float + rand_distr::uniform::SampleUniform,
+    Standard: Distribution<N>,
+    StandardNormal: Distribution<N>,
+{
+    fn sample<R: CryptoRng + Rng + ?Sized>(&self, rng: &mut R) -> N {
+        match self {
+            Self::Gaussian(d) => d.sample(rng),
+            Self::Laplace(d) => d.sample(rng),
+            Self::Uniform(d) => d.sample(rng),
+        }
+    }
 }
 
 /// A Laplace distribution, used to generate random numbers following the
@@ -42,7 +57,7 @@ impl<N: Float> Laplace<N> {
     ///
     /// * `mean` - The mean of the Laplace distribution.
     /// * `beta` - The scale parameter of the Laplace distribution.
-    pub fn new(mean: N, beta: N) -> Self {
+    pub const fn new(mean: N, beta: N) -> Self {
         Self { mean, beta }
     }
 }
@@ -162,13 +177,8 @@ where
     /// Original data with added noise
     pub fn apply_on_float(&self, data: N) -> Result<N, AnoError> {
         let mut rng = CsRng::from_entropy();
-
         // Sample noise
-        let noise = match &self.method {
-            NoiseMethod::Gaussian(distr) => distr.sample(&mut rng),
-            NoiseMethod::Laplace(distr) => distr.sample(&mut rng),
-            NoiseMethod::Uniform(distr) => distr.sample(&mut rng),
-        };
+        let noise = self.method.sample(&mut rng);
         // Add noise to the raw data
         Ok(data + noise)
     }
@@ -191,13 +201,8 @@ where
         factors: &[N],
     ) -> Result<Vec<N>, AnoError> {
         let mut rng = CsRng::from_entropy();
-
         // Sample noise once
-        let noise = match &self.method {
-            NoiseMethod::Gaussian(distr) => distr.sample(&mut rng),
-            NoiseMethod::Laplace(distr) => distr.sample(&mut rng),
-            NoiseMethod::Uniform(distr) => distr.sample(&mut rng),
-        };
+        let noise = self.method.sample(&mut rng);
 
         // Add noise to the raw data, scaled by the corresponding factor
         Ok(data
@@ -258,9 +263,9 @@ impl NoiseGenerator<f64> {
     ///
     ///  The resulting noisy date string
     pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
-        let date_unix = datestring_to_timestamp!(date_str)?;
+        let date_unix = rfc3339_to_timestamp!(date_str)?;
         let noisy_date_unix = self.apply_on_int(date_unix)?;
-        timestamp_to_datestring!(noisy_date_unix, date_str)
+        datetime_to_rfc3339!(Utc.timestamp_opt(noisy_date_unix, 0), date_str)
     }
 
     /// Applies correlated noise to a vector of data.
@@ -282,13 +287,13 @@ impl NoiseGenerator<f64> {
     ) -> Result<Vec<String>, AnoError> {
         let input_timestamps: Result<Vec<_>, _> = data
             .iter()
-            .map(|date_str| datestring_to_timestamp!(date_str))
+            .map(|date_str| rfc3339_to_timestamp!(date_str))
             .collect();
 
         self.apply_correlated_noise_on_ints(&input_timestamps?, factors)?
             .into_iter()
             .enumerate()
-            .map(|(i, val)| timestamp_to_datestring!(val, data.get(i).unwrap()))
+            .map(|(i, val)| datetime_to_rfc3339!(Utc.timestamp_opt(val, 0), data.get(i).unwrap()))
             .collect()
     }
 }

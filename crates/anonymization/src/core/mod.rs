@@ -1,4 +1,5 @@
-macro_rules! datestring_to_timestamp {
+/// Convert a date in RFC3339 format to `LocalResult<DateTime>`.
+macro_rules! rfc3339_to_timestamp {
     ($date_str:expr) => {
         match DateTime::parse_from_rfc3339($date_str) {
             Ok(date) => Ok(date.with_timezone(&Utc).timestamp()),
@@ -7,17 +8,18 @@ macro_rules! datestring_to_timestamp {
     };
 }
 
-macro_rules! timestamp_to_datestring {
-    ($noisy_date_unix:expr, $date_str:expr) => {
-        match Utc.timestamp_opt($noisy_date_unix, 0) {
+/// Convert `LocalResult<DateTime>` to a date in RFC3339 format.
+macro_rules! datetime_to_rfc3339 {
+    ($date_time:expr, $original_date:expr) => {
+        match $date_time {
             chrono::LocalResult::None => Err(ano_error!(
                 "Could not apply method on date `{}`.",
-                $date_str
+                $original_date
             )),
             chrono::LocalResult::Single(date) => Ok(date.to_rfc3339()),
             chrono::LocalResult::Ambiguous(_, _) => Err(ano_error!(
                 "Applying method on date `{}` lead to ambiguous result.",
-                $date_str
+                $original_date
             )),
         }
     };

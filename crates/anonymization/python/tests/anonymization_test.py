@@ -148,11 +148,15 @@ class TestNoiseGen(unittest.TestCase):
         factors = [1.0, 2.0, 4.0]
 
         res = noise_generator.apply_correlated_noise_on_floats(values, factors)
-        self.assertEqual(
-            (res[0] - values[0]) * factors[1], (res[1] - values[1]) * factors[0]
+        self.assertAlmostEqual(
+            (res[0] - values[0]) * factors[1],
+            (res[1] - values[1]) * factors[0],
+            places=6,
         )
-        self.assertEqual(
-            (res[0] - values[0]) * factors[2], (res[2] - values[2]) * factors[0]
+        self.assertAlmostEqual(
+            (res[0] - values[0]) * factors[2],
+            (res[2] - values[2]) * factors[0],
+            places=6,
         )
 
     def test_correlated_noise_laplace_ints(self) -> None:

@@ -1,4 +1,4 @@
-use pyo3::{exceptions::PyException, prelude::*};
+use pyo3::prelude::*;
 
 use crate::core::{HashMethod, Hasher as HasherRust};
 
@@ -8,18 +8,13 @@ pub struct Hasher(HasherRust);
 #[pymethods]
 impl Hasher {
     #[new]
-    fn new(hasher_method: &str, salt: Option<Vec<u8>>) -> PyResult<Self> {
-        let method = match hasher_method {
-            "SHA2" => Ok(HashMethod::SHA2),
-            "SHA3" => Ok(HashMethod::SHA3),
-            "Argon2" => Ok(HashMethod::Argon2),
-            _ => Err(PyException::new_err("Not a valid hash method specified.")),
-        }?;
-
-        Ok(Self(pyo3_unwrap!(
-            HasherRust::new(method, salt),
+    fn new(hasher_method: &str, salt_opt: Option<Vec<u8>>) -> PyResult<Self> {
+        let method = pyo3_unwrap!(
+            HashMethod::new(hasher_method, salt_opt),
             "Error initializing the hasher"
-        )))
+        );
+
+        Ok(Self(HasherRust::new(method)))
     }
 
     pub fn apply(&self, data: &[u8]) -> PyResult<String> {

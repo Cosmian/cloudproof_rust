@@ -57,6 +57,7 @@ pub struct WordMasker {
     /// A set of words to be masked in the text.
     word_list: HashSet<String>,
 }
+const MASK: &str = "XXXX";
 
 impl WordMasker {
     /// Creates a new `WordMasker` instance.
@@ -85,7 +86,7 @@ impl WordMasker {
         let re = Regex::new(r"\b\w+\b").unwrap();
         let result = re.replace_all(data, |caps: &regex::Captures| {
             if self.word_list.contains(&caps[0].to_lowercase()) {
-                "XXXX".to_string()
+                MASK.to_string()
             } else {
                 caps[0].to_string()
             }

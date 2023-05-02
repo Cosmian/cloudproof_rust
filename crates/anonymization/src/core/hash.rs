@@ -8,14 +8,34 @@ use crate::{ano_error, core::AnoError};
 // Available hashing methods
 #[derive(PartialEq, Eq)]
 pub enum HashMethod {
-    SHA2,
-    SHA3,
-    Argon2,
+    /// Represents the SHA2 hash method with an optional salt.
+    SHA2(Option<Vec<u8>>),
+    /// Represents the SHA3 hash method with an optional salt.
+    SHA3(Option<Vec<u8>>),
+    /// Represents the Argon2 hash method with a mandatory salt.
+    Argon2(Vec<u8>),
+}
+
+impl HashMethod {
+    /// `HashMethod` constructor for interfaces
+    ///
+    /// * `method` - The hash method to use. This can be one of the following:Z
+    /// * `salt` - An optional salt to use. Required with Argon2
+    pub fn new(hasher_method: &str, salt_opt: Option<Vec<u8>>) -> Result<Self, AnoError> {
+        match hasher_method {
+            "SHA2" => Ok(Self::SHA2(salt_opt)),
+            "SHA3" => Ok(Self::SHA3(salt_opt)),
+            "Argon2" => salt_opt.map_or_else(
+                || Err(ano_error!("Argon2 requires a salt value.")),
+                |salt| Ok(Self::Argon2(salt)),
+            ),
+            _ => Err(ano_error!("Not a valid hash method specified.")),
+        }
+    }
 }
 
 pub struct Hasher {
-    method: HashMethod,    // The selected hash method
-    salt: Option<Vec<u8>>, // An optional salt
+    method: HashMethod, // The selected hash method
 }
 
 impl Hasher {
@@ -30,12 +50,9 @@ impl Hasher {
     ///     SHA-256 and not as widely supported.
     ///   * `Argon2` Highly resistant to brute-force attacks, but can be slower
     ///     than other hash functions and may require more memory.
-    /// * `salt` - An optional salt to use. Required with Argon2
-    pub fn new(method: HashMethod, salt: Option<Vec<u8>>) -> Result<Self, AnoError> {
-        if method == HashMethod::Argon2 && salt.is_none() {
-            return Err(ano_error!("Argon2 requires a salt value."));
-        }
-        Ok(Self { method, salt })
+    #[must_use]
+    pub const fn new(method: HashMethod) -> Self {
+        Self { method }
     }
 
     /// Applies the chosen hash method to the input data
@@ -48,22 +65,22 @@ impl Hasher {
     ///
     /// The base64-encoded hash string.
     pub fn apply(&self, data: &[u8]) -> Result<String, AnoError> {
-        match self.method {
-            HashMethod::SHA2 => {
+        match &self.method {
+            HashMethod::SHA2(salt) => {
                 let mut hasher = Sha256::new();
 
-                if let Some(salt_val) = self.salt.as_deref() {
+                if let Some(salt_val) = salt.as_deref() {
                     hasher.update(salt_val);
                 }
                 hasher.update(data);
 
                 Ok(general_purpose::STANDARD.encode(hasher.finalize()))
             }
-            HashMethod::SHA3 => {
+            HashMethod::SHA3(salt) => {
                 let mut hasher = Sha3::v256();
 
                 let mut output = [0u8; 32];
-                if let Some(salt_val) = self.salt.as_deref() {
+                if let Some(salt_val) = salt.as_deref() {
                     hasher.update(salt_val);
                 }
                 hasher.update(data);
@@ -71,14 +88,9 @@ impl Hasher {
 
                 Ok(general_purpose::STANDARD.encode(output))
             }
-            HashMethod::Argon2 => {
-                let salt_val = self
-                    .salt
-                    .as_deref()
-                    .ok_or(ano_error!("Argon2 requires a salt value."))?;
-
+            HashMethod::Argon2(salt) => {
                 let mut output = [0u8; 32];
-                Argon2::default().hash_password_into(data, salt_val, &mut output)?;
+                Argon2::default().hash_password_into(data, salt, &mut output)?;
 
                 Ok(general_purpose::STANDARD.encode(output))
             }

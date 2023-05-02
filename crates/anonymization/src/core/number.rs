@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, Timelike, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
 use rand_distr::num_traits::Pow;
 
 use super::AnoError;
@@ -30,7 +30,8 @@ impl NumberAggregator {
         // exponent cannot be greater than 308(https://doc.rust-lang.org/std/primitive.f64.html#associatedconstant.MAX_10_EXP)
         if power_of_ten_exponent > f64::MAX_10_EXP {
             return Err(ano_error!(
-                "Exponent must be lower than 308, given {}.",
+                "Exponent must be lower than {}, given {}.",
+                f64::MAX_10_EXP,
                 power_of_ten_exponent
             ));
         }
@@ -110,40 +111,35 @@ impl DateAggregator {
     /// # Returns
     ///
     /// The rounded date in RFC 3339
-    #[allow(deprecated)]
     pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
         // Parse the date string into a DateTime.
         let date = DateTime::parse_from_rfc3339(date_str)?.with_timezone(&Utc);
 
-        let rounded_date = match self.time_unit.as_str() {
-            "Second" => date.with_nanosecond(0).unwrap(),
-            "Minute" => date.with_second(0).unwrap().with_nanosecond(0).unwrap(),
-            "Hour" => date
-                .with_minute(0)
-                .unwrap()
-                .with_second(0)
-                .unwrap()
-                .with_nanosecond(0)
-                .unwrap(),
-            "Day" => date.date().and_hms_opt(0, 0, 0).unwrap(),
-            "Month" => date
-                .date()
-                .with_day(1)
-                .unwrap()
-                .and_hms_opt(0, 0, 0)
-                .unwrap(),
-            "Year" => date
-                .date()
-                .with_month(1)
-                .unwrap()
-                .with_day(1)
-                .unwrap()
-                .and_hms_opt(0, 0, 0)
-                .unwrap(),
-            _ => return Err(ano_error!("Unknown time unit {}", &self.time_unit)),
-        };
+        let (y, mo, d, h, mi, s) = match self.time_unit.as_str() {
+            "Second" => Ok((
+                date.year(),
+                date.month(),
+                date.day(),
+                date.hour(),
+                date.minute(),
+                date.second(),
+            )),
+            "Minute" => Ok((
+                date.year(),
+                date.month(),
+                date.day(),
+                date.hour(),
+                date.minute(),
+                0,
+            )),
+            "Hour" => Ok((date.year(), date.month(), date.day(), date.hour(), 0, 0)),
+            "Day" => Ok((date.year(), date.month(), date.day(), 0, 0, 0)),
+            "Month" => Ok((date.year(), date.month(), 1, 0, 0, 0)),
+            "Year" => Ok((date.year(), 1, 1, 0, 0, 0)),
+            _ => Err(ano_error!("Unknown time unit {}", &self.time_unit)),
+        }?;
 
-        Ok(rounded_date.to_rfc3339())
+        datetime_to_rfc3339!(Utc.with_ymd_and_hms(y, mo, d, h, mi, s), date_str)
     }
 }
 
@@ -166,7 +162,7 @@ impl NumberScaler {
     /// * `scale`: The scaling factor.
     /// * `translate`: The translation factor.
     #[must_use]
-    pub fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Self {
+    pub const fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Self {
         Self {
             mean,
             std_deviation,
