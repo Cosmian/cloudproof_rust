@@ -27,12 +27,11 @@ impl NumberAggregator {
     ///
     /// * `power_of_ten_exponent` - The power of ten to round the numbers to.
     pub fn new(power_of_ten_exponent: i32) -> Result<Self, AnoError> {
-        // exponent cannot be greater than 308(https://doc.rust-lang.org/std/primitive.f64.html#associatedconstant.MAX_10_EXP)
+        // exponent cannot be greater than 308 (https://doc.rust-lang.org/std/primitive.f64.html#associatedconstant.MAX_10_EXP)
         if power_of_ten_exponent > f64::MAX_10_EXP {
             return Err(ano_error!(
-                "Exponent must be lower than {}, given {}.",
+                "Exponent must be lower than {}, given {power_of_ten_exponent}.",
                 f64::MAX_10_EXP,
-                power_of_ten_exponent
             ));
         }
         Ok(Self {

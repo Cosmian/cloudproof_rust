@@ -49,11 +49,8 @@ impl Display for AnoError {
 /// Construct a generic error from a string.
 #[macro_export]
 macro_rules! ano_error {
-    ($msg:literal $(,)?) => {
-        AnoError::AnonymizationError($msg.to_owned())
-    };
-    ($err:expr $(,)?) => ({
-        AnoError::AnonymizationError($err.to_string())
+    ($fmt:expr $(,)?) => ({
+        AnoError::AnonymizationError(format!($fmt))
     });
     ($fmt:expr, $($arg:tt)*) => {
         AnoError::AnonymizationError(format!($fmt, $($arg)*))

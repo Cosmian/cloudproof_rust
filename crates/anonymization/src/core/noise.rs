@@ -24,9 +24,9 @@ where
 {
     fn sample<R: CryptoRng + Rng + ?Sized>(&self, rng: &mut R) -> N {
         match self {
-            Self::Gaussian(d) => d.sample(rng),
-            Self::Laplace(d) => d.sample(rng),
-            Self::Uniform(d) => d.sample(rng),
+            Self::Gaussian(distr) => distr.sample(rng),
+            Self::Laplace(distr) => distr.sample(rng),
+            Self::Uniform(distr) => distr.sample(rng),
         }
     }
 }
@@ -118,10 +118,7 @@ where
                 let beta = std_dev / N::from(2).unwrap().sqrt();
                 Ok(NoiseMethod::Laplace(Laplace::<N>::new(mean, beta)))
             }
-            _ => Err(ano_error!(
-                "{} is not a supported distribution.",
-                method_name
-            )),
+            _ => Err(ano_error!("{method_name} is not a supported distribution.")),
         }?;
         Ok(Self { method })
     }

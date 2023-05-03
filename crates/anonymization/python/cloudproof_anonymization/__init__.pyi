@@ -29,7 +29,7 @@ class Hasher:
 
 class NoiseGenerator:
     """
-    A class for adding noise to data using various distribution methods such as `Uniform`, `Gaussian`, or `Laplace`.
+    A class for adding noise to data using various distributions such as `Uniform`, `Gaussian`, or `Laplace`.
     """
 
     @staticmethod
@@ -55,9 +55,6 @@ class NoiseGenerator:
             method_name (str): The noise distribution to use ("Uniform", "Gaussian", or "Laplace").
             min_bound (float): The lower bound of the range of possible generated noise values.
             max_bound (float): The upper bound of the range of possible generated noise values.
-
-        Returns:
-            NoiseGenerator: A new `NoiseGenerator` instance with the specified noise distribution and bound constraints.
         """
     def apply_on_float(self, data: float) -> float:
         """
@@ -262,7 +259,7 @@ class DateAggregator:
 
 class NumberScaler:
     """
-    A class to scale and translate floating-point or integer values.
+    A class to scale and translate floating points or integer values.
     """
 
     def __init__(
