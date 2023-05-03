@@ -1,8 +1,8 @@
 //! Defines the Findex WASM API.
 
+use std::collections::HashSet;
 #[cfg(feature = "cloud")]
 use std::str::FromStr;
-use std::{collections::HashSet, num::NonZeroUsize};
 
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
@@ -14,12 +14,9 @@ use wasm_bindgen::prelude::*;
 use super::core::{Fetch, FindexUser, Insert, Progress, Upsert};
 #[cfg(feature = "cloud")]
 use crate::cloud::{FindexCloud, Token, SIGNATURE_SEED_LENGTH};
-use crate::{
-    wasm_bindgen::core::{
-        search_results_to_js, to_indexed_values_to_keywords, ArrayOfKeywords,
-        IndexedValuesAndWords, SearchResults,
-    },
-    MAX_RESULTS_PER_CHAIN,
+use crate::wasm_bindgen::core::{
+    search_results_to_js, to_indexed_values_to_keywords, ArrayOfKeywords, IndexedValuesAndWords,
+    SearchResults,
 };
 
 /// See [`FindexSearch::search()`](cosmian_findex::FindexSearch::search).
@@ -29,9 +26,6 @@ use crate::{
 /// - `master_key`              : master key
 /// - `label_bytes`             : bytes of the public label used for hashing
 /// - `keywords`                : list of keyword bytes to search
-/// - `max_results_per_chain`   : maximum results returned for a chain
-/// - `fetch_chains_batch_size` : increase this value to improve performances
-///   but decrease security by batching fetch chains calls
 /// - `progress`                : progress callback
 /// - `fetch_entries`           : callback to fetch from the Entry Table
 /// - `fetch_chains`            : callback to fetch from the Chain Table
@@ -41,7 +35,6 @@ pub async fn webassembly_search(
     master_key: Uint8Array,
     label_bytes: Uint8Array,
     keywords: ArrayOfKeywords,
-    max_results_per_chain: i32,
     progress: Progress,
     fetch_entry: Fetch,
     fetch_chain: Fetch,
@@ -55,11 +48,6 @@ pub async fn webassembly_search(
         .map(|word| Keyword::from(Uint8Array::new(&word).to_vec()))
         .collect::<HashSet<_>>();
 
-    let max_results_per_chain = usize::try_from(max_results_per_chain)
-        .ok()
-        .and_then(NonZeroUsize::new)
-        .unwrap_or(MAX_RESULTS_PER_CHAIN);
-
     let mut wasm_search = FindexUser {
         progress: Some(progress),
         fetch_entry: Some(fetch_entry),
@@ -69,7 +57,7 @@ pub async fn webassembly_search(
     };
 
     let results = wasm_search
-        .search(&master_key, &label, keywords, max_results_per_chain.into())
+        .search(&master_key, &label, keywords)
         .await
         .map_err(|e| JsValue::from(format!("During Findex search: {e}")))?;
 
@@ -128,10 +116,6 @@ pub async fn webassembly_upsert(
 /// - `master_key`              : master key
 /// - `label_bytes`             : bytes of the public label used for hashing
 /// - `keywords`                : list of keyword bytes to search
-/// - `max_results_per_chain`   : maximum results returned for a chain
-/// - `max_depth`               : maximum recursion level allowed
-/// - `fetch_chains_batch_size` : increase this value to improve performances
-///   but
 /// - `base_url`                : base URL for Findex Cloud (with http prefix
 ///   and port if required). If null, use the default Findex Cloud server.
 #[cfg(feature = "cloud")]
@@ -141,7 +125,6 @@ pub async fn webassembly_search_cloud(
     token: String,
     label_bytes: Uint8Array,
     keywords: ArrayOfKeywords,
-    max_results_per_chain: i32,
     base_url: Option<String>,
 ) -> Result<SearchResults, JsValue> {
     let mut findex_cloud = FindexCloud::new(&token, base_url)?;
@@ -157,13 +140,8 @@ pub async fn webassembly_search_cloud(
         .map(|word| Keyword::from(Uint8Array::new(&word).to_vec()))
         .collect::<HashSet<_>>();
 
-    let max_results_per_chain = usize::try_from(max_results_per_chain)
-        .ok()
-        .and_then(NonZeroUsize::new)
-        .unwrap_or(MAX_RESULTS_PER_CHAIN);
-
     let results = findex_cloud
-        .search(&master_key, &label, keywords, max_results_per_chain.into())
+        .search(&master_key, &label, keywords)
         .await
         .map_err(|e| JsValue::from(format!("During Findex search: {e}")))?;
 

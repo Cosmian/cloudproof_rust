@@ -199,7 +199,6 @@ class FindexCloud:
         token: str,
         label: Label,
         keywords: Sequence[Union[Keyword, str]],
-        max_result_per_keyword: int = 2**32 - 1,
         base_url: Optional[str] = None,
     ) -> SearchResults:
         """Recursively search Findex graphs for `Locations` corresponding to the given `Keyword`.
@@ -208,7 +207,6 @@ class FindexCloud:
             token (str): Findex token.
             label (Label): public label used in keyword hashing.
             keywords (List[Keyword | str]): keywords to search using Findex.
-            max_result_per_keyword (int, optional): maximum number of results to fetch per keyword.
             base_url (str, optional): url of Findex backend.
 
         Returns:
@@ -259,7 +257,6 @@ class InternalFindex:
         msk: MasterKey,
         label: Label,
         keywords: Sequence[Union[Keyword, str]],
-        max_result_per_keyword: int = 2**32 - 1,
         progress_callback: Optional[Callable] = None,
     ) -> SearchResults: ...
     def compact_wrapper(

@@ -6,9 +6,6 @@ use ::core::fmt::Display;
 
 use self::error::ToErrorCode;
 
-/// Limit on the recursion to use when none is provided.
-pub const MAX_DEPTH: usize = 100; // 100 should always be enough
-
 #[repr(i32)]
 #[derive(Debug)]
 /// Callbacks return error codes, right now only 0 and 1 are specified.

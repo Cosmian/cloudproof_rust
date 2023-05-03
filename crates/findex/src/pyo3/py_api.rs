@@ -142,15 +142,12 @@ impl InternalFindex {
     /// - `master_key`              : user secret key
     /// - `label`                   : public label used in keyword hashing
     /// - `keywords`                : keywords to search using Findex
-    /// - `max_results_per_chain`   : maximum number of results to fetch per
-    ///   chain
     /// - `progress_callback`       : optional callback to process intermediate
     ///   search results.
     ///
     /// Returns: `Locations` found by `Keyword`
     #[pyo3(signature = (
             master_key, label, keywords,
-        max_result_per_chain = 4_294_967_295,
         progress_callback = None
     ))]
     #[allow(clippy::too_many_arguments)]
@@ -159,7 +156,6 @@ impl InternalFindex {
         master_key: &MasterKeyPy,
         label: &LabelPy,
         keywords: Vec<ToKeyword>,
-        max_result_per_chain: usize,
         progress_callback: Option<PyObject>,
     ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
         self.progress_callback = match progress_callback {
@@ -171,7 +167,7 @@ impl InternalFindex {
             keywords.into_iter().map(|keyword| keyword.0).collect();
 
         let results = pyo3_unwrap!(
-            block_on(self.search(&master_key.0, &label.0, keywords_set, max_result_per_chain,)),
+            block_on(self.search(&master_key.0, &label.0, keywords_set)),
             "error blocking for search"
         );
 
@@ -266,8 +262,6 @@ impl FindexCloud {
     /// - `token`                   : Findex token
     /// - `label`                   : public label used in keyword hashing
     /// - `keywords`                : keywords to search using Findex
-    /// - `max_results_per_chain`   : maximum number of results to fetch per
-    ///   chain
     /// - `base_url`                : url of Findex backend (optional)
     ///
     /// Returns: `Locations` found by `Keyword`
@@ -276,7 +270,6 @@ impl FindexCloud {
         token,
         label,
         keywords,
-        max_result_per_keyword = 4_294_967_295,
         base_url = None
     ))]
     #[allow(clippy::too_many_arguments)]
@@ -284,7 +277,6 @@ impl FindexCloud {
         token: &str,
         label: &LabelPy,
         keywords: Vec<ToKeyword>,
-        max_result_per_keyword: usize,
         base_url: Option<String>,
     ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
         let mut findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
@@ -299,9 +291,7 @@ impl FindexCloud {
         );
 
         let results = pyo3_unwrap!(
-            rt.block_on(
-                findex.search(&master_key, &label.0, keywords_set, max_result_per_keyword,)
-            ),
+            rt.block_on(findex.search(&master_key, &label.0, keywords_set)),
             "error blocking for search"
         );
 

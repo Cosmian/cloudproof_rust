@@ -3,7 +3,7 @@
 use std::{
     collections::HashSet,
     convert::TryFrom,
-    num::{NonZeroU32, NonZeroUsize},
+    num::NonZeroU32,
     os::raw::{c_char, c_int},
 };
 
@@ -37,7 +37,6 @@ use crate::{
         UpsertEntryTableCallback,
     },
     ser_de::serialize_set,
-    MAX_RESULTS_PER_CHAIN,
 };
 
 /// Re-export the `cosmian_ffi` `h_get_error` function to clients with the old
@@ -71,7 +70,6 @@ pub unsafe extern "C" fn get_last_error(error_ptr: *mut c_char, error_len: *mut 
 /// - `master_key`              : master key
 /// - `label`                   : public information used to derive UIDs
 /// - `keywords`                : `serde` serialized list of base64 keywords
-/// - `max_results_per_chain`   : maximum number of results returned per keyword
 /// - `progress_callback`       : callback used to retrieve intermediate results
 ///   and transmit user interrupt
 /// - `fetch_entry_callback`    : callback used to fetch the Entry Table
@@ -88,7 +86,6 @@ pub unsafe extern "C" fn h_search(
     label_ptr: *const u8,
     label_len: c_int,
     keywords_ptr: *const c_char,
-    max_results_per_chain: c_int,
     progress_callback: ProgressCallback,
     fetch_entry_callback: FetchEntryTableCallback,
     fetch_chain_callback: FetchChainTableCallback,
@@ -122,7 +119,6 @@ pub unsafe extern "C" fn h_search(
         label_ptr,
         label_len,
         keywords_ptr,
-        max_results_per_chain,
     )
 }
 
@@ -410,7 +406,6 @@ pub unsafe extern "C" fn h_compact(
 /// - `token`                   : findex cloud token
 /// - `label`                   : public information used to derive UIDs
 /// - `keywords`                : `serde` serialized list of base64 keywords
-/// - `max_results_per_chain`   : maximum number of results returned per chain
 /// - `base_url`                : base URL for Findex Cloud (with http prefix
 ///   and port if required). If null, use the default Findex Cloud server.
 ///
@@ -424,7 +419,6 @@ pub unsafe extern "C" fn h_search_cloud(
     label_ptr: *const u8,
     label_len: c_int,
     keywords_ptr: *const c_char,
-    max_results_per_chain: c_int,
     base_url_ptr: *const c_char,
 ) -> c_int {
     let token = ffi_read_string!("keywords", token_ptr);
@@ -449,7 +443,6 @@ pub unsafe extern "C" fn h_search_cloud(
         label_ptr,
         label_len,
         keywords_ptr,
-        max_results_per_chain,
     )
 }
 
@@ -630,15 +623,9 @@ unsafe fn ffi_search<
     label_ptr: *const u8,
     label_len: c_int,
     keywords_ptr: *const c_char,
-    max_results_per_chain: c_int,
 ) -> c_int {
     let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
     let label = Label::from(label_bytes);
-
-    let max_results_per_chain = usize::try_from(max_results_per_chain)
-        .ok()
-        .and_then(NonZeroUsize::new)
-        .unwrap_or(MAX_RESULTS_PER_CHAIN);
 
     // Why keywords are JSON array of base64 strings? We should change this to send
     // raw bytes with leb128 prefix or something like that.
@@ -666,12 +653,7 @@ unsafe fn ffi_search<
         "error creating Tokio runtime"
     );
 
-    let results = match rt.block_on(findex.search(
-        master_key,
-        &label,
-        keywords,
-        max_results_per_chain.into(),
-    )) {
+    let results = match rt.block_on(findex.search(master_key, &label, keywords)) {
         Ok(results) => results,
         Err(FindexError::Callback(e)) => {
             set_last_error(FfiError::Generic(e.to_string()));
