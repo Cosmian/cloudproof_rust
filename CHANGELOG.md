@@ -7,9 +7,12 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - upgrade Findex (v3.0.0 -> v4.0.0):
+  - change indexed values size (require a reset of the index database)
   - change search interface
     - change parameter order
     - remove `fetch_chains_batch_size`
+    - remove `max_results_per_keyword`
+    - remove `max_depth`
     - searching for a non indexed keyword leads to an empty `HashSet` for this
       keyword in the search results instead of this keyword being missing from
       the results.
