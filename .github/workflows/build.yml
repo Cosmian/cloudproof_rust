@@ -9,7 +9,7 @@ on:
 
 jobs:
   cloudproof_rust:
-    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
+    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@anonymization
     with:
       project-name: cloudproof_rust
       toolchain: nightly-2023-03-20
