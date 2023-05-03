@@ -44,21 +44,6 @@ jobs:
         run: |
           bash scripts/test_python.sh
 
-      - name: Publishing - dry run
-        run: |
-          pushd crates/cover_crypt
-          cargo publish --dry-run
-          popd
-          pushd crates/findex
-          cargo publish --dry-run
-          popd
-          pushd crates/fpe
-          cargo publish --dry-run
-          popd
-          pushd crates/cloudproof
-          cargo publish --dry-run
-          popd
-
       - name: Verify semver integrity
         run: |
           pushd crates/cover_crypt
