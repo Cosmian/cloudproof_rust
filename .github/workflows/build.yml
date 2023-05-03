@@ -4,7 +4,7 @@ name: Cloudproof build
 on:
   push:
     tags:
-      - "*"
+      - '*'
   pull_request:
 
 jobs:
@@ -14,8 +14,8 @@ jobs:
       project-name: cloudproof_rust
       toolchain: nightly-2023-03-20
       kms-version: 4.3.3
-      branch-java: update_findex_4
-      branch-js: update_findex_4
-      branch-flutter: update_findex_4
-      branch-python: update_findex_4
+      branch-java: develop
+      branch-js: feature/anonymization
+      branch-flutter: develop
+      branch-python: feature/anonymization
     secrets: inherit
