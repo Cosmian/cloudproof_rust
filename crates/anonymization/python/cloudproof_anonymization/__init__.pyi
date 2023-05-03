@@ -1,6 +1,10 @@
 from typing import List, Optional
 
 class Hasher:
+    """
+    A class to apply different hash methods such as `SHA2`, `SHA3`, or `Argon2`
+    """
+
     def __init__(self, hasher_method: str, salt: Optional[bytes] = None) -> None:
         """
         Creates a new `Hasher` instance using the specified hash method and an optional salt.
@@ -24,6 +28,10 @@ class Hasher:
         """
 
 class NoiseGenerator:
+    """
+    A class for adding noise to data using various distribution methods such as `Uniform`, `Gaussian`, or `Laplace`.
+    """
+
     @staticmethod
     def new_with_parameters(
         method_name: str, mean: float, std_dev: float
@@ -125,6 +133,10 @@ class NoiseGenerator:
         """
 
 class WordMasker:
+    """
+    A class to mask a list of words in a text.
+    """
+
     def __init__(self, words_to_block: List[str]) -> None:
         """
         Creates a new WordMasker instance.
@@ -145,6 +157,10 @@ class WordMasker:
         """
 
 class WordTokenizer:
+    """
+    A class to tokenize a list of words in a text.
+    """
+
     def __init__(self, words_to_block: List[str]) -> None:
         """
         Creates a new instance of WordTokenizer.
@@ -164,6 +180,10 @@ class WordTokenizer:
         """
 
 class WordPatternMasker:
+    """
+    A class to replace pattern regex with a replacement string.
+    """
+
     def __init__(self, pattern_regex: str, replace_str: str) -> None:
         """
         Creates a new instance of `WordPatternMasker` with the provided pattern
