@@ -23,3 +23,14 @@ Cosmian anonymization provides multiple methods:
 - **Date Aggregation**: rounds dates based on the specified time unit. This helps to preserve the general time frame of the original data while removing specific details that could potentially identify individuals. Use `anonymization::DateAggregator` to round `date`.
 
 - **Number Scaling**: scales numerical data by a specified factor. This can be useful for anonymizing data while preserving its relative proportions. Use `anonymization::NumberScaler` to round `float` and `int` values.
+
+## Date Format
+
+***WARNING***: The anonymization functions date input is in RFC3339 string format which is slightly different from ISO format.
+
+| ISO format                | RFC 3339                  |
+|---------------------------|---------------------------|
+| 2023-04-07T12:34:56       | 2023-04-07T12:34:56**Z**  |
+| 2023-04-27T16:23:00+00:00 | 2023-04-27T16:23:00+00:00 |
+| 2023-04-27T16:23:00+05:00 | 2023-04-27T16:23:00+05:00 |
+| 2023-04-27T16:23:00-05:00 | 2023-04-27T16:23:00-05:00 |
