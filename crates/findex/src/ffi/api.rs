@@ -223,7 +223,7 @@ pub unsafe extern "C" fn h_upsert(
 /// - `fetch_chain`                     : callback used to fetch the Chain Table
 /// - `update_lines`                    : callback used to update lines in both
 ///   tables
-/// - `list_removed_locations`          : callback used to list removed
+/// - `filter_removed_locations`        : callback used to list removed
 ///   locations among the ones given
 ///
 /// # Safety

@@ -38,8 +38,9 @@ pub async fn upsert(sqlite_db_path: &PathBuf, dataset_path: &str) -> Result<(), 
     let users = SqliteDatabase::select_all_users(&connection)?;
     let mut additions = HashMap::with_capacity(users.len());
     for (idx, user) in users.iter().enumerate() {
-        let mut words = HashSet::with_capacity(user.len());
-        for word in &user.values() {
+        let values = user.values();
+        let mut words = HashSet::with_capacity(values.len());
+        for word in &values {
             words.insert(Keyword::from(word.as_bytes()));
         }
         additions.insert(
