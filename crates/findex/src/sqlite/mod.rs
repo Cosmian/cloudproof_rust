@@ -36,9 +36,9 @@ pub async fn upsert(sqlite_db_path: &PathBuf, dataset_path: &str) -> Result<(), 
     // securely indexed with Findex.
     //
     let users = SqliteDatabase::select_all_users(&connection)?;
-    let mut additions = HashMap::new();
+    let mut additions = HashMap::with_capacity(users.len());
     for (idx, user) in users.iter().enumerate() {
-        let mut words = HashSet::new();
+        let mut words = HashSet::with_capacity(user.len());
         for word in &user.values() {
             words.insert(Keyword::from(word.as_bytes()));
         }
