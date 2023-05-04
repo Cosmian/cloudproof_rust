@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, TimeZone};
 use cosmian_crypto_core::{reexport::rand_core::SeedableRng, CsRng};
 use rand::{CryptoRng, Rng};
 use rand_distr::{num_traits::Float, Distribution, Normal, Standard, StandardNormal, Uniform};
@@ -260,9 +260,11 @@ impl NoiseGenerator<f64> {
     ///
     ///  The resulting noisy date string
     pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
-        let date_unix = rfc3339_to_timestamp!(date_str)?;
+        let date = DateTime::parse_from_rfc3339(date_str)?;
+        let tz = date.timezone();
+        let date_unix = date.timestamp();
         let noisy_date_unix = self.apply_on_int(date_unix)?;
-        datetime_to_rfc3339!(Utc.timestamp_opt(noisy_date_unix, 0), date_str)
+        datetime_to_rfc3339!(tz.timestamp_opt(noisy_date_unix, 0), date_str)
     }
 
     /// Applies correlated noise to a vector of data.
@@ -282,15 +284,20 @@ impl NoiseGenerator<f64> {
         data: &[&str],
         factors: &[f64],
     ) -> Result<Vec<String>, AnoError> {
-        let input_timestamps: Result<Vec<_>, _> = data
+        // TODO: benchmark against a loop
+        let input_dates: Result<Vec<_>, _> = data
             .iter()
-            .map(|date_str| rfc3339_to_timestamp!(date_str))
+            .map(|date_str| match DateTime::parse_from_rfc3339(date_str) {
+                Ok(date) => Ok((date.timestamp(), date.timezone())),
+                Err(e) => Err(e),
+            })
             .collect();
+        let (timestamps, timezones): (Vec<_>, Vec<_>) = input_dates?.into_iter().unzip();
 
-        self.apply_correlated_noise_on_ints(&input_timestamps?, factors)?
+        self.apply_correlated_noise_on_ints(&timestamps, factors)?
             .into_iter()
             .enumerate()
-            .map(|(i, val)| datetime_to_rfc3339!(Utc.timestamp_opt(val, 0), data.get(i).unwrap()))
+            .map(|(i, val)| datetime_to_rfc3339!(timezones[i].timestamp_opt(val, 0), data[i]))
             .collect()
     }
 }

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, TimeZone, Timelike, Utc};
+use chrono::{DateTime, Datelike, TimeZone, Timelike};
 use rand_distr::num_traits::Pow;
 
 use super::AnoError;
@@ -112,7 +112,8 @@ impl DateAggregator {
     /// The rounded date in RFC 3339
     pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
         // Parse the date string into a DateTime.
-        let date = DateTime::parse_from_rfc3339(date_str)?.with_timezone(&Utc);
+        let date = DateTime::parse_from_rfc3339(date_str)?;
+        let tz = date.timezone();
 
         let (y, mo, d, h, mi, s) = match self.time_unit.as_str() {
             "Second" => Ok((
@@ -138,7 +139,7 @@ impl DateAggregator {
             _ => Err(ano_error!("Unknown time unit {}", &self.time_unit)),
         }?;
 
-        datetime_to_rfc3339!(Utc.with_ymd_and_hms(y, mo, d, h, mi, s), date_str)
+        datetime_to_rfc3339!(tz.with_ymd_and_hms(y, mo, d, h, mi, s), date_str)
     }
 }
 

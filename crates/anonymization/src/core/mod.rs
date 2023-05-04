@@ -1,13 +1,3 @@
-/// Convert a date in RFC3339 format to `LocalResult<DateTime>`.
-macro_rules! rfc3339_to_timestamp {
-    ($date_str:expr) => {
-        match DateTime::parse_from_rfc3339($date_str) {
-            Ok(date) => Ok(date.with_timezone(&Utc).timestamp()),
-            Err(e) => Err(e),
-        }
-    };
-}
-
 /// Convert `LocalResult<DateTime>` to a date in RFC3339 format.
 macro_rules! datetime_to_rfc3339 {
     ($date_time:expr, $original_date:expr) => {
