@@ -299,7 +299,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexFfiError> {
         let filter_removed_locations =
-            unwrap_callback!("list_removed_locations", self, filter_removed_locations);
+            unwrap_callback!("filter_removed_locations", self, filter_removed_locations);
 
         let serialized_chain_table_uids_to_remove = wrapping_callback_ser_de_error_with_context!(
             serialize_set(&locations),
@@ -343,7 +343,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
 
     #[cfg(feature = "compact_live")]
     async fn delete_chain(&mut self, uids: HashSet<Uid<UID_LENGTH>>) -> Result<(), FindexFfiError> {
-        let delete_chain = unwrap_callback!("insert_chain", self, delete_chain);
+        let delete_chain = unwrap_callback!("delete_chain", self, delete_chain);
 
         // Callback input
         let serialized_items = wrapping_callback_ser_de_error_with_context!(
