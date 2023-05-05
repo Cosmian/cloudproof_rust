@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from cloudproof_anonymization import (
     DateAggregator,
@@ -12,8 +12,6 @@ from cloudproof_anonymization import (
     WordPatternMasker,
     WordTokenizer,
 )
-from dateutil.parser import parse as parse_date
-from dateutil.tz import tzutc
 
 
 class TestHasher(unittest.TestCase):
@@ -244,36 +242,42 @@ class TestAggregator(unittest.TestCase):
         # Test rounding to the nearest minute
         aggregator = DateAggregator('Minute')
         rounded_date_str = aggregator.apply_on_date('2023-04-27T16:23:45Z')
-        rounded_date = parse_date(rounded_date_str)
-        expected_date = datetime(2023, 4, 27, 16, 23, 0, tzinfo=tzutc())
+        rounded_date = datetime.fromisoformat(rounded_date_str)
+        expected_date = datetime(2023, 4, 27, 16, 23, 0, tzinfo=timezone.utc)
         self.assertEqual(rounded_date, expected_date)
 
         # Test rounding to the nearest hour
         aggregator = DateAggregator('Hour')
-        rounded_date_str = aggregator.apply_on_date('2023-04-27T16:23:45Z')
-        rounded_date = parse_date(rounded_date_str)
-        expected_date = datetime(2023, 4, 27, 16, 0, 0, tzinfo=tzutc())
+        input_date_str = '2023-04-27T16:23:45+00:00'
+        input_tz = datetime.fromisoformat(input_date_str).tzinfo
+        rounded_date_str = aggregator.apply_on_date(input_date_str)
+        rounded_date = datetime.fromisoformat(rounded_date_str)
+        expected_date = datetime(2023, 4, 27, 16, 0, 0, tzinfo=input_tz)
         self.assertEqual(rounded_date, expected_date)
 
         # Test rounding to the nearest day
         aggregator = DateAggregator('Day')
-        rounded_date_str = aggregator.apply_on_date('2023-04-27T16:23:45Z')
-        rounded_date = parse_date(rounded_date_str)
-        expected_date = datetime(2023, 4, 27, 0, 0, 0, tzinfo=tzutc())
+        input_date_str = '2023-04-27T16:23:45+01:00'
+        input_tz = datetime.fromisoformat(input_date_str).tzinfo
+        rounded_date_str = aggregator.apply_on_date(input_date_str)
+        rounded_date = datetime.fromisoformat(rounded_date_str)
+        expected_date = datetime(2023, 4, 27, 0, 0, 0, tzinfo=input_tz)
         self.assertEqual(rounded_date, expected_date)
 
         # Test rounding to the nearest month
         aggregator = DateAggregator('Month')
-        rounded_date_str = aggregator.apply_on_date('2023-04-27T16:23:45Z')
-        rounded_date = parse_date(rounded_date_str)
-        expected_date = datetime(2023, 4, 1, 0, 0, 0, tzinfo=tzutc())
+        input_date_str = '2023-04-27T16:23:45-05:00'
+        input_tz = datetime.fromisoformat(input_date_str).tzinfo
+        rounded_date_str = aggregator.apply_on_date(input_date_str)
+        rounded_date = datetime.fromisoformat(rounded_date_str)
+        expected_date = datetime(2023, 4, 1, 0, 0, 0, tzinfo=input_tz)
         self.assertEqual(rounded_date, expected_date)
 
         # Test rounding to the nearest year
         aggregator = DateAggregator('Year')
         rounded_date_str = aggregator.apply_on_date('2023-04-27T16:23:45Z')
-        rounded_date = parse_date(rounded_date_str)
-        expected_date = datetime(2023, 1, 1, 0, 0, 0, tzinfo=tzutc())
+        rounded_date = datetime.fromisoformat(rounded_date_str)
+        expected_date = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         self.assertEqual(rounded_date, expected_date)
 
         aggregator = DateAggregator('InvalidUnit')

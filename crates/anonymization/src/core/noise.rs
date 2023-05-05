@@ -284,15 +284,19 @@ impl NoiseGenerator<f64> {
         data: &[&str],
         factors: &[f64],
     ) -> Result<Vec<String>, AnoError> {
-        // TODO: benchmark against a loop
-        let input_dates: Result<Vec<_>, _> = data
-            .iter()
-            .map(|date_str| match DateTime::parse_from_rfc3339(date_str) {
-                Ok(date) => Ok((date.timestamp(), date.timezone())),
-                Err(e) => Err(e),
-            })
-            .collect();
-        let (timestamps, timezones): (Vec<_>, Vec<_>) = input_dates?.into_iter().unzip();
+        let (mut timestamps, mut timezones) = (
+            Vec::with_capacity(data.len()),
+            Vec::with_capacity(data.len()),
+        );
+        for date_str in data.iter() {
+            match DateTime::parse_from_rfc3339(date_str) {
+                Ok(date) => {
+                    timestamps.push(date.timestamp());
+                    timezones.push(date.timezone());
+                }
+                Err(e) => return Err(e.into()),
+            }
+        }
 
         self.apply_correlated_noise_on_ints(&timestamps, factors)?
             .into_iter()
