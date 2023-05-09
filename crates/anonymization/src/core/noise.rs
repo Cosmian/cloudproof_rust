@@ -99,8 +99,8 @@ where
     ///
     /// # Arguments
     ///
-    /// * `method_name` - the noise distribution to use ("Gaussian" or
-    ///   "Laplace").
+    /// * `method_name` - the noise distribution to use ("Gaussian", "Laplace"
+    ///   or "Uniform").
     /// * `mean` - mean of the noise distribution
     /// * `std_dev` - the standard deviation of the noise distribution.
     pub fn new_with_parameters(method_name: &str, mean: N, std_dev: N) -> Result<Self, AnoError> {

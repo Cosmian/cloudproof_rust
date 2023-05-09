@@ -4,7 +4,6 @@ use crate::core::NoiseGenerator as NoiseGeneratorRust;
 
 #[wasm_bindgen]
 pub struct NoiseGeneratorWithParameters(NoiseGeneratorRust<f64>);
-
 #[wasm_bindgen]
 impl NoiseGeneratorWithParameters {
     #[wasm_bindgen(constructor)]

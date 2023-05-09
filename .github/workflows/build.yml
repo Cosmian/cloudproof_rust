@@ -1,13 +1,11 @@
 ---
 name: Cloudproof build
 
-# on:
-#   push:
-#     tags:
-#       - '*'
-#   pull_request:
-
-on: push
+on:
+  pull_request:
+  push:
+    tags:
+      - '*'
 
 jobs:
   cloudproof_rust:

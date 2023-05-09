@@ -19,7 +19,8 @@ pub enum HashMethod {
 impl HashMethod {
     /// `HashMethod` constructor for interfaces
     ///
-    /// * `method` - The hash method to use. This can be one of the following:Z
+    /// * `method` - The hash method to use. This can be one of the following:
+    ///   SHA2, SHA3 or Argon2
     /// * `salt` - An optional salt to use. Required with Argon2
     pub fn new(hasher_method: &str, salt_opt: Option<Vec<u8>>) -> Result<Self, AnoError> {
         match hasher_method {
