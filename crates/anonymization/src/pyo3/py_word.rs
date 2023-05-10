@@ -11,8 +11,8 @@ pub struct WordMasker(WordMaskerRust);
 #[pymethods]
 impl WordMasker {
     #[new]
-    pub fn new(words_to_block: Vec<&str>) -> Self {
-        Self(WordMaskerRust::new(&words_to_block))
+    pub fn new(words_list: Vec<&str>) -> Self {
+        Self(WordMaskerRust::new(&words_list))
     }
 
     pub fn apply(&self, data: &str) -> PyResult<String> {
@@ -26,9 +26,9 @@ pub struct WordTokenizer(WordTokenizerRust);
 #[pymethods]
 impl WordTokenizer {
     #[new]
-    pub fn new(words_to_block: Vec<&str>) -> PyResult<Self> {
+    pub fn new(words_list: Vec<&str>) -> PyResult<Self> {
         Ok(Self(pyo3_unwrap!(
-            WordTokenizerRust::new(&words_to_block),
+            WordTokenizerRust::new(&words_list),
             "Error initializing WordTokenizer"
         )))
     }
@@ -44,9 +44,9 @@ pub struct WordPatternMasker(WordPatternMaskerRust);
 #[pymethods]
 impl WordPatternMasker {
     #[new]
-    pub fn new(pattern_regex: &str, replace_str: &str) -> PyResult<Self> {
+    pub fn new(pattern: &str, replace: &str) -> PyResult<Self> {
         Ok(Self(pyo3_unwrap!(
-            WordPatternMaskerRust::new(pattern_regex, replace_str),
+            WordPatternMaskerRust::new(pattern, replace),
             "Error with the given Regex"
         )))
     }

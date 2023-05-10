@@ -134,14 +134,13 @@ class WordMasker:
     A class to mask a list of words in a text.
     """
 
-    def __init__(self, words_to_block: List[str]) -> None:
+    def __init__(self, words_list: List[str]) -> None:
         """
         Creates a new WordMasker instance.
 
         Args:
             words_to_block (List[str]): A list of strings containing the words to be masked in the text.
         """
-        self.word_list = set(word.lower() for word in words_to_block)
     def apply(self, data: str) -> str:
         """
         Masks the specified words in the given text.
@@ -158,12 +157,12 @@ class WordTokenizer:
     A class to tokenize a list of words in a text.
     """
 
-    def __init__(self, words_to_block: List[str]) -> None:
+    def __init__(self, words_list: List[str]) -> None:
         """
         Creates a new instance of WordTokenizer.
 
         Args:
-            words_to_block (List[str]): A list of strings representing the words to be replaced with tokens.
+            words_list (List[str]): A list of strings representing the words to be replaced with tokens.
         """
     def apply(self, data: str) -> str:
         """
@@ -181,14 +180,14 @@ class WordPatternMasker:
     A class to replace pattern regex with a replacement string.
     """
 
-    def __init__(self, pattern_regex: str, replace_str: str) -> None:
+    def __init__(self, pattern: str, replace: str) -> None:
         """
         Creates a new instance of `WordPatternMasker` with the provided pattern
         regex and replace string.
 
         Args:
-            pattern_regex (str): The pattern regex to search for.
-            replace_str (str): The string to replace the matched patterns.
+            pattern (str): The pattern regex to search for.
+            replace (str): The string to replace the matched patterns.
         """
     def apply(self, data: str) -> str:
         """
@@ -206,12 +205,12 @@ class NumberAggregator:
     A class to round numbers to a desired power of ten.
     """
 
-    def __init__(self, power_of_ten_exponent: int) -> None:
+    def __init__(self, power_of_ten: int) -> None:
         """
         Initializes a new instance of `NumberAggregator`.
 
         Args:
-            power_of_ten_exponent (int): The power of ten to round the numbers to.
+            power_of_ten (int): The power of ten to round the numbers to.
         """
     def apply_on_float(self, data: float) -> str:
         """
