@@ -262,17 +262,15 @@ class NumberScaler:
     A class to scale and translate floating points or integer values.
     """
 
-    def __init__(
-        self, mean: float, std_deviation: float, scale: float, translate: float
-    ):
+    def __init__(self, mean: float, std_dev: float, scale: float, translation: float):
         """
         Initializes a new instance of `NumberScaler`.
 
         Args:
             mean (float): The mean of the data distribution.
-            std_deviation (float): The standard deviation of the data distribution.
+            std_dev (float): The standard deviation of the data distribution.
             scale (float): The scaling factor.
-            translate (float): The translation factor.
+            translation (float): The translation factor.
         """
     def apply_on_float(self, data: float) -> float:
         """

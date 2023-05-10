@@ -51,8 +51,8 @@ pub struct NumberScaler(NumberScalerRust);
 #[pymethods]
 impl NumberScaler {
     #[new]
-    pub fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Self {
-        Self(NumberScalerRust::new(mean, std_deviation, scale, translate))
+    pub fn new(mean: f64, std_dev: f64, scale: f64, translation: f64) -> Self {
+        Self(NumberScalerRust::new(mean, std_dev, scale, translation))
     }
 
     pub fn apply_on_float(&self, data: f64) -> f64 {
