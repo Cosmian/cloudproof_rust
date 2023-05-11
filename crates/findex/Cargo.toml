@@ -27,7 +27,7 @@ default = []
 
 [dependencies]
 cosmian_crypto_core.workspace = true
-cosmian_findex = { git = "https://github.com/Cosmian/findex.git", branch = "put_back_error" }
+cosmian_findex = { git = "https://github.com/Cosmian/findex.git", branch = "develop" }
 
 # Optional dependencies
 base64 = { version = "0.21.0", optional = true }
