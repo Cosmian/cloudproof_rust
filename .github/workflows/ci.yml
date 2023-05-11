@@ -36,10 +36,6 @@ jobs:
           toolchain: nightly
           override: true
 
-      # - name: Install semver
-      #   if: steps.cache-primes.outputs.cache-hit != 'true'
-      #   run: cargo install --locked cargo-semver-checks || true
-
       - name: Run python tests
         run: |
           bash scripts/test_python.sh
