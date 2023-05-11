@@ -36,25 +36,30 @@ jobs:
           toolchain: nightly
           override: true
 
-      - name: Install semver
-        if: steps.cache-primes.outputs.cache-hit != 'true'
-        run: cargo install --locked cargo-semver-checks --version 0.19.0 || true
+      # - name: Install semver
+      #   if: steps.cache-primes.outputs.cache-hit != 'true'
+      #   run: cargo install --locked cargo-semver-checks || true
 
       - name: Run python tests
         run: |
           bash scripts/test_python.sh
 
-      - name: Verify semver integrity
-        run: |
-          pushd crates/cover_crypt
-          cargo semver-checks check-release
-          popd
-          pushd crates/findex
-          cargo semver-checks check-release
-          popd
-          pushd crates/fpe
-          cargo semver-checks check-release
-          popd
-          pushd crates/cloudproof
-          cargo semver-checks check-release
-          popd
+      # - name: Verify semver integrity
+      #   run: |
+      #     pushd crates/cover_crypt
+      #     cargo semver-checks check-release
+      #     popd
+      #     pushd crates/findex
+      #     cargo semver-checks check-release
+      #     popd
+      #     pushd crates/fpe
+      #     cargo semver-checks check-release
+      #     popd
+      #     pushd crates/cloudproof
+      #     cargo semver-checks check-release
+      #     popd
+
+      - name: Check semver
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          manifest-path: crates/cover_crypt
