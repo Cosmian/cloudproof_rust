@@ -4,6 +4,7 @@ use crate::core::NoiseGenerator as NoiseGeneratorRust;
 
 #[wasm_bindgen]
 pub struct NoiseGeneratorWithParameters(NoiseGeneratorRust<f64>);
+
 #[wasm_bindgen]
 impl NoiseGeneratorWithParameters {
     #[wasm_bindgen(constructor)]
@@ -14,7 +15,7 @@ impl NoiseGeneratorWithParameters {
     ) -> Result<NoiseGeneratorWithParameters, JsValue> {
         Ok(Self(wasm_unwrap!(
             NoiseGeneratorRust::<f64>::new_with_parameters(method_name, mean, std_dev),
-            "Error initializing noise"
+            "Error initializing noise with parameters"
         )))
     }
 }
@@ -32,7 +33,7 @@ impl NoiseGeneratorWithBounds {
     ) -> Result<NoiseGeneratorWithBounds, JsValue> {
         Ok(Self(wasm_unwrap!(
             NoiseGeneratorRust::<f64>::new_with_bounds(method_name, min_bound, max_bound),
-            "Error initializing noise"
+            "Error initializing noise with bounds"
         )))
     }
 }
