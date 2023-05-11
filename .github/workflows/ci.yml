@@ -59,4 +59,4 @@ jobs:
         uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
           package: cloudproof_cover_crypt
-          ust-toolchain: nightly
+          rust-toolchain: nightly
