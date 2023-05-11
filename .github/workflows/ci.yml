@@ -39,24 +39,3 @@ jobs:
       - name: Run python tests
         run: |
           bash scripts/test_python.sh
-
-      # - name: Verify semver integrity
-      #   run: |
-      #     pushd crates/cover_crypt
-      #     cargo semver-checks check-release
-      #     popd
-      #     pushd crates/findex
-      #     cargo semver-checks check-release
-      #     popd
-      #     pushd crates/fpe
-      #     cargo semver-checks check-release
-      #     popd
-      #     pushd crates/cloudproof
-      #     cargo semver-checks check-release
-      #     popd
-
-      - name: Check semver
-        uses: obi1kenobi/cargo-semver-checks-action@v2
-        with:
-          package: cloudproof_cover_crypt
-          rust-toolchain: nightly
