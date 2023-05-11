@@ -58,4 +58,5 @@ jobs:
       - name: Check semver
         uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
-          manifest-path: crates/cover_crypt
+          package: cloudproof_cover_crypt
+          ust-toolchain: nightly
