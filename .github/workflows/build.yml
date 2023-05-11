@@ -17,6 +17,6 @@ jobs:
       kms-version: 4.3.3
       branch-java: develop
       branch-js: feature/anonymization
-      branch-flutter: develop
+      branch-flutter: update_findex_4
       branch-python: feature/anonymization
     secrets: inherit
