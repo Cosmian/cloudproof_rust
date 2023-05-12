@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Features
+
+- upgrade Findex (v3.0.0 -> v4.0.0):
+  - change indexed values size (require a reset of the index database)
+  - change search interface
+    - change parameter order
+    - remove `fetch_chains_batch_size`
+    - remove `max_results_per_keyword`
+    - remove `max_depth`
+    - searching for a non indexed keyword leads to an empty `HashSet` for this
+      keyword in the search results instead of this keyword being missing from
+      the results.
+  - change upsert interface:
+    - add deletions
+  - change compact interface:
+    - change parameter order
+  - add compact live behind the `compact_live` feature
+
 ## [1.3.0] - 2023-04-26
 
 ### Features
@@ -19,8 +39,8 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - Expose Format-Preserving-Encryption (FPE) in FFI, Webassembly and Pyo3 interfaces:
-  * expose integer and big integers encryption (as string with radix and digits)
-  * expose string encryption according to given alphabet
+  - expose integer and big integers encryption (as string with radix and digits)
+  - expose string encryption according to given alphabet
     - "numeric": 0123456789
     - "hexa_decimal": 0123456789abcdef
     - "alpha_lower": abcdefghijklmnopqrstuvwxyz
@@ -31,7 +51,7 @@ All notable changes to this project will be documented in this file.
     - "chinese": creates an Alphabet with the Chinese characters
     - "latin1sup": creates an Alphabet with the latin-1 and latin1-supplement characters (supports French)
     - "latin1sup_alphanum": creates an Alphabet with the latin-1 and latin1-supplement characters but without the non alphanumeric characters (supports French)
-  * expose float encryption
+  - expose float encryption
 
 ## [1.0.1] - 2023-03-08
 

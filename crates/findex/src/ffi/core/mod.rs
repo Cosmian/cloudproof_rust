@@ -2,7 +2,7 @@
 //! callbacks.
 
 #[macro_use]
-mod utils;
+pub(crate) mod utils;
 mod callbacks;
 mod traits;
 
@@ -20,6 +20,10 @@ pub struct FindexUser {
     pub(crate) fetch_chain: Option<FetchChainTableCallback>,
     pub(crate) upsert_entry: Option<UpsertEntryTableCallback>,
     pub(crate) insert_chain: Option<InsertChainTableCallback>,
+    #[cfg(feature = "compact_live")]
+    pub(crate) delete_chain: Option<DeleteChainCallback>,
     pub(crate) update_lines: Option<UpdateLinesCallback>,
     pub(crate) list_removed_locations: Option<ListRemovedLocationsCallback>,
+    #[cfg(feature = "compact_live")]
+    pub(crate) filter_removed_locations: Option<FilterRemovedLocationsCallback>,
 }

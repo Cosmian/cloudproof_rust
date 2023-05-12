@@ -1,13 +1,12 @@
 use std::{
     collections::{HashMap, HashSet},
-    num::NonZeroUsize,
     str::FromStr,
 };
 
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
-    parameters::SECURE_FETCH_CHAINS_BATCH_SIZE, FindexCompact, FindexSearch, FindexUpsert,
-    IndexedValue as IndexedValueRust, KeyingMaterial, Keyword, Location,
+    FindexCompact, FindexSearch, FindexUpsert, IndexedValue as IndexedValueRust, KeyingMaterial,
+    Keyword, Location,
 };
 use futures::executor::block_on;
 use pyo3::prelude::*;
@@ -113,20 +112,22 @@ impl InternalFindex {
     ///
     /// Parameters
     ///
-    /// - `indexed_values_and_keywords` : map of `IndexedValue` to `Keyword`
     /// - `master_key`                  : Findex master key
     /// - `label`                       : label used to allow versioning
+    /// - `indexed_values_and_keywords` : map of `IndexedValue` to `Keyword`
     pub fn upsert_wrapper(
         &mut self,
-        indexed_values_and_keywords: HashMap<ToIndexedValue, Vec<ToKeyword>>,
         master_key: &MasterKeyPy,
         label: &LabelPy,
+        additions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
+        deletions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
     ) -> PyResult<()> {
         pyo3_unwrap!(
             block_on(self.upsert(
-                indexed_values_and_keywords_to_rust(indexed_values_and_keywords),
                 &master_key.0,
-                &label.0
+                &label.0,
+                indexed_values_and_keywords_to_rust(additions),
+                indexed_values_and_keywords_to_rust(deletions)
             )),
             "error blocking for upsert"
         );
@@ -138,33 +139,23 @@ impl InternalFindex {
     ///
     /// Parameters
     ///
-    /// - `keywords`                : keywords to search using Findex
     /// - `master_key`              : user secret key
     /// - `label`                   : public label used in keyword hashing
-    /// - `max_results_per_keyword` : maximum number of results to fetch per
-    ///   keyword
-    /// - `max_depth`               : maximum recursion level allowed
-    /// - `fetch_chains_batch_size` : batch size during fetch chain
+    /// - `keywords`                : keywords to search using Findex
     /// - `progress_callback`       : optional callback to process intermediate
     ///   search results.
     ///
     /// Returns: `Locations` found by `Keyword`
     #[pyo3(signature = (
-            keywords, master_key, label,
-        max_result_per_keyword = 4_294_967_295,
-        max_depth = 100,
-        fetch_chains_batch_size = 0,
+            master_key, label, keywords,
         progress_callback = None
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn search_wrapper(
         &mut self,
-        keywords: Vec<ToKeyword>,
         master_key: &MasterKeyPy,
         label: &LabelPy,
-        max_result_per_keyword: usize,
-        max_depth: usize,
-        fetch_chains_batch_size: usize,
+        keywords: Vec<ToKeyword>,
         progress_callback: Option<PyObject>,
     ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
         self.progress_callback = match progress_callback {
@@ -176,18 +167,7 @@ impl InternalFindex {
             keywords.into_iter().map(|keyword| keyword.0).collect();
 
         let results = pyo3_unwrap!(
-            block_on(
-                self.search(
-                    &keywords_set,
-                    &master_key.0,
-                    &label.0,
-                    max_result_per_keyword,
-                    max_depth,
-                    NonZeroUsize::new(fetch_chains_batch_size)
-                        .unwrap_or(SECURE_FETCH_CHAINS_BATCH_SIZE),
-                    0,
-                )
-            ),
+            block_on(self.search(&master_key.0, &label.0, keywords_set)),
             "error blocking for search"
         );
 
@@ -203,10 +183,10 @@ impl InternalFindex {
     ///
     /// Parameters
     ///
-    /// - `num_reindexing_before_full_set` : see below
     /// - `master_key`                     : master key
     /// - `new_master_key`                 : newly generated key
     /// - `new_label`                      : newly generated label
+    /// - `num_reindexing_before_full_set` : see below
     ///
     /// `num_reindexing_before_full_set`: if you compact the
     /// indexes every night this is the number of days to wait before
@@ -214,17 +194,17 @@ impl InternalFindex {
     /// (see the coupon problem to understand why it's not 100% sure)
     pub fn compact_wrapper(
         &mut self,
-        num_reindexing_before_full_set: u32,
         master_key: &MasterKeyPy,
         new_master_key: &MasterKeyPy,
         new_label: &LabelPy,
+        num_reindexing_before_full_set: u32,
     ) -> PyResult<()> {
         pyo3_unwrap!(
             block_on(self.compact(
-                num_reindexing_before_full_set,
                 &master_key.0,
                 &new_master_key.0,
                 &new_label.0,
+                num_reindexing_before_full_set,
             )),
             "error while blocking for compact"
         );
@@ -244,24 +224,27 @@ impl FindexCloud {
     ///
     /// Parameters
     ///
-    /// - `indexed_values_and_keywords` : map of `IndexedValue` to `Keyword`
     /// - `token`                       : Findex token
     /// - `label`                       : label used to allow versioning
+    /// - `additions`                   : map of `IndexedValue` to `Keyword`
+    /// - `deletions`                   : map of `IndexedValue` to `Keyword`
     /// - `base_url`                    : url of Findex backend (optional)
     #[staticmethod]
     pub fn upsert(
-        indexed_values_and_keywords: HashMap<ToIndexedValue, Vec<ToKeyword>>,
         token: &str,
         label: &LabelPy,
+        additions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
+        deletions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
         base_url: Option<String>,
     ) -> PyResult<()> {
         let mut findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
         let master_key = findex.token.findex_master_key.clone();
 
         let future = findex.upsert(
-            indexed_values_and_keywords_to_rust(indexed_values_and_keywords),
             &master_key,
             &label.0,
+            indexed_values_and_keywords_to_rust(additions),
+            indexed_values_and_keywords_to_rust(deletions),
         );
         let rt = pyo3_unwrap!(
             tokio::runtime::Runtime::new(),
@@ -276,34 +259,24 @@ impl FindexCloud {
     ///
     /// Parameters
     ///
-    /// - `keywords`                : keywords to search using Findex
     /// - `token`                   : Findex token
     /// - `label`                   : public label used in keyword hashing
-    /// - `max_results_per_keyword` : maximum number of results to fetch per
-    ///   keyword
-    /// - `max_depth`               : maximum recursion level allowed
-    /// - `fetch_chains_batch_size` : batch size during fetch chain
+    /// - `keywords`                : keywords to search using Findex
     /// - `base_url`                : url of Findex backend (optional)
     ///
     /// Returns: `Locations` found by `Keyword`
     #[staticmethod]
     #[pyo3(signature = (
-        keywords,
         token,
         label,
-        max_result_per_keyword = 4_294_967_295,
-        max_depth = 100,
-        fetch_chains_batch_size = 0,
+        keywords,
         base_url = None
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn search(
-        keywords: Vec<ToKeyword>,
         token: &str,
         label: &LabelPy,
-        max_result_per_keyword: usize,
-        max_depth: usize,
-        fetch_chains_batch_size: usize,
+        keywords: Vec<ToKeyword>,
         base_url: Option<String>,
     ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
         let mut findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
@@ -318,18 +291,7 @@ impl FindexCloud {
         );
 
         let results = pyo3_unwrap!(
-            rt.block_on(
-                findex.search(
-                    &keywords_set,
-                    &master_key,
-                    &label.0,
-                    max_result_per_keyword,
-                    max_depth,
-                    NonZeroUsize::new(fetch_chains_batch_size)
-                        .unwrap_or(SECURE_FETCH_CHAINS_BATCH_SIZE),
-                    0,
-                )
-            ),
+            rt.block_on(findex.search(&master_key, &label.0, keywords_set)),
             "error blocking for search"
         );
 
