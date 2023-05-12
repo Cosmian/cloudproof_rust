@@ -31,7 +31,7 @@ cosmian_findex = { git = "https://github.com/Cosmian/findex.git", branch = "deve
 
 # Optional dependencies
 base64 = { workspace = true, optional = true }
-cosmian_ffi_utils = { version = "0.1.0", optional = true }
+cosmian_ffi_utils = { path = "../ffi_utils", optional = true }
 faker_rand = { version = "0.1", optional = true }
 futures = { version = "0.3.26", optional = true }
 hex = { workspace = true, optional = true }
