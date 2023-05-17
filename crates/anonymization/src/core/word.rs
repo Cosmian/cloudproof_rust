@@ -126,6 +126,6 @@ impl WordPatternMasker {
     /// Text with the matched pattern replaced.
     #[must_use]
     pub fn apply(&self, data: &str) -> String {
-        self.pattern.replace(data, &self.replacer).into_owned()
+        self.pattern.replace_all(data, &self.replacer).into_owned()
     }
 }

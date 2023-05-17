@@ -47,7 +47,7 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexWasmError> {
         let fetch_entry = unwrap_callback!(self, fetch_entry);
         fetch_uids(
-            &entry_table_uids.iter().cloned().collect(),
+            &entry_table_uids.iter().copied().collect(),
             fetch_entry,
             "fetchEntries",
         )
