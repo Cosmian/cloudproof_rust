@@ -321,7 +321,7 @@ fn test_int_aggregation() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_time_aggregation() -> Result<(), JsValue> {
-    let time_aggregator = DateAggregator::new("Hour");
+    let time_aggregator = DateAggregator::new("Hour")?;
     let date_str = time_aggregator.apply_on_date("2023-04-07T12:34:56Z")?;
     let date = DateTime::parse_from_rfc3339(&date_str)
         .unwrap()
@@ -343,7 +343,7 @@ fn test_time_aggregation() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_date_aggregation() -> Result<(), JsValue> {
-    let date_aggregator = DateAggregator::new("Month");
+    let date_aggregator = DateAggregator::new("Month")?;
     let date_str = date_aggregator.apply_on_date("2023-04-07T12:34:56Z")?;
     let date = DateTime::parse_from_rfc3339(&date_str)
         .unwrap()

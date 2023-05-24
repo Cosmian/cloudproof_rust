@@ -280,9 +280,8 @@ class TestAggregator(unittest.TestCase):
         expected_date = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         self.assertEqual(rounded_date, expected_date)
 
-        aggregator = DateAggregator('InvalidUnit')
         with self.assertRaises(Exception):
-            aggregator.apply_on_date('2023-04-27T16:23:45Z')
+            aggregator = DateAggregator('InvalidUnit')
 
 
 class TestNumberScaler(unittest.TestCase):

@@ -2,7 +2,7 @@ use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::core::{
     DateAggregator as DateAggregatorRust, NumberAggregator as NumberAggregatorRust,
-    NumberScaler as NumberScalerRust,
+    NumberScaler as NumberScalerRust, TimeUnit,
 };
 
 #[wasm_bindgen]
@@ -33,8 +33,12 @@ pub struct DateAggregator(DateAggregatorRust);
 #[wasm_bindgen]
 impl DateAggregator {
     #[wasm_bindgen(constructor)]
-    pub fn new(time_unit: &str) -> Self {
-        Self(DateAggregatorRust::new(time_unit))
+    pub fn new(time_unit: &str) -> Result<DateAggregator, JsValue> {
+        let time_unit_rust = wasm_unwrap!(
+            TimeUnit::try_from(time_unit),
+            "Error initializing DateAggregator"
+        );
+        Ok(Self(DateAggregatorRust::new(time_unit_rust)))
     }
 
     pub fn apply_on_date(&self, date_str: &str) -> Result<String, JsValue> {

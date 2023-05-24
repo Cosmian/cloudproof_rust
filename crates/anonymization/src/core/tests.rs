@@ -5,8 +5,8 @@ use chrono::{DateTime, Datelike, Timelike};
 
 use super::{NumberAggregator, WordMasker};
 use crate::core::{
-    AnoError, DateAggregator, HashMethod, Hasher, NoiseGenerator, NumberScaler, WordPatternMasker,
-    WordTokenizer,
+    AnoError, DateAggregator, HashMethod, Hasher, NoiseGenerator, NumberScaler, TimeUnit,
+    WordPatternMasker, WordTokenizer,
 };
 
 #[test]
@@ -336,7 +336,7 @@ fn test_int_aggregation() -> Result<(), AnoError> {
 
 #[test]
 fn test_time_aggregation() -> Result<(), AnoError> {
-    let time_aggregator = DateAggregator::new("Hour");
+    let time_aggregator = DateAggregator::new(TimeUnit::Hour);
     let input_datestr = "2023-04-07T12:34:56+02:00";
     let output_datestr = time_aggregator.apply_on_date(input_datestr)?;
     let output_date = DateTime::parse_from_rfc3339(&output_datestr)?;
@@ -363,7 +363,7 @@ fn test_time_aggregation() -> Result<(), AnoError> {
 
 #[test]
 fn test_date_aggregation() -> Result<(), AnoError> {
-    let date_aggregator = DateAggregator::new("Month");
+    let date_aggregator = DateAggregator::new(TimeUnit::Month);
     let input_datestr = "2023-04-07T12:34:56-05:00";
     let output_datestr = date_aggregator.apply_on_date(input_datestr)?;
     let output_date = DateTime::parse_from_rfc3339(&output_datestr)?;

@@ -1,7 +1,7 @@
 use chrono::{DateTime, Datelike, TimeZone, Timelike};
 use rand_distr::num_traits::Pow;
 
-use super::AnoError;
+use super::{datetime_to_rfc3339, AnoError, TimeUnit};
 use crate::ano_error;
 
 /// The `NumberAggregator` is a data anonymization technique used to round
@@ -78,13 +78,13 @@ impl NumberAggregator {
 /// Example usage:
 ///
 /// ```
-/// use cloudproof_anonymization::core::DateAggregator;
+/// use cloudproof_anonymization::core::{DateAggregator, TimeUnit};
 ///
-/// let aggregator = DateAggregator::new("Hour");
+/// let aggregator = DateAggregator::new(TimeUnit::Hour);
 /// let result = aggregator.apply_on_date("2022-04-28T14:30:00Z"); // returns "2022-04-28T14:00:00+00:00"
 /// ```
 pub struct DateAggregator {
-    time_unit: String,
+    time_unit: TimeUnit,
 }
 
 impl DateAggregator {
@@ -92,12 +92,10 @@ impl DateAggregator {
     ///
     /// # Arguments
     ///
-    /// * `time_unit`: the unit of time to round the date to.
+    /// * `time_unit`: The unit of time to round the date to.
     #[must_use]
-    pub fn new(time_unit: &str) -> Self {
-        Self {
-            time_unit: time_unit.to_string(),
-        }
+    pub fn new(time_unit: TimeUnit) -> Self {
+        Self { time_unit }
     }
 
     /// Applies the date rounding to the provided date string based on the unit
@@ -109,37 +107,37 @@ impl DateAggregator {
     ///
     /// # Returns
     ///
-    /// The rounded date in RFC 3339
+    /// The rounded date in RFC 3339 if the rounding is successful,
+    /// otherwise returns an `AnoError`.
     pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
         // Parse the date string into a DateTime.
         let date = DateTime::parse_from_rfc3339(date_str)?;
         let tz = date.timezone();
 
-        let (y, mo, d, h, mi, s) = match self.time_unit.as_str() {
-            "Second" => Ok((
+        let (y, mo, d, h, mi, s) = match self.time_unit {
+            TimeUnit::Second => (
                 date.year(),
                 date.month(),
                 date.day(),
                 date.hour(),
                 date.minute(),
                 date.second(),
-            )),
-            "Minute" => Ok((
+            ),
+            TimeUnit::Minute => (
                 date.year(),
                 date.month(),
                 date.day(),
                 date.hour(),
                 date.minute(),
                 0,
-            )),
-            "Hour" => Ok((date.year(), date.month(), date.day(), date.hour(), 0, 0)),
-            "Day" => Ok((date.year(), date.month(), date.day(), 0, 0, 0)),
-            "Month" => Ok((date.year(), date.month(), 1, 0, 0, 0)),
-            "Year" => Ok((date.year(), 1, 1, 0, 0, 0)),
-            _ => Err(ano_error!("Unknown time unit {}", &self.time_unit)),
-        }?;
+            ),
+            TimeUnit::Hour => (date.year(), date.month(), date.day(), date.hour(), 0, 0),
+            TimeUnit::Day => (date.year(), date.month(), date.day(), 0, 0, 0),
+            TimeUnit::Month => (date.year(), date.month(), 1, 0, 0, 0),
+            TimeUnit::Year => (date.year(), 1, 1, 0, 0, 0),
+        };
 
-        datetime_to_rfc3339!(tz.with_ymd_and_hms(y, mo, d, h, mi, s), date_str)
+        datetime_to_rfc3339(tz.with_ymd_and_hms(y, mo, d, h, mi, s), date_str)
     }
 }
 

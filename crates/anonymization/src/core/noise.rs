@@ -3,6 +3,7 @@ use cosmian_crypto_core::{reexport::rand_core::SeedableRng, CsRng};
 use rand::{CryptoRng, Rng};
 use rand_distr::{num_traits::Float, Distribution, Normal, Standard, StandardNormal, Uniform};
 
+use super::datetime_to_rfc3339;
 use crate::{ano_error, core::AnoError};
 
 // Represent the different Noise methods.
@@ -263,7 +264,7 @@ impl NoiseGenerator<f64> {
         let tz = date.timezone();
         let date_unix = date.timestamp();
         let noisy_date_unix = self.apply_on_int(date_unix)?;
-        datetime_to_rfc3339!(tz.timestamp_opt(noisy_date_unix, 0), date_str)
+        datetime_to_rfc3339(tz.timestamp_opt(noisy_date_unix, 0), date_str)
     }
 
     /// Applies correlated noise to a vector of data.
@@ -300,7 +301,7 @@ impl NoiseGenerator<f64> {
         self.apply_correlated_noise_on_ints(&timestamps, factors)?
             .into_iter()
             .enumerate()
-            .map(|(i, val)| datetime_to_rfc3339!(timezones[i].timestamp_opt(val, 0), data[i]))
+            .map(|(i, val)| datetime_to_rfc3339(timezones[i].timestamp_opt(val, 0), data[i]))
             .collect()
     }
 }

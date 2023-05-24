@@ -22,11 +22,11 @@ impl HashMethod {
     /// * `method` - The hash method to use. This can be one of the following:
     ///   SHA2, SHA3 or Argon2
     /// * `salt` - An optional salt to use. Required with Argon2
-    pub fn new(hasher_method: &str, salt_opt: Option<Vec<u8>>) -> Result<Self, AnoError> {
+    pub fn new(hasher_method: &str, salt: Option<Vec<u8>>) -> Result<Self, AnoError> {
         match hasher_method {
-            "SHA2" => Ok(Self::SHA2(salt_opt)),
-            "SHA3" => Ok(Self::SHA3(salt_opt)),
-            "Argon2" => salt_opt.map_or_else(
+            "SHA2" => Ok(Self::SHA2(salt)),
+            "SHA3" => Ok(Self::SHA3(salt)),
+            "Argon2" => salt.map_or_else(
                 || Err(ano_error!("Argon2 requires a salt value.")),
                 |salt| Ok(Self::Argon2(salt)),
             ),
@@ -56,11 +56,11 @@ impl Hasher {
         Self { method }
     }
 
-    /// Applies the chosen hash method to the input data
+    /// Applies the chosen hash method to the input data.
     ///
     /// # Arguments
     ///
-    /// * `data` - A byte slice representing the input data to be hashed.
+    /// * `data` - input data to be hashed.
     ///
     /// # Returns
     ///

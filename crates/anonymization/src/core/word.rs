@@ -7,22 +7,22 @@ use regex::Regex;
 use super::AnoError;
 
 pub struct WordTokenizer {
-    /// A mapping of words to UUIDs.
+    /// A mapping of words to random tokens.
     word_token_mapping: HashMap<String, String>,
 }
 
 impl WordTokenizer {
-    /// Creates a new instance of `WordTokenizer`.
+    /// Creates a new instance of `WordTokenizer` that can be used to replace
+    /// the given words with randomly generated 16-bytes tokens.
     ///
     /// # Arguments
     ///
-    /// * `words_to_block`: a slice of strings representing the words to be
-    ///   replaced with UUIDs.
-    pub fn new(words_to_block: &[&str]) -> Result<Self, AnoError> {
-        let mut mapping = HashMap::with_capacity(words_to_block.len());
+    /// * `target_words`: words to be replaced by tokens.
+    pub fn new(target_words: &[&str]) -> Result<Self, AnoError> {
+        let mut mapping = HashMap::with_capacity(target_words.len());
         let mut rng = CsRng::from_entropy();
 
-        for word in words_to_block {
+        for word in target_words {
             let mut uuid = [0; 16];
             rng.try_fill_bytes(&mut uuid)?;
             mapping.insert(word.to_lowercase(), hex::encode_upper(uuid));

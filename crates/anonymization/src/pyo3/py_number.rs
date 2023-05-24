@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 
 use crate::core::{
     DateAggregator as DateAggregatorRust, NumberAggregator as NumberAggregatorRust,
-    NumberScaler as NumberScalerRust,
+    NumberScaler as NumberScalerRust, TimeUnit,
 };
 
 #[pyclass]
@@ -33,8 +33,12 @@ pub struct DateAggregator(DateAggregatorRust);
 #[pymethods]
 impl DateAggregator {
     #[new]
-    pub fn new(time_unit: &str) -> Self {
-        Self(DateAggregatorRust::new(time_unit))
+    pub fn new(time_unit: &str) -> PyResult<Self> {
+        let time_unit_rust = pyo3_unwrap!(
+            TimeUnit::try_from(time_unit),
+            "Error initializing DateAggregator"
+        );
+        Ok(Self(DateAggregatorRust::new(time_unit_rust)))
     }
 
     pub fn apply_on_date(&self, date_str: &str) -> PyResult<String> {
