@@ -82,12 +82,15 @@ where
     }
 }
 
+// Future suggestion: make this structure generic over a trait implemented by
+// the distribution
 pub struct NoiseGenerator<N>
 where
     N: Float + rand_distr::uniform::SampleUniform,
     rand_distr::StandardNormal: rand_distr::Distribution<N>,
 {
     method: NoiseMethod<N>,
+    rng: CsRng,
 }
 
 impl<N> NoiseGenerator<N>
@@ -121,7 +124,10 @@ where
             }
             _ => Err(ano_error!("{method_name} is not a supported distribution.")),
         }?;
-        Ok(Self { method })
+        Ok(Self {
+            method,
+            rng: CsRng::from_entropy(),
+        })
     }
 
     /// Instantiate a `NoiseGenerator` with bound constraints.
@@ -160,7 +166,10 @@ where
             "Uniform" => Ok(NoiseMethod::Uniform(Uniform::new(min_bound, max_bound))),
             _ => Err(ano_error!("No supported distribution {}.", method_name)),
         }?;
-        Ok(Self { method })
+        Ok(Self {
+            method,
+            rng: CsRng::from_entropy(),
+        })
     }
 
     /// Adds noise generated from a chosen distribution to the input data.
@@ -172,10 +181,9 @@ where
     /// # Returns
     ///
     /// Original data with added noise
-    pub fn apply_on_float(&self, data: N) -> Result<N, AnoError> {
-        let mut rng = CsRng::from_entropy();
+    pub fn apply_on_float(&mut self, data: N) -> Result<N, AnoError> {
         // Sample noise
-        let noise = self.method.sample(&mut rng);
+        let noise = self.method.sample(&mut self.rng);
         // Add noise to the raw data
         Ok(data + noise)
     }
@@ -193,13 +201,12 @@ where
     ///
     /// A vector containing the original data with added noise
     pub fn apply_correlated_noise_on_floats(
-        &self,
+        &mut self,
         data: &[N],
         factors: &[N],
     ) -> Result<Vec<N>, AnoError> {
-        let mut rng = CsRng::from_entropy();
         // Sample noise once
-        let noise = self.method.sample(&mut rng);
+        let noise = self.method.sample(&mut self.rng);
 
         // Add noise to the raw data, scaled by the corresponding factor
         Ok(data
@@ -220,7 +227,7 @@ impl NoiseGenerator<f64> {
     /// # Returns
     ///
     /// Original data with added noise
-    pub fn apply_on_int(&self, data: i64) -> Result<i64, AnoError> {
+    pub fn apply_on_int(&mut self, data: i64) -> Result<i64, AnoError> {
         let res = self.apply_on_float(data as f64)?;
         Ok(res.round() as i64)
     }
@@ -238,7 +245,7 @@ impl NoiseGenerator<f64> {
     ///
     /// A vector containing the original data with added noise
     pub fn apply_correlated_noise_on_ints(
-        &self,
+        &mut self,
         data: &[i64],
         factors: &[f64],
     ) -> Result<Vec<i64>, AnoError> {
@@ -259,7 +266,7 @@ impl NoiseGenerator<f64> {
     /// # Returns
     ///
     ///  The resulting noisy date string
-    pub fn apply_on_date(&self, date_str: &str) -> Result<String, AnoError> {
+    pub fn apply_on_date(&mut self, date_str: &str) -> Result<String, AnoError> {
         let date = DateTime::parse_from_rfc3339(date_str)?;
         let tz = date.timezone();
         let date_unix = date.timestamp();
@@ -280,7 +287,7 @@ impl NoiseGenerator<f64> {
     ///
     /// A vector containing the original data with added noise
     pub fn apply_correlated_noise_on_dates(
-        &self,
+        &mut self,
         data: &[&str],
         factors: &[f64],
     ) -> Result<Vec<String>, AnoError> {

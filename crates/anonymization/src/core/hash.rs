@@ -60,12 +60,27 @@ impl Hasher {
     ///
     /// # Arguments
     ///
-    /// * `data` - input data to be hashed.
+    /// * `data` - input string to be hashed.
     ///
     /// # Returns
     ///
     /// The base64-encoded hash string.
-    pub fn apply(&self, data: &[u8]) -> Result<String, AnoError> {
+    pub fn apply_str(&self, data: &str) -> Result<String, AnoError> {
+        let bytes = data.as_bytes();
+        let hashed_bytes = self.apply_bytes(bytes)?;
+        Ok(general_purpose::STANDARD.encode(hashed_bytes))
+    }
+
+    /// Applies the chosen hash method to the input data.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - input data to be hashed.
+    ///
+    /// # Returns
+    ///
+    /// The hash bytes.
+    pub fn apply_bytes(&self, data: &[u8]) -> Result<Vec<u8>, AnoError> {
         match &self.method {
             HashMethod::SHA2(salt) => {
                 let mut hasher = Sha256::new();
@@ -75,7 +90,7 @@ impl Hasher {
                 }
                 hasher.update(data);
 
-                Ok(general_purpose::STANDARD.encode(hasher.finalize()))
+                Ok(hasher.finalize().to_vec())
             }
             HashMethod::SHA3(salt) => {
                 let mut hasher = Sha3::v256();
@@ -87,13 +102,13 @@ impl Hasher {
                 hasher.update(data);
                 hasher.finalize(&mut output);
 
-                Ok(general_purpose::STANDARD.encode(output))
+                Ok(output.to_vec())
             }
             HashMethod::Argon2(salt) => {
                 let mut output = [0u8; 32];
                 Argon2::default().hash_password_into(data, salt, &mut output)?;
 
-                Ok(general_purpose::STANDARD.encode(output))
+                Ok(output.to_vec())
             }
         }
     }

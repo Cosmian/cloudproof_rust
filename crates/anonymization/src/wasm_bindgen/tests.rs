@@ -14,28 +14,28 @@ use crate::wasm_bindgen::{
 
 #[wasm_bindgen_test]
 fn test_hash() -> Result<(), JsValue> {
-    let sha2_hash = Hasher::new("SHA2", None)?.apply(b"test sha2")?;
+    let sha2_hash = Hasher::new("SHA2", None)?.apply("test sha2")?;
     assert_eq!(sha2_hash, "Px0txVYqBePXWF5K4xFn0Pa2mhnYA/jfsLtpIF70vJ8=");
 
     let sha2_hash_with_salt =
-        Hasher::new("SHA2", Some(b"example salt".to_vec()))?.apply(b"test sha2")?;
+        Hasher::new("SHA2", Some(b"example salt".to_vec()))?.apply("test sha2")?;
     assert_eq!(
         sha2_hash_with_salt,
         "d32KiG7kpZoaU2/Rqa+gbtaxDIKRA32nIxwhOXCaH1o="
     );
 
-    let sha3_hash = Hasher::new("SHA3", None)?.apply(b"test sha3")?;
+    let sha3_hash = Hasher::new("SHA3", None)?.apply("test sha3")?;
     assert_eq!(sha3_hash, "b8rRtRqnSFs8s12jsKSXHFcLf5MeHx8g6m4tvZq04/I=");
 
     let sha3_hash_with_salt =
-        Hasher::new("SHA3", Some(b"example salt".to_vec()))?.apply(b"test sha3")?;
+        Hasher::new("SHA3", Some(b"example salt".to_vec()))?.apply("test sha3")?;
     assert_eq!(
         sha3_hash_with_salt,
         "UBtIW7mX+cfdh3T3aPl/l465dBUbgKKZvMjZNNjwQ50="
     );
 
     let argon2_hash_with_salt =
-        Hasher::new("Argon2", Some(b"example salt".to_vec()))?.apply(b"low entropy data")?;
+        Hasher::new("Argon2", Some(b"example salt".to_vec()))?.apply("low entropy data")?;
     assert_eq!(
         argon2_hash_with_salt,
         "JXiQyIYJAIMZoDKhA/BOKTo+142aTkDvtITEI7NXDEM="
@@ -45,11 +45,11 @@ fn test_hash() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_noise_gaussian_f64() -> Result<(), JsValue> {
-    let gaussian_noise_generator = NoiseGeneratorWithParameters::new("Gaussian", 0.0, 1.0)?;
+    let mut gaussian_noise_generator = NoiseGeneratorWithParameters::new("Gaussian", 0.0, 1.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
-    let gaussian_noise_generator = NoiseGeneratorWithBounds::new("Gaussian", -5.0, 5.0)?;
+    let mut gaussian_noise_generator = NoiseGeneratorWithBounds::new("Gaussian", -5.0, 5.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
@@ -64,11 +64,11 @@ fn test_noise_gaussian_f64() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_noise_laplace_f64() -> Result<(), JsValue> {
-    let laplace_noise_generator = NoiseGeneratorWithParameters::new("Laplace", 0.0, 1.0)?;
+    let mut laplace_noise_generator = NoiseGeneratorWithParameters::new("Laplace", 0.0, 1.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
-    let laplace_noise_generator = NoiseGeneratorWithBounds::new("Laplace", -10.0, 10.0)?;
+    let mut laplace_noise_generator = NoiseGeneratorWithBounds::new("Laplace", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
@@ -80,7 +80,7 @@ fn test_noise_uniform_f64() -> Result<(), JsValue> {
     let res = NoiseGeneratorWithParameters::new("Uniform", 0.0, 2.0);
     assert!(res.is_err());
 
-    let laplace_noise_generator = NoiseGeneratorWithBounds::new("Uniform", -10.0, 10.0)?;
+    let mut laplace_noise_generator = NoiseGeneratorWithBounds::new("Uniform", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
@@ -89,11 +89,11 @@ fn test_noise_uniform_f64() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_noise_gaussian_i64() -> Result<(), JsValue> {
-    let gaussian_noise_generator = NoiseGeneratorWithParameters::new("Gaussian", 0.0, 1.0)?;
+    let mut gaussian_noise_generator = NoiseGeneratorWithParameters::new("Gaussian", 0.0, 1.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
-    let gaussian_noise_generator = NoiseGeneratorWithBounds::new("Gaussian", -5.0, 5.0)?;
+    let mut gaussian_noise_generator = NoiseGeneratorWithBounds::new("Gaussian", -5.0, 5.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
@@ -102,11 +102,11 @@ fn test_noise_gaussian_i64() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_noise_laplace_i64() -> Result<(), JsValue> {
-    let laplace_noise_generator = NoiseGeneratorWithParameters::new("Laplace", 0.0, 1.0)?;
+    let mut laplace_noise_generator = NoiseGeneratorWithParameters::new("Laplace", 0.0, 1.0)?;
     let noisy_data = laplace_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
-    let laplace_noise_generator = NoiseGeneratorWithBounds::new("Laplace", -10.0, 10.0)?;
+    let mut laplace_noise_generator = NoiseGeneratorWithBounds::new("Laplace", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
@@ -115,7 +115,7 @@ fn test_noise_laplace_i64() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_noise_uniform_i64() -> Result<(), JsValue> {
-    let laplace_noise_generator = NoiseGeneratorWithBounds::new("Uniform", -10.0, 10.0)?;
+    let mut laplace_noise_generator = NoiseGeneratorWithBounds::new("Uniform", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
@@ -124,7 +124,7 @@ fn test_noise_uniform_i64() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_noise_gaussian_date() -> Result<(), JsValue> {
-    let gaussian_noise_generator =
+    let mut gaussian_noise_generator =
         NoiseGeneratorWithParameters::new("Gaussian", 0.0, 2.0 * 3600.0)?;
     let noisy_date = gaussian_noise_generator.apply_on_date("2023-04-07T12:34:56Z")?;
     let date = DateTime::parse_from_rfc3339(&noisy_date)
@@ -142,7 +142,8 @@ fn test_noise_gaussian_date() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_noise_laplace_date() -> Result<(), JsValue> {
-    let laplace_noise_generator = NoiseGeneratorWithParameters::new("Laplace", 0.0, 2.0 * 3600.0)?;
+    let mut laplace_noise_generator =
+        NoiseGeneratorWithParameters::new("Laplace", 0.0, 2.0 * 3600.0)?;
     let noisy_date = laplace_noise_generator.apply_on_date("2023-04-07T12:34:56Z")?;
     let date = DateTime::parse_from_rfc3339(&noisy_date)
         .unwrap()
@@ -157,7 +158,7 @@ fn test_noise_laplace_date() -> Result<(), JsValue> {
 #[wasm_bindgen_test]
 fn test_noise_uniform_date() -> Result<(), JsValue> {
     // generate noise between -10h and +10h
-    let uniform_noise_generator =
+    let mut uniform_noise_generator =
         NoiseGeneratorWithBounds::new("Uniform", -10.0 * 3600.0, 10.0 * 3600.0)?;
     let noisy_date = uniform_noise_generator.apply_on_date("2023-04-07T12:34:56Z")?;
     let date = DateTime::parse_from_rfc3339(&noisy_date)
@@ -172,7 +173,7 @@ fn test_noise_uniform_date() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_correlated_noise_gaussian_f64() -> Result<(), JsValue> {
-    let noise_generator = NoiseGeneratorWithParameters::new("Gaussian", 10.0, 2.0)?;
+    let mut noise_generator = NoiseGeneratorWithParameters::new("Gaussian", 10.0, 2.0)?;
     let values = vec![1.0, 1.0, 1.0];
     let factors = vec![1.0, 2.0, 4.0];
     let noisy_values =
@@ -195,7 +196,7 @@ fn test_correlated_noise_gaussian_f64() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_correlated_noise_laplace_i64() -> Result<(), JsValue> {
-    let noise_generator = NoiseGeneratorWithParameters::new("Laplace", 10.0, 2.0)?;
+    let mut noise_generator = NoiseGeneratorWithParameters::new("Laplace", 10.0, 2.0)?;
     let values = vec![1, 1, 1];
     let factors = vec![1.0, 2.0, 4.0];
     let noisy_values = noise_generator.apply_correlated_noise_on_ints(values, factors)?;
@@ -207,7 +208,7 @@ fn test_correlated_noise_laplace_i64() -> Result<(), JsValue> {
 
 #[wasm_bindgen_test]
 fn test_correlated_noise_uniform_date() -> Result<(), JsValue> {
-    let noise_generator = NoiseGeneratorWithBounds::new("Uniform", 0.0, 10.0)?;
+    let mut noise_generator = NoiseGeneratorWithBounds::new("Uniform", 0.0, 10.0)?;
     let values = vec![
         "2023-05-02T00:00:00Z",
         "2023-05-02T00:00:00Z",

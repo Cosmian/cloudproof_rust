@@ -17,9 +17,9 @@ impl Hasher {
     }
 
     #[wasm_bindgen]
-    pub fn apply(&self, data: &[u8]) -> Result<String, JsValue> {
+    pub fn apply(&self, data: &str) -> Result<String, JsValue> {
         Ok(wasm_unwrap!(
-            self.0.apply(data),
+            self.0.apply_str(data),
             "Error applying hash method"
         ))
     }

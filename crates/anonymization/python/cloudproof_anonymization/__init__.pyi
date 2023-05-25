@@ -16,15 +16,25 @@ class Hasher:
                 - `Argon2`: Highly resistant to brute-force attacks, but can be slower than other hash functions and may require more memory.
             salt (bytes, optional): An optional salt to use. Required with Argon2.
         """
-    def apply(self, data: bytes) -> str:
+    def apply_str(self, data: str) -> str:
         """
         Applies the chosen hash method to the input data
 
         Args:
-            data (bytes): A byte slice representing the input data to be hashed.
+            data (str): Input string to be hashed.
 
         Returns:
             str: The base64-encoded hash string.
+        """
+    def apply_bytes(self, data: bytes) -> bytes:
+        """
+        Applies the chosen hash method to the input data
+
+        Args:
+            data (bytes): Input data to be hashed.
+
+        Returns:
+            bytes: The hash bytes.
         """
 
 class NoiseGenerator:

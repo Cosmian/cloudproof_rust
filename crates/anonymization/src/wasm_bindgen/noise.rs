@@ -43,7 +43,7 @@ macro_rules! impl_noise {
         #[wasm_bindgen]
         impl $type_name {
             #[wasm_bindgen]
-            pub fn apply_on_float(&self, data: f64) -> Result<f64, JsValue> {
+            pub fn apply_on_float(&mut self, data: f64) -> Result<f64, JsValue> {
                 Ok(wasm_unwrap!(
                     self.0.apply_on_float(data),
                     "Error applying noise"
@@ -52,7 +52,7 @@ macro_rules! impl_noise {
 
             #[wasm_bindgen]
             pub fn apply_correlated_noise_on_floats(
-                &self,
+                &mut self,
                 data: Vec<f64>,
                 factors: Vec<f64>,
             ) -> Result<Vec<f64>, JsValue> {
@@ -63,7 +63,7 @@ macro_rules! impl_noise {
             }
 
             #[wasm_bindgen]
-            pub fn apply_on_int(&self, data: i64) -> Result<i64, JsValue> {
+            pub fn apply_on_int(&mut self, data: i64) -> Result<i64, JsValue> {
                 Ok(wasm_unwrap!(
                     self.0.apply_on_int(data),
                     "Error applying noise"
@@ -72,7 +72,7 @@ macro_rules! impl_noise {
 
             #[wasm_bindgen]
             pub fn apply_correlated_noise_on_ints(
-                &self,
+                &mut self,
                 data: Vec<i64>,
                 factors: Vec<f64>,
             ) -> Result<Vec<i64>, JsValue> {
@@ -83,7 +83,7 @@ macro_rules! impl_noise {
             }
 
             #[wasm_bindgen]
-            pub fn apply_on_date(&self, date: &str) -> Result<String, JsValue> {
+            pub fn apply_on_date(&mut self, date: &str) -> Result<String, JsValue> {
                 Ok(wasm_unwrap!(
                     self.0.apply_on_date(date),
                     "Error applying noise"
@@ -92,7 +92,7 @@ macro_rules! impl_noise {
 
             #[wasm_bindgen]
             pub fn apply_correlated_noise_on_dates(
-                &self,
+                &mut self,
                 data: String,
                 factors: Vec<f64>,
             ) -> Result<String, JsValue> {

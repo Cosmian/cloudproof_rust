@@ -17,9 +17,16 @@ impl Hasher {
         Ok(Self(HasherRust::new(method)))
     }
 
-    pub fn apply(&self, data: &[u8]) -> PyResult<String> {
+    pub fn apply_str(&self, data: &str) -> PyResult<String> {
         Ok(pyo3_unwrap!(
-            self.0.apply(data),
+            self.0.apply_str(data),
+            "Error applying hash method"
+        ))
+    }
+
+    pub fn apply_bytes(&self, data: &[u8]) -> PyResult<Vec<u8>> {
+        Ok(pyo3_unwrap!(
+            self.0.apply_bytes(data),
             "Error applying hash method"
         ))
     }

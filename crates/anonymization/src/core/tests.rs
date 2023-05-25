@@ -12,11 +12,11 @@ use crate::core::{
 #[test]
 fn test_hash_sha2() -> Result<(), AnoError> {
     let hasher = Hasher::new(HashMethod::SHA2(None));
-    let sha2_hash = hasher.apply(b"test sha2")?;
+    let sha2_hash = hasher.apply_str("test sha2")?;
     assert_eq!(sha2_hash, "Px0txVYqBePXWF5K4xFn0Pa2mhnYA/jfsLtpIF70vJ8=");
 
     let hasher = Hasher::new(HashMethod::SHA2(Some(b"example salt".to_vec())));
-    let sha2_hash_salt = hasher.apply(b"test sha2")?;
+    let sha2_hash_salt = hasher.apply_str("test sha2")?;
     assert_eq!(
         sha2_hash_salt,
         "d32KiG7kpZoaU2/Rqa+gbtaxDIKRA32nIxwhOXCaH1o="
@@ -28,11 +28,11 @@ fn test_hash_sha2() -> Result<(), AnoError> {
 #[test]
 fn test_hash_sha3() -> Result<(), AnoError> {
     let hasher = Hasher::new(HashMethod::SHA3(None));
-    let sha3_hash = hasher.apply(b"test sha3")?;
+    let sha3_hash = hasher.apply_str("test sha3")?;
     assert_eq!(sha3_hash, "b8rRtRqnSFs8s12jsKSXHFcLf5MeHx8g6m4tvZq04/I=");
 
     let hasher = Hasher::new(HashMethod::SHA3(Some(b"example salt".to_vec())));
-    let sha3_hash_salt = hasher.apply(b"test sha3")?;
+    let sha3_hash_salt = hasher.apply_str("test sha3")?;
     assert_eq!(
         sha3_hash_salt,
         "UBtIW7mX+cfdh3T3aPl/l465dBUbgKKZvMjZNNjwQ50="
@@ -44,7 +44,7 @@ fn test_hash_sha3() -> Result<(), AnoError> {
 #[test]
 fn test_hash_argon2() -> Result<(), AnoError> {
     let hasher = Hasher::new(HashMethod::Argon2(b"example salt".to_vec()));
-    let argon2_hash = hasher.apply(b"low entropy data")?;
+    let argon2_hash = hasher.apply_str("low entropy data")?;
     assert_eq!(argon2_hash, "JXiQyIYJAIMZoDKhA/BOKTo+142aTkDvtITEI7NXDEM=");
 
     Ok(())
@@ -52,11 +52,11 @@ fn test_hash_argon2() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_gaussian_f64() -> Result<(), AnoError> {
-    let gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 1.0)?;
+    let mut gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 1.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
-    let gaussian_noise_generator = NoiseGenerator::new_with_bounds("Gaussian", -5.0, 5.0)?;
+    let mut gaussian_noise_generator = NoiseGenerator::new_with_bounds("Gaussian", -5.0, 5.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
@@ -71,11 +71,11 @@ fn test_noise_gaussian_f64() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_laplace_f64() -> Result<(), AnoError> {
-    let laplace_noise_generator = NoiseGenerator::new_with_parameters("Laplace", 0.0, 1.0)?;
+    let mut laplace_noise_generator = NoiseGenerator::new_with_parameters("Laplace", 0.0, 1.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
-    let laplace_noise_generator = NoiseGenerator::new_with_bounds("Laplace", -10.0, 10.0)?;
+    let mut laplace_noise_generator = NoiseGenerator::new_with_bounds("Laplace", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
@@ -87,7 +87,7 @@ fn test_noise_uniform_f64() -> Result<(), AnoError> {
     let res = NoiseGenerator::new_with_parameters("Uniform", 0.0, 2.0);
     assert!(res.is_err());
 
-    let laplace_noise_generator = NoiseGenerator::new_with_bounds("Uniform", -10.0, 10.0)?;
+    let mut laplace_noise_generator = NoiseGenerator::new_with_bounds("Uniform", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
     assert!((30.0..=50.0).contains(&noisy_data));
 
@@ -96,11 +96,11 @@ fn test_noise_uniform_f64() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_gaussian_i64() -> Result<(), AnoError> {
-    let gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 1.0)?;
+    let mut gaussian_noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 1.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
-    let gaussian_noise_generator = NoiseGenerator::new_with_bounds("Gaussian", -5.0, 5.0)?;
+    let mut gaussian_noise_generator = NoiseGenerator::new_with_bounds("Gaussian", -5.0, 5.0)?;
     let noisy_data = gaussian_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
@@ -109,11 +109,12 @@ fn test_noise_gaussian_i64() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_laplace_i64() -> Result<(), AnoError> {
-    let laplace_noise_generator = NoiseGenerator::new_with_parameters("Laplace", 0.0, 1.0)?;
+    let mut laplace_noise_generator = NoiseGenerator::new_with_parameters("Laplace", 0.0, 1.0)?;
+
     let noisy_data = laplace_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
-    let laplace_noise_generator = NoiseGenerator::new_with_bounds("Laplace", -10.0, 10.0)?;
+    let mut laplace_noise_generator = NoiseGenerator::new_with_bounds("Laplace", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
@@ -122,7 +123,7 @@ fn test_noise_laplace_i64() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_uniform_i64() -> Result<(), AnoError> {
-    let laplace_noise_generator = NoiseGenerator::new_with_bounds("Uniform", -10.0, 10.0)?;
+    let mut laplace_noise_generator = NoiseGenerator::new_with_bounds("Uniform", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_int(40)?;
     assert!((30..=50).contains(&noisy_data));
 
@@ -131,7 +132,7 @@ fn test_noise_uniform_i64() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_gaussian_date() -> Result<(), AnoError> {
-    let gaussian_noise_generator =
+    let mut gaussian_noise_generator =
         NoiseGenerator::new_with_parameters("Gaussian", 0.0, 2.0 * 3600.0)?;
     let input_datestr = "2023-04-07T12:34:56Z";
     let output_datestr = gaussian_noise_generator.apply_on_date(input_datestr)?;
@@ -153,7 +154,7 @@ fn test_noise_gaussian_date() -> Result<(), AnoError> {
 
 #[test]
 fn test_noise_laplace_date() -> Result<(), AnoError> {
-    let laplace_noise_generator =
+    let mut laplace_noise_generator =
         NoiseGenerator::new_with_parameters("Laplace", 0.0, 2.0 * 3600.0)?;
     let input_datestr = "2023-04-07T12:34:56+05:00";
     let output_datestr = laplace_noise_generator.apply_on_date(input_datestr)?;
@@ -173,7 +174,7 @@ fn test_noise_laplace_date() -> Result<(), AnoError> {
 #[test]
 fn test_noise_uniform_date() -> Result<(), AnoError> {
     // generate noise between -10h and +10h
-    let uniform_noise_generator =
+    let mut uniform_noise_generator =
         NoiseGenerator::new_with_bounds("Uniform", -10.0 * 3600.0, 10.0 * 3600.0)?;
     let input_datestr = "2023-04-07T12:34:56-03:00";
     let output_datestr = uniform_noise_generator.apply_on_date(input_datestr)?;
@@ -192,7 +193,7 @@ fn test_noise_uniform_date() -> Result<(), AnoError> {
 
 #[test]
 fn test_correlated_noise_gaussian_f64() -> Result<(), AnoError> {
-    let noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 10.0, 2.0)?;
+    let mut noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 10.0, 2.0)?;
     let values = vec![1.0, 1.0, 1.0];
     let factors = vec![1.0, 2.0, 4.0];
     let noisy_values = noise_generator.apply_correlated_noise_on_floats(&values, &factors)?;
@@ -214,7 +215,7 @@ fn test_correlated_noise_gaussian_f64() -> Result<(), AnoError> {
 
 #[test]
 fn test_correlated_noise_laplace_i64() -> Result<(), AnoError> {
-    let noise_generator = NoiseGenerator::new_with_parameters("Laplace", 10.0, 2.0)?;
+    let mut noise_generator = NoiseGenerator::new_with_parameters("Laplace", 10.0, 2.0)?;
     let values = vec![1, 1, 1];
     let factors = vec![1.0, 2.0, 4.0];
     let noisy_values = noise_generator.apply_correlated_noise_on_ints(&values, &factors)?;
@@ -226,7 +227,7 @@ fn test_correlated_noise_laplace_i64() -> Result<(), AnoError> {
 
 #[test]
 fn test_correlated_noise_uniform_date() -> Result<(), AnoError> {
-    let noise_generator = NoiseGenerator::new_with_bounds("Uniform", 0.0, 10.0)?;
+    let mut noise_generator = NoiseGenerator::new_with_bounds("Uniform", 0.0, 10.0)?;
     let values = vec![
         "2023-05-02T00:00:00-05:00",
         "2023-05-02T00:00:00+00:00",
