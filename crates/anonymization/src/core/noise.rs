@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use chrono::{DateTime, TimeZone};
 use cosmian_crypto_core::{reexport::rand_core::SeedableRng, CsRng};
 use rand::{CryptoRng, Rng};
@@ -82,15 +84,13 @@ where
     }
 }
 
-// Future suggestion: make this structure generic over a trait implemented by
-// the distribution
 pub struct NoiseGenerator<N>
 where
     N: Float + rand_distr::uniform::SampleUniform,
     rand_distr::StandardNormal: rand_distr::Distribution<N>,
 {
     method: NoiseMethod<N>,
-    rng: CsRng,
+    rng: Arc<Mutex<CsRng>>,
 }
 
 impl<N> NoiseGenerator<N>
@@ -126,7 +126,7 @@ where
         }?;
         Ok(Self {
             method,
-            rng: CsRng::from_entropy(),
+            rng: Arc::new(Mutex::new(CsRng::from_entropy())),
         })
     }
 
@@ -168,7 +168,7 @@ where
         }?;
         Ok(Self {
             method,
-            rng: CsRng::from_entropy(),
+            rng: Arc::new(Mutex::new(CsRng::from_entropy())),
         })
     }
 
@@ -183,7 +183,10 @@ where
     /// Original data with added noise
     pub fn apply_on_float(&mut self, data: N) -> N {
         // Sample noise
-        let noise = self.method.sample(&mut self.rng);
+        let noise = {
+            let mut rng = self.rng.lock().expect("failed locking the RNG.");
+            self.method.sample(&mut *rng)
+        };
         // Add noise to the raw data
         data + noise
     }
@@ -202,7 +205,10 @@ where
     /// A vector containing the original data with added noise
     pub fn apply_correlated_noise_on_floats(&mut self, data: &[N], factors: &[N]) -> Vec<N> {
         // Sample noise once
-        let noise = self.method.sample(&mut self.rng);
+        let noise = {
+            let mut rng = self.rng.lock().expect("failed locking the RNG.");
+            self.method.sample(&mut *rng)
+        };
 
         // Add noise to the raw data, scaled by the corresponding factor
         data.iter()
