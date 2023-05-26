@@ -24,6 +24,9 @@ class TestHasher(unittest.TestCase):
         res = hasher.apply_str('test sha2')
         self.assertEqual(res, 'd32KiG7kpZoaU2/Rqa+gbtaxDIKRA32nIxwhOXCaH1o=')
 
+        res_bytes = hasher.apply_bytes(b'test sha2')
+        self.assertEqual(len(res_bytes), 32)
+
     def test_sha3(self) -> None:
         hasher = Hasher('SHA3')
         res = hasher.apply_str('test sha3')
@@ -33,6 +36,9 @@ class TestHasher(unittest.TestCase):
         res = hasher.apply_str('test sha3')
         self.assertEqual(res, 'UBtIW7mX+cfdh3T3aPl/l465dBUbgKKZvMjZNNjwQ50=')
 
+        res_bytes = hasher.apply_bytes(b'test sha2')
+        self.assertEqual(len(res_bytes), 32)
+
     def test_argon2(self) -> None:
         with self.assertRaises(Exception):
             # should fail without salt
@@ -41,6 +47,9 @@ class TestHasher(unittest.TestCase):
         hasher = Hasher('Argon2', b'example salt')
         res = hasher.apply_str('low entropy data')
         self.assertEqual(res, 'JXiQyIYJAIMZoDKhA/BOKTo+142aTkDvtITEI7NXDEM=')
+
+        res_bytes = hasher.apply_bytes(b'test sha2')
+        self.assertEqual(len(res_bytes), 32)
 
 
 class TestNoiseGen(unittest.TestCase):

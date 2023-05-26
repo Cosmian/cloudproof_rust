@@ -23,40 +23,28 @@ impl NoiseGenerator {
         )))
     }
 
-    pub fn apply_on_float(&mut self, data: f64) -> PyResult<f64> {
-        Ok(pyo3_unwrap!(
-            self.0.apply_on_float(data),
-            "Error applying noise"
-        ))
+    pub fn apply_on_float(&mut self, data: f64) -> f64 {
+        self.0.apply_on_float(data)
     }
 
     pub fn apply_correlated_noise_on_floats(
         &mut self,
         data: Vec<f64>,
         factors: Vec<f64>,
-    ) -> PyResult<Vec<f64>> {
-        Ok(pyo3_unwrap!(
-            self.0.apply_correlated_noise_on_floats(&data, &factors),
-            "Error applying noise"
-        ))
+    ) -> Vec<f64> {
+        self.0.apply_correlated_noise_on_floats(&data, &factors)
     }
 
-    pub fn apply_on_int(&mut self, data: i64) -> PyResult<i64> {
-        Ok(pyo3_unwrap!(
-            self.0.apply_on_int(data),
-            "Error applying noise"
-        ))
+    pub fn apply_on_int(&mut self, data: i64) -> i64 {
+        self.0.apply_on_int(data)
     }
 
     pub fn apply_correlated_noise_on_ints(
         &mut self,
         data: Vec<i64>,
         factors: Vec<f64>,
-    ) -> PyResult<Vec<i64>> {
-        Ok(pyo3_unwrap!(
-            self.0.apply_correlated_noise_on_ints(&data, &factors),
-            "Error applying noise"
-        ))
+    ) -> Vec<i64> {
+        self.0.apply_correlated_noise_on_ints(&data, &factors)
     }
 
     pub fn apply_on_date(&mut self, date: &str) -> PyResult<String> {

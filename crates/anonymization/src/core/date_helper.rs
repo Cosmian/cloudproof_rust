@@ -17,12 +17,12 @@ impl TryFrom<&str> for TimeUnit {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "Second" => Ok(TimeUnit::Second),
-            "Minute" => Ok(TimeUnit::Minute),
-            "Hour" => Ok(TimeUnit::Hour),
-            "Day" => Ok(TimeUnit::Day),
-            "Month" => Ok(TimeUnit::Month),
-            "Year" => Ok(TimeUnit::Year),
+            "Second" => Ok(Self::Second),
+            "Minute" => Ok(Self::Minute),
+            "Hour" => Ok(Self::Hour),
+            "Day" => Ok(Self::Day),
+            "Month" => Ok(Self::Month),
+            "Year" => Ok(Self::Year),
             _ => Err(ano_error!("Unknown time unit {}", value)),
         }
     }

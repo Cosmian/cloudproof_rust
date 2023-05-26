@@ -80,7 +80,7 @@ impl Hasher {
     /// # Returns
     ///
     /// The hash bytes.
-    pub fn apply_bytes(&self, data: &[u8]) -> Result<Vec<u8>, AnoError> {
+    pub fn apply_bytes(&self, data: &[u8]) -> Result<[u8; 32], AnoError> {
         match &self.method {
             HashMethod::SHA2(salt) => {
                 let mut hasher = Sha256::new();
@@ -89,8 +89,13 @@ impl Hasher {
                     hasher.update(salt_val);
                 }
                 hasher.update(data);
+                // Convert hash output to a fixed size array
+                let output = hasher
+                    .finalize()
+                    .try_into()
+                    .expect("Sha256 hash should be 32 bytes long.");
 
-                Ok(hasher.finalize().to_vec())
+                Ok(output)
             }
             HashMethod::SHA3(salt) => {
                 let mut hasher = Sha3::v256();
@@ -102,13 +107,13 @@ impl Hasher {
                 hasher.update(data);
                 hasher.finalize(&mut output);
 
-                Ok(output.to_vec())
+                Ok(output)
             }
             HashMethod::Argon2(salt) => {
                 let mut output = [0u8; 32];
                 Argon2::default().hash_password_into(data, salt, &mut output)?;
 
-                Ok(output.to_vec())
+                Ok(output)
             }
         }
     }

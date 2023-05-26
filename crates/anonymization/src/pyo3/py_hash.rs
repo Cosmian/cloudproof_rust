@@ -1,4 +1,4 @@
-use pyo3::prelude::*;
+use pyo3::{prelude::*, types::PyBytes};
 
 use crate::core::{HashMethod, Hasher as HasherRust};
 
@@ -24,10 +24,8 @@ impl Hasher {
         ))
     }
 
-    pub fn apply_bytes(&self, data: &[u8]) -> PyResult<Vec<u8>> {
-        Ok(pyo3_unwrap!(
-            self.0.apply_bytes(data),
-            "Error applying hash method"
-        ))
+    pub fn apply_bytes(&self, data: &[u8], py: Python) -> PyResult<Py<PyBytes>> {
+        let res = pyo3_unwrap!(self.0.apply_bytes(data), "Error applying hash method");
+        Ok(PyBytes::new(py, &res).into())
     }
 }

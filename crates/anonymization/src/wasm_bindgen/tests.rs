@@ -46,11 +46,11 @@ fn test_hash() -> Result<(), JsValue> {
 #[wasm_bindgen_test]
 fn test_noise_gaussian_f64() -> Result<(), JsValue> {
     let mut gaussian_noise_generator = NoiseGeneratorWithParameters::new("Gaussian", 0.0, 1.0)?;
-    let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
+    let noisy_data = gaussian_noise_generator.apply_on_float(40.0);
     assert!((30.0..=50.0).contains(&noisy_data));
 
     let mut gaussian_noise_generator = NoiseGeneratorWithBounds::new("Gaussian", -5.0, 5.0)?;
-    let noisy_data = gaussian_noise_generator.apply_on_float(40.0)?;
+    let noisy_data = gaussian_noise_generator.apply_on_float(40.0);
     assert!((30.0..=50.0).contains(&noisy_data));
 
     let res = NoiseGeneratorWithParameters::new("Gaussian", 0.0, -1.0);
@@ -65,11 +65,11 @@ fn test_noise_gaussian_f64() -> Result<(), JsValue> {
 #[wasm_bindgen_test]
 fn test_noise_laplace_f64() -> Result<(), JsValue> {
     let mut laplace_noise_generator = NoiseGeneratorWithParameters::new("Laplace", 0.0, 1.0)?;
-    let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
+    let noisy_data = laplace_noise_generator.apply_on_float(40.0);
     assert!((30.0..=50.0).contains(&noisy_data));
 
     let mut laplace_noise_generator = NoiseGeneratorWithBounds::new("Laplace", -10.0, 10.0)?;
-    let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
+    let noisy_data = laplace_noise_generator.apply_on_float(40.0);
     assert!((30.0..=50.0).contains(&noisy_data));
 
     Ok(())
@@ -81,7 +81,7 @@ fn test_noise_uniform_f64() -> Result<(), JsValue> {
     assert!(res.is_err());
 
     let mut laplace_noise_generator = NoiseGeneratorWithBounds::new("Uniform", -10.0, 10.0)?;
-    let noisy_data = laplace_noise_generator.apply_on_float(40.0)?;
+    let noisy_data = laplace_noise_generator.apply_on_float(40.0);
     assert!((30.0..=50.0).contains(&noisy_data));
 
     Ok(())
@@ -90,11 +90,11 @@ fn test_noise_uniform_f64() -> Result<(), JsValue> {
 #[wasm_bindgen_test]
 fn test_noise_gaussian_i64() -> Result<(), JsValue> {
     let mut gaussian_noise_generator = NoiseGeneratorWithParameters::new("Gaussian", 0.0, 1.0)?;
-    let noisy_data = gaussian_noise_generator.apply_on_int(40)?;
+    let noisy_data = gaussian_noise_generator.apply_on_int(40);
     assert!((30..=50).contains(&noisy_data));
 
     let mut gaussian_noise_generator = NoiseGeneratorWithBounds::new("Gaussian", -5.0, 5.0)?;
-    let noisy_data = gaussian_noise_generator.apply_on_int(40)?;
+    let noisy_data = gaussian_noise_generator.apply_on_int(40);
     assert!((30..=50).contains(&noisy_data));
 
     Ok(())
@@ -103,11 +103,11 @@ fn test_noise_gaussian_i64() -> Result<(), JsValue> {
 #[wasm_bindgen_test]
 fn test_noise_laplace_i64() -> Result<(), JsValue> {
     let mut laplace_noise_generator = NoiseGeneratorWithParameters::new("Laplace", 0.0, 1.0)?;
-    let noisy_data = laplace_noise_generator.apply_on_int(40)?;
+    let noisy_data = laplace_noise_generator.apply_on_int(40);
     assert!((30..=50).contains(&noisy_data));
 
     let mut laplace_noise_generator = NoiseGeneratorWithBounds::new("Laplace", -10.0, 10.0)?;
-    let noisy_data = laplace_noise_generator.apply_on_int(40)?;
+    let noisy_data = laplace_noise_generator.apply_on_int(40);
     assert!((30..=50).contains(&noisy_data));
 
     Ok(())
@@ -116,7 +116,7 @@ fn test_noise_laplace_i64() -> Result<(), JsValue> {
 #[wasm_bindgen_test]
 fn test_noise_uniform_i64() -> Result<(), JsValue> {
     let mut laplace_noise_generator = NoiseGeneratorWithBounds::new("Uniform", -10.0, 10.0)?;
-    let noisy_data = laplace_noise_generator.apply_on_int(40)?;
+    let noisy_data = laplace_noise_generator.apply_on_int(40);
     assert!((30..=50).contains(&noisy_data));
 
     Ok(())
@@ -177,7 +177,7 @@ fn test_correlated_noise_gaussian_f64() -> Result<(), JsValue> {
     let values = vec![1.0, 1.0, 1.0];
     let factors = vec![1.0, 2.0, 4.0];
     let noisy_values =
-        noise_generator.apply_correlated_noise_on_floats(values.clone(), factors.clone())?;
+        noise_generator.apply_correlated_noise_on_floats(values.clone(), factors.clone());
     assert_relative_eq!(
         (noisy_values[0] - values[0]) * factors[1],
         (noisy_values[1] - values[1]) * factors[0],
@@ -199,7 +199,7 @@ fn test_correlated_noise_laplace_i64() -> Result<(), JsValue> {
     let mut noise_generator = NoiseGeneratorWithParameters::new("Laplace", 10.0, 2.0)?;
     let values = vec![1, 1, 1];
     let factors = vec![1.0, 2.0, 4.0];
-    let noisy_values = noise_generator.apply_correlated_noise_on_ints(values, factors)?;
+    let noisy_values = noise_generator.apply_correlated_noise_on_ints(values, factors);
     // Ordering only holds if noise is positive
     assert!(noisy_values[0] <= noisy_values[1]);
     assert!(noisy_values[1] <= noisy_values[2]);
@@ -243,7 +243,7 @@ fn test_mask_word() -> Result<(), JsValue> {
     let block_words = vec!["confidential", "SECRET"].join(";");
     let word_masker = WordMasker::new(block_words);
 
-    let safe_str = word_masker.apply(&input_str)?;
+    let safe_str = word_masker.apply(&input_str);
 
     assert_eq!(safe_str, "XXXX: contains -XXXX- documents");
     Ok(())
@@ -255,7 +255,7 @@ fn test_token_word() -> Result<(), JsValue> {
     let block_words = vec!["confidential", "SECRET"].join(";");
     let word_tokenizer = WordTokenizer::new(block_words)?;
 
-    let safe_str = word_tokenizer.apply(&input_str)?;
+    let safe_str = word_tokenizer.apply(&input_str);
 
     let words: HashSet<&str> = safe_str.split(' ').collect();
     assert!(!words.contains("confidential"));

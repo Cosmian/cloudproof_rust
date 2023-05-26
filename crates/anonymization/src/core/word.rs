@@ -41,7 +41,8 @@ impl WordTokenizer {
     /// # Returns
     ///
     /// Texts containing tokens in place of sensitive words.
-    pub fn apply(&self, data: &str) -> Result<String, AnoError> {
+    #[must_use]
+    pub fn apply(&self, data: &str) -> String {
         let re = Regex::new(r"\b\w+\b").unwrap();
         let result = re.replace_all(data, |caps: &regex::Captures| {
             match self.word_token_mapping.get(&caps[0].to_lowercase()) {
@@ -49,7 +50,7 @@ impl WordTokenizer {
                 None => caps[0].to_string(),
             }
         });
-        Ok(result.into_owned())
+        result.into_owned()
     }
 }
 
@@ -82,7 +83,8 @@ impl WordMasker {
     /// # Returns
     ///
     /// Text without the sensitive words.
-    pub fn apply(&self, data: &str) -> Result<String, AnoError> {
+    #[must_use]
+    pub fn apply(&self, data: &str) -> String {
         let re = Regex::new(r"\b\w+\b").unwrap();
         let result = re.replace_all(data, |caps: &regex::Captures| {
             if self.word_list.contains(&caps[0].to_lowercase()) {
@@ -91,7 +93,7 @@ impl WordMasker {
                 caps[0].to_string()
             }
         });
-        Ok(result.into_owned())
+        result.into_owned()
     }
 }
 

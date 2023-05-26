@@ -43,11 +43,8 @@ macro_rules! impl_noise {
         #[wasm_bindgen]
         impl $type_name {
             #[wasm_bindgen]
-            pub fn apply_on_float(&mut self, data: f64) -> Result<f64, JsValue> {
-                Ok(wasm_unwrap!(
-                    self.0.apply_on_float(data),
-                    "Error applying noise"
-                ))
+            pub fn apply_on_float(&mut self, data: f64) -> f64 {
+                self.0.apply_on_float(data)
             }
 
             #[wasm_bindgen]
@@ -55,19 +52,13 @@ macro_rules! impl_noise {
                 &mut self,
                 data: Vec<f64>,
                 factors: Vec<f64>,
-            ) -> Result<Vec<f64>, JsValue> {
-                Ok(wasm_unwrap!(
-                    self.0.apply_correlated_noise_on_floats(&data, &factors),
-                    "Error applying noise"
-                ))
+            ) -> Vec<f64> {
+                self.0.apply_correlated_noise_on_floats(&data, &factors)
             }
 
             #[wasm_bindgen]
-            pub fn apply_on_int(&mut self, data: i64) -> Result<i64, JsValue> {
-                Ok(wasm_unwrap!(
-                    self.0.apply_on_int(data),
-                    "Error applying noise"
-                ))
+            pub fn apply_on_int(&mut self, data: i64) -> i64 {
+                self.0.apply_on_int(data)
             }
 
             #[wasm_bindgen]
@@ -75,11 +66,8 @@ macro_rules! impl_noise {
                 &mut self,
                 data: Vec<i64>,
                 factors: Vec<f64>,
-            ) -> Result<Vec<i64>, JsValue> {
-                Ok(wasm_unwrap!(
-                    self.0.apply_correlated_noise_on_ints(&data, &factors),
-                    "Error applying noise"
-                ))
+            ) -> Vec<i64> {
+                self.0.apply_correlated_noise_on_ints(&data, &factors)
             }
 
             #[wasm_bindgen]

@@ -17,8 +17,8 @@ impl WordMasker {
         Self(WordMaskerRust::new(&words_to_block))
     }
 
-    pub fn apply(&self, data: &str) -> Result<String, JsValue> {
-        Ok(wasm_unwrap!(self.0.apply(data), "Error applying mask"))
+    pub fn apply(&self, data: &str) -> String {
+        self.0.apply(data)
     }
 }
 
@@ -37,8 +37,8 @@ impl WordTokenizer {
         )))
     }
 
-    pub fn apply(&self, data: &str) -> Result<String, JsValue> {
-        Ok(wasm_unwrap!(self.0.apply(data), "Error applying tokenizer"))
+    pub fn apply(&self, data: &str) -> String {
+        self.0.apply(data)
     }
 }
 

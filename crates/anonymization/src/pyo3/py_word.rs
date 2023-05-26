@@ -15,8 +15,8 @@ impl WordMasker {
         Self(WordMaskerRust::new(&words_list))
     }
 
-    pub fn apply(&self, data: &str) -> PyResult<String> {
-        Ok(pyo3_unwrap!(self.0.apply(data), "Error applying mask"))
+    pub fn apply(&self, data: &str) -> String {
+        self.0.apply(data)
     }
 }
 
@@ -33,8 +33,8 @@ impl WordTokenizer {
         )))
     }
 
-    pub fn apply(&self, data: &str) -> PyResult<String> {
-        Ok(pyo3_unwrap!(self.0.apply(data), "Error applying tokenizer"))
+    pub fn apply(&self, data: &str) -> String {
+        self.0.apply(data)
     }
 }
 
