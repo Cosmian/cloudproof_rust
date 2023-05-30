@@ -1,3 +1,4 @@
+use js_sys::Uint8Array;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::core::{HashMethod, Hasher as HasherRust};
@@ -17,10 +18,16 @@ impl Hasher {
     }
 
     #[wasm_bindgen]
-    pub fn apply(&self, data: &str) -> Result<String, JsValue> {
+    pub fn apply_str(&self, data: &str) -> Result<String, JsValue> {
         Ok(wasm_unwrap!(
             self.0.apply_str(data),
             "Error applying hash method"
         ))
+    }
+
+    #[wasm_bindgen]
+    pub fn apply_bytes(&self, data: &[u8]) -> Result<Uint8Array, JsValue> {
+        let hash = wasm_unwrap!(self.0.apply_bytes(data), "Error applying hash method");
+        Ok(Uint8Array::from(hash.to_vec().as_slice()))
     }
 }

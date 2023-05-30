@@ -247,7 +247,7 @@ impl Token {
         insert_chains_seed: KeyingMaterial<SIGNATURE_SEED_LENGTH>,
     ) -> Result<Self, FindexCloudError> {
         let mut rng = CsRng::from_entropy();
-        let findex_master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::new(&mut rng);
+        let findex_master_key = KeyingMaterial::new(&mut rng);
 
         Ok(Self {
             index_id,
@@ -431,7 +431,7 @@ impl FindexCloud {
             .send()
             .await
             .map_err(|err| FindexCloudError::Callback {
-                error: format!("Impossible to send the request to FindexCloud: {err}"),
+                error: format!("Unable to send the request to FindexCloud: {err}"),
             })?;
 
         if !response.status().is_success() {

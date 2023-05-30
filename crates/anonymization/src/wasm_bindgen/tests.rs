@@ -14,28 +14,33 @@ use crate::wasm_bindgen::{
 
 #[wasm_bindgen_test]
 fn test_hash() -> Result<(), JsValue> {
-    let sha2_hash = Hasher::new("SHA2", None)?.apply("test sha2")?;
+    let sha2_hash = Hasher::new("SHA2", None)?.apply_str("test sha2")?;
+    let sha2_hash_from_data_in_bytes = Hasher::new("SHA2", None)?.apply_bytes(b"test sha2")?;
     assert_eq!(sha2_hash, "Px0txVYqBePXWF5K4xFn0Pa2mhnYA/jfsLtpIF70vJ8=");
+    assert_eq!(
+        sha2_hash.as_bytes().to_vec(),
+        sha2_hash_from_data_in_bytes.to_vec()
+    );
 
     let sha2_hash_with_salt =
-        Hasher::new("SHA2", Some(b"example salt".to_vec()))?.apply("test sha2")?;
+        Hasher::new("SHA2", Some(b"example salt".to_vec()))?.apply_str("test sha2")?;
     assert_eq!(
         sha2_hash_with_salt,
         "d32KiG7kpZoaU2/Rqa+gbtaxDIKRA32nIxwhOXCaH1o="
     );
 
-    let sha3_hash = Hasher::new("SHA3", None)?.apply("test sha3")?;
+    let sha3_hash = Hasher::new("SHA3", None)?.apply_str("test sha3")?;
     assert_eq!(sha3_hash, "b8rRtRqnSFs8s12jsKSXHFcLf5MeHx8g6m4tvZq04/I=");
 
     let sha3_hash_with_salt =
-        Hasher::new("SHA3", Some(b"example salt".to_vec()))?.apply("test sha3")?;
+        Hasher::new("SHA3", Some(b"example salt".to_vec()))?.apply_str("test sha3")?;
     assert_eq!(
         sha3_hash_with_salt,
         "UBtIW7mX+cfdh3T3aPl/l465dBUbgKKZvMjZNNjwQ50="
     );
 
     let argon2_hash_with_salt =
-        Hasher::new("Argon2", Some(b"example salt".to_vec()))?.apply("low entropy data")?;
+        Hasher::new("Argon2", Some(b"example salt".to_vec()))?.apply_str("low entropy data")?;
     assert_eq!(
         argon2_hash_with_salt,
         "JXiQyIYJAIMZoDKhA/BOKTo+142aTkDvtITEI7NXDEM="
