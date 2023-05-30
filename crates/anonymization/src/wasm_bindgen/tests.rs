@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use approx::assert_relative_eq;
+use base64::{engine::general_purpose, Engine as _};
 use chrono::{DateTime, Datelike, Timelike, Utc};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -18,8 +19,8 @@ fn test_hash() -> Result<(), JsValue> {
     let sha2_hash_from_data_in_bytes = Hasher::new("SHA2", None)?.apply_bytes(b"test sha2")?;
     assert_eq!(sha2_hash, "Px0txVYqBePXWF5K4xFn0Pa2mhnYA/jfsLtpIF70vJ8=");
     assert_eq!(
-        sha2_hash.as_bytes().to_vec(),
-        sha2_hash_from_data_in_bytes.to_vec()
+        "Px0txVYqBePXWF5K4xFn0Pa2mhnYA/jfsLtpIF70vJ8=",
+        general_purpose::STANDARD.encode(sha2_hash_from_data_in_bytes.to_vec())
     );
 
     let sha2_hash_with_salt =
