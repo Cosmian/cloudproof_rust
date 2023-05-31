@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 class Attribute:
     """An attribute in a policy group is characterized by the axis policy name
@@ -281,7 +281,7 @@ class CoverCrypt:
         self, msk: MasterSecretKey, access_policy_str: str, policy: Policy
     ) -> UserSecretKey:
         """Generate a user secret key.
-        A new user secret key does NOT include to old (i.e. rotated) partitions.
+        A new user secret key does NOT include the old (i.e. rotated) partitions.
 
         Args:
             msk (MasterSecretKey): master secret key
@@ -332,7 +332,7 @@ class CoverCrypt:
         ciphertext: bytes,
         authentication_data: Optional[bytes] = ...,
     ) -> bytes:
-        """Symmetrically Decrypts encrypted data in a block.
+        """Symmetrically decrypts encrypted data in a block.
 
         Args:
             symmetric_key (SymmetricKey): symmetric key

@@ -6,7 +6,7 @@ build-backend = "maturin"
 python-source = "python"
 
 [project]
-name = "findex"
+name = "cloudproof_anonymization"
 requires-python = ">=3.7"
 classifiers = [
   "Programming Language :: Rust",

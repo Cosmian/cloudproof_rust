@@ -32,6 +32,7 @@ pub enum ErrorCode {
 }
 
 impl ErrorCode {
+    #[must_use]
     pub fn code(&self) -> i32 {
         match self {
             Self::Success => 0,

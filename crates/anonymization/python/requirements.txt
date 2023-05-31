@@ -1,0 +1,4 @@
+maturin>=1.0,<2.0
+mypy>=1.0,<2.0
+python-dateutil>=2.8
+types_python_dateutil>=2.8
