@@ -54,9 +54,15 @@ const LEB128_MAXIMUM_ENCODED_BYTES_NUMBER: usize = 8;
 ///
 /// # Arguments
 /// - `line_number` : number of lines in the encrypted Entry Table
-pub const fn get_serialized_encrypted_entry_table_size_bound(line_number: usize) -> usize {
+/// - `entry_table_number` : number of different entry tables. The number is
+///   required here since severable entry table could give multiple results
+pub const fn get_serialized_encrypted_entry_table_size_bound(
+    line_number: usize,
+    entry_table_number: usize,
+) -> usize {
     LEB128_MAXIMUM_ENCODED_BYTES_NUMBER
         + line_number
+            * entry_table_number
             * (UID_LENGTH
                 + DemScheme::ENCRYPTION_OVERHEAD
                 + KWI_LENGTH

@@ -3,6 +3,7 @@
 use std::{
     collections::HashSet,
     convert::TryFrom,
+    ffi::c_uint,
     num::NonZeroU32,
     os::raw::{c_char, c_int},
 };
@@ -11,7 +12,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
 use cosmian_ffi_utils::{
     error::{h_get_error, set_last_error, FfiError},
-    ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes,
+    ffi_bail, ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes,
 };
 #[cfg(feature = "compact_live")]
 use cosmian_findex::FindexLiveCompact;
@@ -70,6 +71,7 @@ pub unsafe extern "C" fn get_last_error(error_ptr: *mut c_char, error_len: *mut 
 /// - `master_key`              : master key
 /// - `label`                   : public information used to derive UIDs
 /// - `keywords`                : `serde` serialized list of base64 keywords
+/// - `entry_table_number`      : number of different entry tables
 /// - `progress_callback`       : callback used to retrieve intermediate results
 ///   and transmit user interrupt
 /// - `fetch_entry_callback`    : callback used to fetch the Entry Table
@@ -86,17 +88,22 @@ pub unsafe extern "C" fn h_search(
     label_ptr: *const u8,
     label_len: c_int,
     keywords_ptr: *const c_char,
+    entry_table_number: c_uint,
     progress_callback: ProgressCallback,
     fetch_entry_callback: FetchEntryTableCallback,
     fetch_chain_callback: FetchChainTableCallback,
 ) -> c_int {
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(master_key_bytes),
+        KeyingMaterial::try_from_bytes(master_key_bytes),
         "error deserializing master secret key"
     );
+    if entry_table_number == 0 {
+        ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
+    }
 
     let findex = FindexUser {
+        entry_table_number: entry_table_number as usize,
         progress: Some(progress_callback),
         fetch_all_entry_table_uids: None,
         fetch_entry: Some(fetch_entry_callback),
@@ -151,6 +158,7 @@ pub unsafe extern "C" fn h_search(
 /// TODO (TBZ): explain the serialization in the doc
 /// - `additions`       : serialized list of new indexed values
 /// - `deletions`       : serialized list of removed indexed values
+/// - `entry_table_number` : number of different entry tables
 /// - `fetch_entry`     : callback used to fetch the Entry Table
 /// - `upsert_entry`    : callback used to upsert lines in the Entry Table
 /// - `insert_chain`    : callback used to insert lines in the Chain Table
@@ -165,17 +173,22 @@ pub unsafe extern "C" fn h_upsert(
     label_len: c_int,
     additions_ptr: *const c_char,
     deletions_ptr: *const c_char,
+    entry_table_number: c_uint,
     fetch_entry: FetchEntryTableCallback,
     upsert_entry: UpsertEntryTableCallback,
     insert_chain: InsertChainTableCallback,
 ) -> c_int {
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(master_key_bytes),
+        KeyingMaterial::try_from_bytes(master_key_bytes),
         "error re-serializing master secret key"
     );
+    if entry_table_number == 0 {
+        ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
+    }
 
     let findex = FindexUser {
+        entry_table_number: entry_table_number as usize,
         progress: None,
         fetch_all_entry_table_uids: None,
         fetch_entry: Some(fetch_entry),
@@ -219,6 +232,7 @@ pub unsafe extern "C" fn h_upsert(
 /// - `new_label`                       : public information used to derive UIDs
 /// - `num_reindexing_before_full_set`  : number of compact operation needed to
 ///   compact all the Chain Table
+/// - `entry_table_number`              : number of different entry tables
 /// - `fetch_entry`                     : callback used to fetch the Entry Table
 /// - `fetch_chain`                     : callback used to fetch the Chain Table
 /// - `update_lines`                    : callback used to update lines in both
@@ -234,6 +248,7 @@ pub unsafe extern "C" fn h_live_compact(
     master_key_ptr: *const u8,
     master_key_len: c_int,
     num_reindexing_before_full_set: c_int,
+    entry_table_number: c_uint,
     fetch_all_entry_table_uids: FetchAllEntryTableUidsCallback,
     fetch_entry: FetchEntryTableCallback,
     fetch_chain: FetchChainTableCallback,
@@ -250,14 +265,18 @@ pub unsafe extern "C" fn h_live_compact(
             )),
         "error converting num_reindexing_before_full_set"
     );
+    if entry_table_number == 0 {
+        ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
+    }
 
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(master_key_bytes),
+        KeyingMaterial::try_from_bytes(master_key_bytes),
         "error deserializing master secret key"
     );
 
     let mut findex = FindexUser {
+        entry_table_number: entry_table_number as usize,
         progress: None,
         fetch_all_entry_table_uids: Some(fetch_all_entry_table_uids),
         fetch_entry: Some(fetch_entry),
@@ -302,6 +321,7 @@ pub unsafe extern "C" fn h_live_compact(
 /// - `new_label`                       : public information used to derive UIDs
 /// - `num_reindexing_before_full_set`  : number of compact operation needed to
 ///   compact all the Chain Table
+/// - `entry_table_number`               : number of different entry tables
 /// - `fetch_entry`                     : callback used to fetch the Entry Table
 /// - `fetch_chain`                     : callback used to fetch the Chain Table
 /// - `update_lines`                    : callback used to update lines in both
@@ -320,6 +340,7 @@ pub unsafe extern "C" fn h_compact(
     new_label_ptr: *const u8,
     new_label_len: c_int,
     num_reindexing_before_full_set: c_int,
+    entry_table_number: c_uint,
     fetch_all_entry_table_uids: FetchAllEntryTableUidsCallback,
     fetch_entry: FetchEntryTableCallback,
     fetch_chain: FetchChainTableCallback,
@@ -336,18 +357,21 @@ pub unsafe extern "C" fn h_compact(
             )),
         "error converting num_reindexing_before_full_set"
     );
+    if entry_table_number == 0 {
+        ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
+    }
 
     let old_master_key_bytes =
         ffi_read_bytes!("master key", old_master_key_ptr, old_master_key_len);
     let old_master_key = ffi_unwrap!(
-        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(old_master_key_bytes),
+        KeyingMaterial::try_from_bytes(old_master_key_bytes),
         "error old deserializing master secret key"
     );
 
     let new_master_key_bytes =
         ffi_read_bytes!("new master key", new_master_key_ptr, new_master_key_len);
     let new_master_key = ffi_unwrap!(
-        KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(new_master_key_bytes),
+        KeyingMaterial::try_from_bytes(new_master_key_bytes),
         "error deserializing new master secret key"
     );
 
@@ -355,6 +379,7 @@ pub unsafe extern "C" fn h_compact(
     let new_label = Label::from(new_label_bytes);
 
     let mut findex = FindexUser {
+        entry_table_number: entry_table_number as usize,
         progress: None,
         fetch_all_entry_table_uids: Some(fetch_all_entry_table_uids),
         fetch_entry: Some(fetch_entry),

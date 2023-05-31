@@ -94,7 +94,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
     async fn fetch_entry_table(
         &self,
         entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexPyo3Error> {
+    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexPyo3Error> {
         Python::with_gil(|py| {
             let py_entry_uids = entry_table_uids
                 .iter()
@@ -104,11 +104,11 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
                 .fetch_entry
                 .call1(py, (py_entry_uids,))
                 .map_err(|e| FindexPyo3Error::Callback(format!("{e} (fetch_entry)")))?;
-            let py_result_table: HashMap<[u8; UID_LENGTH], Vec<u8>> = results
+            let py_result_table: Vec<([u8; UID_LENGTH], Vec<u8>)> = results
                 .extract(py)
                 .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (fetch_entry)")))?;
 
-            // Convert python result (HashMap<[u8; UID_LENGTH], Vec<u8>>) to
+            // Convert python result (Vec<(Uid<UID_LENGTH>, Vec<u8>)>) to
             // EncryptedEntryTable<UID_LENGTH>
             Ok(py_result_table
                 .into_iter()

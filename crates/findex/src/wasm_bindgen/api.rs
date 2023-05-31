@@ -5,9 +5,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 use cosmian_crypto_core::bytes_ser_de::Serializable;
-use cosmian_findex::{
-    parameters::MASTER_KEY_LENGTH, FindexSearch, FindexUpsert, KeyingMaterial, Keyword, Label,
-};
+use cosmian_findex::{FindexSearch, FindexUpsert, KeyingMaterial, Keyword, Label};
 use js_sys::{Array, Uint8Array};
 use wasm_bindgen::prelude::*;
 
@@ -39,7 +37,7 @@ pub async fn webassembly_search(
     fetch_entry: Fetch,
     fetch_chain: Fetch,
 ) -> Result<SearchResults, JsValue> {
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(&master_key.to_vec())
+    let master_key = KeyingMaterial::try_from_bytes(&master_key.to_vec())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex search, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
 
@@ -84,7 +82,7 @@ pub async fn webassembly_upsert(
     upsert_entry: Upsert,
     insert_chain: Insert,
 ) -> Result<(), JsValue> {
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(&master_key.to_vec())
+    let master_key = KeyingMaterial::try_from_bytes(&master_key.to_vec())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
     let additions = wasm_unwrap!(
@@ -128,10 +126,8 @@ pub async fn webassembly_search_cloud(
     base_url: Option<String>,
 ) -> Result<SearchResults, JsValue> {
     let mut findex_cloud = FindexCloud::new(&token, base_url)?;
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(
-        findex_cloud.token.findex_master_key.as_ref(),
-    )
-    .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
+    let master_key = KeyingMaterial::try_from_bytes(findex_cloud.token.findex_master_key.as_ref())
+        .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
 
     let label = Label::from(label_bytes.to_vec());
 
@@ -168,10 +164,8 @@ pub async fn webassembly_upsert_cloud(
 ) -> Result<(), JsValue> {
     let mut findex_cloud = FindexCloud::new(&token, base_url)?;
 
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(
-        findex_cloud.token.findex_master_key.as_ref(),
-    )
-    .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
+    let master_key = KeyingMaterial::try_from_bytes(findex_cloud.token.findex_master_key.as_ref())
+        .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
     let additions = wasm_unwrap!(
         to_indexed_values_to_keywords(&additions),

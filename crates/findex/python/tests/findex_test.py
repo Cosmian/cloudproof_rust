@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Sequence
 
 from cloudproof_findex import (
     IndexedValuesAndKeywords,
@@ -113,12 +113,12 @@ class FindexHashmap:
         self.chain_table: Dict[bytes, bytes] = {}
 
     # Create callback functions
-    def fetch_entry(self, uids: List[bytes]) -> Dict[bytes, bytes]:
+    def fetch_entry(self, uids: List[bytes]) -> Sequence[Tuple[bytes, bytes]]:
         """DB request to fetch entry_table elements"""
-        res = {}
+        res = []
         for uid in uids:
             if uid in self.entry_table:
-                res[uid] = self.entry_table[uid]
+                res.append((uid, self.entry_table[uid]))
         return res
 
     def fetch_all_entry_table_uids(self) -> Set[bytes]:
@@ -226,7 +226,9 @@ class TestFindex(unittest.TestCase):
             self.findex_backend.insert_chain,
         )
 
-        self.findex_interface.upsert_wrapper(self.msk, self.label, indexed_values_and_keywords, {})
+        self.findex_interface.upsert_wrapper(
+            self.msk, self.label, indexed_values_and_keywords, {}
+        )
         self.assertEqual(len(self.findex_backend.entry_table), 5)
         self.assertEqual(len(self.findex_backend.chain_table), 5)
 
@@ -264,7 +266,7 @@ class TestFindex(unittest.TestCase):
             Location.from_int(k): v for k, v in self.db.items()
         }
         self.findex_interface.upsert_wrapper(
-            self.msk, self.label,indexed_values_and_keywords, {}
+            self.msk, self.label, indexed_values_and_keywords, {}
         )
 
         # Adding custom keywords graph
@@ -290,7 +292,10 @@ class TestFindex(unittest.TestCase):
             return False
 
         res = self.findex_interface.search_wrapper(
-            self.msk, self.label, ['Mar'], progress_callback=false_progress_callback
+            self.msk,
+            self.label,
+            ['Mar'],
+            progress_callback=false_progress_callback,
         )
         # no locations returned since the progress_callback stopped the recursion
         self.assertEqual(len(res['Mar']), 0)

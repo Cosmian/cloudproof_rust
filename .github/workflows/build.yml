@@ -10,13 +10,13 @@ on:
 
 jobs:
   cloudproof_rust:
-    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@anonymization
+    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
     with:
       project-name: cloudproof_rust
       toolchain: nightly-2023-03-20
       kms-version: 4.3.3
-      branch-java: develop
+      branch-java: feature/multi_entry_tables
       branch-js: feature/anonymization
-      branch-flutter: develop
-      branch-python: feature/anonymization
+      branch-flutter: feature/multi_entry_tables
+      branch-python: feature/multi_entry_tables
     secrets: inherit

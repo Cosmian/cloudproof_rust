@@ -26,7 +26,7 @@ use crate::{
         },
         ErrorCode, FindexFfiError,
     },
-    ser_de::{deserialize_set, serialize_set},
+    ser_de::{deserialize_fetch_entry_table_results, deserialize_set, serialize_set},
 };
 
 impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
@@ -87,7 +87,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     async fn fetch_entry_table(
         &self,
         entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexFfiError> {
+    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexFfiError> {
         let fetch_entry = unwrap_callback!("fetch_entry", self, fetch_entry);
 
         let serialized_uids = wrapping_callback_ser_de_error_with_context!(
@@ -96,13 +96,16 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         );
         let res = fetch_callback(
             &serialized_uids,
-            get_serialized_encrypted_entry_table_size_bound(entry_table_uids.len()),
+            get_serialized_encrypted_entry_table_size_bound(
+                entry_table_uids.len(),
+                self.entry_table_number,
+            ),
             *fetch_entry,
             "fetch entries",
         )?;
 
         let encrypted_table = wrapping_callback_ser_de_error_with_context!(
-            EncryptedTable::try_from_bytes(&res),
+            deserialize_fetch_entry_table_results(&res),
             "deserializing entries from fetch entries callback"
         );
 
@@ -144,7 +147,10 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         );
 
         // Callback output
-        let allocation_size = get_serialized_encrypted_entry_table_size_bound(modifications.len());
+        let allocation_size = get_serialized_encrypted_entry_table_size_bound(
+            modifications.len(),
+            self.entry_table_number,
+        );
         let mut serialized_rejected_items = vec![0; allocation_size];
         let mut serialized_rejected_items_len = allocation_size as u32;
         let serialized_rejected_items_ptr =

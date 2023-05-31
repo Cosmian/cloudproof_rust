@@ -13,7 +13,7 @@ use js_sys::{Array, Object};
 use super::{
     progress_results_to_js,
     utils::{
-        encrypted_table_to_js_value, fetch_uids, js_value_to_encrypted_table,
+        encrypted_table_to_js_value, fetch_uids, js_value_to_entry_table_items,
         set_bytes_in_object_property,
     },
     FindexUser,
@@ -44,7 +44,7 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
     async fn fetch_entry_table(
         &self,
         entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexWasmError> {
+    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexWasmError> {
         let fetch_entry = unwrap_callback!(self, fetch_entry);
         fetch_uids(
             &entry_table_uids.iter().copied().collect(),
@@ -59,7 +59,16 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         chain_table_uids: HashSet<Uid<UID_LENGTH>>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexWasmError> {
         let fetch_chain = unwrap_callback!(self, fetch_chain);
-        fetch_uids(&chain_table_uids, fetch_chain, "fetchChains").await
+        let chain_table_items = fetch_uids(&chain_table_uids, fetch_chain, "fetchChains").await?;
+
+        // Convert the list of chains to `EncryptedTable`
+        let encrypted_table = EncryptedTable::try_from(chain_table_items).map_err(|e| {
+            FindexWasmError::Callback(format!(
+                "EncryptedTable deserialization failed in fetch_chain_table: {e:?}"
+            ))
+        })?;
+
+        Ok(encrypted_table)
     }
 
     async fn upsert_entry_table(
@@ -91,7 +100,17 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         }
 
         let result = callback!(upsert_entry, inputs);
-        js_value_to_encrypted_table(&result, "upsertEntries").map_err(FindexWasmError::from)
+        let fetch_entries_results = js_value_to_entry_table_items(&result, "upsertEntries")
+            .map_err(FindexWasmError::from)?;
+
+        // Convert the list of entries to `EncryptedTable`
+        let encrypted_table = EncryptedTable::try_from(fetch_entries_results).map_err(|e| {
+            FindexWasmError::Callback(format!(
+                "EncryptedTable deserialization failed in upsert_entry_table callback: {e:?}"
+            ))
+        })?;
+
+        Ok(encrypted_table)
     }
 
     async fn insert_chain_table(
