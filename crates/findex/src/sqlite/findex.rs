@@ -12,7 +12,7 @@ use cosmian_findex::{
 use rusqlite::{Connection, OptionalExtension, Result};
 
 use crate::{
-    ser_de::serialize_set,
+    ser_de::{deserialize_fetch_entry_table_results, serialize_set},
     sqlite::{
         utils::{prepare_statement, sqlite_fetch_entry_table_items},
         Error,
@@ -38,10 +38,10 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
     async fn fetch_entry_table(
         &self,
         entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, Error> {
+    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, Error> {
         let serialized_res =
             sqlite_fetch_entry_table_items(self.connection, &serialize_set(&entry_table_uids)?)?;
-        EncryptedTable::try_from_bytes(&serialized_res).map_err(Error::from)
+        deserialize_fetch_entry_table_results(&serialized_res).map_err(Error::from)
     }
 
     async fn fetch_chain_table(

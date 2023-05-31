@@ -24,7 +24,7 @@ use reqwest::Client;
 use wasm_bindgen::JsValue;
 
 use super::ser_de::serialize_set;
-use crate::ser_de::SerializableSetError;
+use crate::ser_de::{deserialize_fetch_entry_table_results, SerializableSetError};
 
 pub struct FindexCloud {
     pub(crate) token: Token,
@@ -474,12 +474,12 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
     async fn fetch_entry_table(
         &self,
         entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexCloudError> {
+    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexCloudError> {
         let serialized_uids = serialize_set(&entry_table_uids)?;
 
         let bytes = self.post(Callback::FetchEntries, serialized_uids).await?;
 
-        EncryptedTable::try_from_bytes(&bytes).map_err(FindexCloudError::from)
+        Ok(deserialize_fetch_entry_table_results(&bytes)?)
     }
 
     async fn fetch_chain_table(

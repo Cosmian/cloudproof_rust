@@ -157,7 +157,7 @@ pub type ListRemovedLocationsCallback = extern "C" fn(
 ) -> c_int;
 
 /// See
-/// [`FindexCallbacks::filter_remove_locations()`](cosmian_findex::FindexCallbacks::filter_remove_locations).
+/// [`FindexCallbacks::filter_removed_locations()`](cosmian_findex::FindexCallbacks::filter_removed_locations).
 ///
 /// # Serialization
 ///

@@ -1,6 +1,12 @@
 //! Meta crate in order to merge other crates
 
 #[cfg(feature = "ffi")]
+pub use cloudproof_anonymization::ffi as anonymization_ffi;
+#[cfg(feature = "python")]
+pub use cloudproof_anonymization::pyo3 as anonymization_python;
+#[cfg(feature = "wasm_bindgen")]
+pub use cloudproof_anonymization::wasm_bindgen as anonymization_wasm_bindgen;
+#[cfg(feature = "ffi")]
 pub use cloudproof_cover_crypt::ffi as cover_crypt_ffi;
 #[cfg(feature = "python")]
 pub use cloudproof_cover_crypt::pyo3 as cover_crypt_python;

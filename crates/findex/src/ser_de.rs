@@ -4,7 +4,7 @@ use cosmian_crypto_core::{
     bytes_ser_de::{Deserializer, Serializable, Serializer},
     CryptoCoreError,
 };
-use cosmian_findex::CoreError as FindexCoreError;
+use cosmian_findex::{parameters::UID_LENGTH, CoreError as FindexCoreError, Uid};
 
 #[derive(Debug)]
 pub enum SerializableSetError {
@@ -76,4 +76,18 @@ where
             "Remaining bytes after set deserialization".to_string(),
         ))
     }
+}
+
+pub(crate) fn deserialize_fetch_entry_table_results(
+    bytes: &[u8],
+) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, SerializableSetError> {
+    let mut de = Deserializer::new(bytes);
+    let length = <usize>::try_from(de.read_leb128_u64()?)?;
+    let mut items = Vec::with_capacity(length);
+    for _ in 0..length {
+        let key = Uid::from(de.read_array()?);
+        let value = de.read_vec()?;
+        items.push((key, value));
+    }
+    Ok(items)
 }

@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## [2.0.0] - 2023-06-01
 
 ### Features
 
@@ -16,11 +16,18 @@ All notable changes to this project will be documented in this file.
     - searching for a non indexed keyword leads to an empty `HashSet` for this
       keyword in the search results instead of this keyword being missing from
       the results.
+    - support multiple fetch entry tables:
+      - Add entry table number in FFI functions in order to pre-allocate the output buffer size in fetching callbacks
   - change upsert interface:
     - add deletions
   - change compact interface:
     - change parameter order
   - add compact live behind the `compact_live` feature
+- add data anonymization methods such as:
+  - noise methods
+  - hash methods
+  - number methods
+  - word methods
 
 ## [1.3.0] - 2023-04-26
 

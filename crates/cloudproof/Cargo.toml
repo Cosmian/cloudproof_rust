@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof"
-version = "1.3.0"
+version = "2.0.0"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license = "MIT/Apache-2.0"
@@ -13,22 +13,26 @@ name = "cloudproof"
 [features]
 cloud = ["cloudproof_findex/cloud"]
 ffi = [
+  "cloudproof_anonymization/ffi",
   "cloudproof_cover_crypt/ffi",
   "cloudproof_findex/ffi",
   "cloudproof_fpe/ffi",
 ]
 wasm_bindgen = [
+  "cloudproof_anonymization/wasm_bindgen",
   "cloudproof_cover_crypt/wasm_bindgen",
   "cloudproof_findex/wasm_bindgen",
   "cloudproof_fpe/wasm_bindgen",
 ]
 default = [
+  "cloudproof_anonymization/default",
   "cloudproof_cover_crypt/default",
   "cloudproof_findex/default",
   "cloudproof_fpe/default",
 ]
 
 [dependencies]
+cloudproof_anonymization = { path = "../anonymization", optional = true }
 cloudproof_cover_crypt = { path = "../cover_crypt", optional = true }
 cloudproof_findex = { path = "../findex", optional = true }
 cloudproof_fpe = { path = "../fpe", optional = true }
