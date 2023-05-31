@@ -9,23 +9,23 @@ use super::datetime_to_rfc3339;
 use crate::{ano_error, core::AnoError};
 
 // Represent the different Noise methods.
-pub enum NoiseMethod<N>
+pub enum NoiseMethod<F>
 where
-    N: Float + rand_distr::uniform::SampleUniform,
-    StandardNormal: Distribution<N>,
+    F: Float + rand_distr::uniform::SampleUniform,
+    StandardNormal: Distribution<F>,
 {
-    Gaussian(Normal<N>),
-    Laplace(Laplace<N>),
-    Uniform(Uniform<N>),
+    Gaussian(Normal<F>),
+    Laplace(Laplace<F>),
+    Uniform(Uniform<F>),
 }
 
-impl<N> NoiseMethod<N>
+impl<F> NoiseMethod<F>
 where
-    N: Float + rand_distr::uniform::SampleUniform,
-    Standard: Distribution<N>,
-    StandardNormal: Distribution<N>,
+    F: Float + rand_distr::uniform::SampleUniform,
+    Standard: Distribution<F>,
+    StandardNormal: Distribution<F>,
 {
-    fn sample<R: CryptoRng + Rng + ?Sized>(&self, rng: &mut R) -> N {
+    fn sample<R: CryptoRng + Rng + ?Sized>(&self, rng: &mut R) -> F {
         match self {
             Self::Gaussian(distr) => distr.sample(rng),
             Self::Laplace(distr) => distr.sample(rng),
@@ -48,56 +48,56 @@ where
 ///
 /// let v = laplace.sample(&mut rng);
 /// ```
-pub struct Laplace<N> {
-    mean: N,
-    beta: N,
+pub struct Laplace<F> {
+    mean: F,
+    beta: F,
 }
 
-impl<N: Float> Laplace<N> {
+impl<F: Float> Laplace<F> {
     /// Creates a new Laplace distribution with a given mean and beta parameter.
     ///
     /// # Arguments
     ///
     /// * `mean` - The mean of the Laplace distribution.
     /// * `beta` - The scale parameter of the Laplace distribution.
-    pub const fn new(mean: N, beta: N) -> Self {
+    pub const fn new(mean: F, beta: F) -> Self {
         Self { mean, beta }
     }
 }
 
-impl<N: Float> Distribution<N> for Laplace<N>
+impl<F: Float> Distribution<F> for Laplace<F>
 where
-    Standard: Distribution<N>,
+    Standard: Distribution<F>,
 {
     /// Generates a random number following the Laplace distribution.
     ///
     /// # Arguments
     ///
     /// * `rng` - The random number generator used to generate the number.
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> N {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> F {
         let p = rng.gen();
         if rng.gen_bool(0.5) {
-            self.mean - self.beta * N::ln(N::one() - p)
+            self.mean - self.beta * F::ln(F::one() - p)
         } else {
-            self.mean + self.beta * N::ln(p)
+            self.mean + self.beta * F::ln(p)
         }
     }
 }
 
-pub struct NoiseGenerator<N>
+pub struct NoiseGenerator<F>
 where
-    N: Float + rand_distr::uniform::SampleUniform,
-    rand_distr::StandardNormal: rand_distr::Distribution<N>,
+    F: Float + rand_distr::uniform::SampleUniform,
+    rand_distr::StandardNormal: rand_distr::Distribution<F>,
 {
-    method: NoiseMethod<N>,
+    method: NoiseMethod<F>,
     rng: Arc<Mutex<CsRng>>,
 }
 
-impl<N> NoiseGenerator<N>
+impl<F> NoiseGenerator<F>
 where
-    N: Float + rand_distr::uniform::SampleUniform,
-    Standard: Distribution<N>,
-    StandardNormal: Distribution<N>,
+    F: Float + rand_distr::uniform::SampleUniform,
+    Standard: Distribution<F>,
+    StandardNormal: Distribution<F>,
 {
     /// Instantiate a `NoiseGenerator` using mean and standard deviation.
     ///
@@ -107,7 +107,7 @@ where
     ///   "Laplace")
     /// * `mean` - mean of the noise distribution
     /// * `std_dev` - the standard deviation of the noise distribution.
-    pub fn new_with_parameters(method_name: &str, mean: N, std_dev: N) -> Result<Self, AnoError> {
+    pub fn new_with_parameters(method_name: &str, mean: F, std_dev: F) -> Result<Self, AnoError> {
         if std_dev.is_zero() || std_dev.is_sign_negative() {
             return Err(ano_error!(
                 "Standard Deviation must be greater than 0 to generate noise."
@@ -119,8 +119,8 @@ where
             "Gaussian" => Ok(NoiseMethod::Gaussian(Normal::new(mean, std_dev)?)),
             "Laplace" => {
                 // σ = β * sqrt(2)
-                let beta = std_dev / N::from(2).unwrap().sqrt();
-                Ok(NoiseMethod::Laplace(Laplace::<N>::new(mean, beta)))
+                let beta = std_dev / F::from(2).unwrap().sqrt();
+                Ok(NoiseMethod::Laplace(Laplace::<F>::new(mean, beta)))
             }
             _ => Err(ano_error!("{method_name} is not a supported distribution.")),
         }?;
@@ -142,8 +142,8 @@ where
     ///   values.
     pub fn new_with_bounds(
         method_name: &str,
-        min_bound: N,
-        max_bound: N,
+        min_bound: F,
+        max_bound: F,
     ) -> Result<Self, AnoError> {
         if min_bound >= max_bound {
             return Err(ano_error!("Min bound must be inferior to Max bound."));
@@ -152,16 +152,16 @@ where
         // Select the appropriate distribution method
         let method = match method_name {
             "Gaussian" => {
-                let mean = (max_bound + min_bound) / N::from(2).unwrap();
+                let mean = (max_bound + min_bound) / F::from(2).unwrap();
                 // 5σ => 99.99994% of values will be in the bounds
-                let std_dev = (mean - min_bound) / N::from(5).unwrap();
+                let std_dev = (mean - min_bound) / F::from(5).unwrap();
                 Ok(NoiseMethod::Gaussian(Normal::new(mean, std_dev)?))
             }
             "Laplace" => {
-                let mean = (max_bound + min_bound) / N::from(2).unwrap();
+                let mean = (max_bound + min_bound) / F::from(2).unwrap();
                 // confidence interval at 1-a: μ ± β * ln(1/a)
-                let beta = (mean - min_bound) / -N::ln(N::from(0.00005).unwrap());
-                Ok(NoiseMethod::Laplace(Laplace::<N>::new(mean, beta)))
+                let beta = (mean - min_bound) / -F::ln(F::from(0.00005).unwrap());
+                Ok(NoiseMethod::Laplace(Laplace::<F>::new(mean, beta)))
             }
             "Uniform" => Ok(NoiseMethod::Uniform(Uniform::new(min_bound, max_bound))),
             _ => Err(ano_error!("No supported distribution {}.", method_name)),
@@ -181,7 +181,7 @@ where
     /// # Returns
     ///
     /// Original data with added noise
-    pub fn apply_on_float(&mut self, data: N) -> N {
+    pub fn apply_on_float(&mut self, data: F) -> F {
         // Sample noise
         let noise = {
             let mut rng = self.rng.lock().expect("failed locking the RNG.");
@@ -203,7 +203,7 @@ where
     /// # Returns
     ///
     /// A vector containing the original data with added noise
-    pub fn apply_correlated_noise_on_floats(&mut self, data: &[N], factors: &[N]) -> Vec<N> {
+    pub fn apply_correlated_noise_on_floats(&mut self, data: &[F], factors: &[F]) -> Vec<F> {
         // Sample noise once
         let noise = {
             let mut rng = self.rng.lock().expect("failed locking the RNG.");
