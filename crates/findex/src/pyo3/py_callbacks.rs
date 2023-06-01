@@ -265,7 +265,9 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
         &self,
         _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexPyo3Error> {
-        todo!()
+        Err(FindexPyo3Error::Callback(
+            "filter_removed_locations not implemented".to_string(),
+        ))
     }
 
     #[cfg(feature = "compact_live")]
@@ -273,7 +275,9 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
         &mut self,
         _uids: HashSet<Uid<UID_LENGTH>>,
     ) -> Result<(), FindexPyo3Error> {
-        todo!()
+        Err(FindexPyo3Error::Callback(
+            "delete_chain not implemented".to_string(),
+        ))
     }
 }
 
