@@ -78,7 +78,7 @@ where
     }
 }
 
-pub(crate) fn deserialize_fetch_entry_table_results(
+pub fn deserialize_fetch_entry_table_results(
     bytes: &[u8],
 ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, SerializableSetError> {
     let mut de = Deserializer::new(bytes);

@@ -468,7 +468,9 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
     async fn fetch_all_entry_table_uids(
         &self,
     ) -> Result<HashSet<Uid<UID_LENGTH>>, FindexCloudError> {
-        todo!("fetch all entry table uids not implemented in WASM")
+        Err(FindexCloudError::Callback {
+            error: "fetch all entry table uids not implemented in WASM".to_string(),
+        })
     }
 
     async fn fetch_entry_table(
@@ -523,14 +525,18 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexCloudError> {
-        todo!("update lines not implemented in WASM")
+        Err(FindexCloudError::Callback {
+            error: "update lines not implemented in WASM".to_string(),
+        })
     }
 
     fn list_removed_locations(
         &self,
         _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexCloudError> {
-        todo!("list removed locations not implemented in WASM")
+        Err(FindexCloudError::Callback {
+            error: "list removed locations not implemented in WASM".to_string(),
+        })
     }
 
     #[cfg(feature = "compact_live")]
@@ -538,7 +544,9 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
         &self,
         _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexCloudError> {
-        todo!("filter removed locations not implemented in WASM")
+        Err(FindexCloudError::Callback {
+            error: "filter removed locations not implemented in WASM".to_string(),
+        })
     }
 
     #[cfg(feature = "compact_live")]
@@ -546,7 +554,9 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
         &mut self,
         _uids: HashSet<Uid<UID_LENGTH>>,
     ) -> Result<(), FindexCloudError> {
-        todo!("delete chains not implemented in WASM")
+        Err(FindexCloudError::Callback {
+            error: "delete chains not implemented in WASM".to_string(),
+        })
     }
 }
 

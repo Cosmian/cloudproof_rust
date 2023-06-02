@@ -32,7 +32,9 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
     }
 
     async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, Error> {
-        todo!("`FindexCompact` is not implemented for `RusqliteFindex`")
+        Err(Error::Other(
+            "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
+        ))
     }
 
     async fn fetch_entry_table(
@@ -114,7 +116,9 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), Error> {
         // TODO (TBZ): `FindexCompact` is not implemented for `RusqliteFindex`.
-        todo!("`FindexCompact` is not implemented for `RusqliteFindex`")
+        Err(Error::Other(
+            "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
+        ))
     }
 
     fn list_removed_locations(
@@ -122,21 +126,27 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, Error> {
         // TODO (TBZ): `FindexCompact` is not implemented for `RusqliteFindex`.
-        todo!("`FindexCompact` is not implemented for `RusqliteFindex`")
+        Err(Error::Other(
+            "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
+        ))
     }
 
     fn filter_removed_locations(
         &self,
         _locations: HashSet<Location>,
     ) -> std::result::Result<HashSet<Location>, Error> {
-        todo!("`FindexCompact` is not implemented for `RusqliteFindex`")
+        Err(Error::Other(
+            "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
+        ))
     }
 
     async fn delete_chain(
         &mut self,
         _uids: HashSet<Uid<UID_LENGTH>>,
     ) -> std::result::Result<(), Error> {
-        todo!("`FindexCompact` is not implemented for `RusqliteFindex`")
+        Err(Error::Other(
+            "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
+        ))
     }
 }
 

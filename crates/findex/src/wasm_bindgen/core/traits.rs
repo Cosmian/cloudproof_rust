@@ -38,7 +38,9 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
     async fn fetch_all_entry_table_uids(
         &self,
     ) -> Result<HashSet<Uid<UID_LENGTH>>, FindexWasmError> {
-        todo!("fetch all entry table uids not implemented in WASM")
+        Err(FindexWasmError::Callback(
+            "fetch all entry table uids not implemented in WASM".to_string(),
+        ))
     }
 
     async fn fetch_entry_table(
@@ -134,14 +136,18 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexWasmError> {
-        todo!("update lines not implemented in WASM")
+        Err(FindexWasmError::Callback(
+            "update lines not implemented in WASM".to_string(),
+        ))
     }
 
     fn list_removed_locations(
         &self,
         _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexWasmError> {
-        todo!("list removed locations not implemented in WASM")
+        Err(FindexWasmError::Callback(
+            "list removed locations not implemented in WASM".to_string(),
+        ))
     }
 
     #[cfg(feature = "compact_live")]
@@ -149,7 +155,9 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         &self,
         _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexWasmError> {
-        todo!("filter removed locations not implemented in WASM")
+        Err(FindexWasmError::Callback(
+            "filter removed locations not implemented in WASM".to_string(),
+        ))
     }
 
     #[cfg(feature = "compact_live")]
@@ -157,7 +165,9 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         &mut self,
         _uids: HashSet<Uid<UID_LENGTH>>,
     ) -> Result<(), FindexWasmError> {
-        todo!("delete chain not implemented in WASM")
+        Err(FindexWasmError::Callback(
+            "delete chain not implemented in WASM".to_string(),
+        ))
     }
 }
 
