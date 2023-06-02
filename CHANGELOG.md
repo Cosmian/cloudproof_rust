@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Bug Fixes
 
 - Re-include feature cloud in cloudproof crate
+- Use Findex v4.0.1 to fix race condition in fetch_chains()
 
 ## [2.0.0] - 2023-06-01
 

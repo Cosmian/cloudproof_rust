@@ -27,7 +27,7 @@ default = []
 
 [dependencies]
 cosmian_crypto_core.workspace = true
-cosmian_findex = "4.0.0"
+cosmian_findex = "4.0.1"
 
 # Optional dependencies
 base64 = { workspace = true, optional = true }
