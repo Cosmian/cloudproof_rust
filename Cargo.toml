@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "crates/anonymization",
   "crates/cloudproof",
   "crates/cover_crypt",
   "crates/ffi_utils",
@@ -8,9 +9,13 @@ members = [
 ]
 
 [workspace.dependencies]
+base64 = "0.21.0"
 cosmian_crypto_core = "7.0"
+cosmian_ffi_utils = "0.1.1"
+hex = "0.4.3"
 js-sys = "0.3"
 pyo3 = { version = "0.18", features = ["extension-module", "abi3", "abi3-py37", "generate-import-lib"] }
+rand = "0.8"
 wasm-bindgen = "0.2.84"
 
 [profile.release]

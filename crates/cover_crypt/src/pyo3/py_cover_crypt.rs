@@ -44,10 +44,10 @@ impl SymmetricKey {
 
     /// Reads key from bytes
     #[staticmethod]
-    pub fn from_bytes(key_bytes: [u8; DEM::KEY_LENGTH]) -> PyResult<Self> {
-        Ok(Self(<DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::from_bytes(
+    pub fn from_bytes(key_bytes: [u8; DEM::KEY_LENGTH]) -> Self {
+        Self(<DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::from_bytes(
             key_bytes,
-        )))
+        ))
     }
 }
 

@@ -11,11 +11,11 @@ use cosmian_crypto_core::{bytes_ser_de::Serializable, reexport::rand_core::Seeda
 use cosmian_findex::{
     kmac,
     parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH, KWI_LENGTH,
-        MASTER_KEY_LENGTH, TABLE_WIDTH, UID_LENGTH,
+        DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
+        KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
-    CoreError as FindexCoreError, EncryptedTable, FindexCallbacks, FindexSearch, FindexUpsert,
-    IndexedValue, KeyingMaterial, Keyword, Location, Uid, UpsertData,
+    CoreError as FindexCoreError, EncryptedTable, FetchChains, FindexCallbacks, FindexSearch,
+    FindexUpsert, IndexedValue, KeyingMaterial, Keyword, Location, Uid, UpsertData,
 };
 #[cfg(feature = "wasm_bindgen")]
 use js_sys::Date;
@@ -24,7 +24,7 @@ use reqwest::Client;
 use wasm_bindgen::JsValue;
 
 use super::ser_de::serialize_set;
-use crate::ser_de::SerializableSetError;
+use crate::ser_de::{deserialize_fetch_entry_table_results, SerializableSetError};
 
 pub struct FindexCloud {
     pub(crate) token: Token,
@@ -70,6 +70,9 @@ pub enum FindexCloudError {
         error: String,
     },
 }
+
+#[cfg(feature = "ffi")]
+impl crate::ffi::error::ToErrorCode for FindexCloudError {}
 
 impl Display for FindexCloudError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -244,7 +247,7 @@ impl Token {
         insert_chains_seed: KeyingMaterial<SIGNATURE_SEED_LENGTH>,
     ) -> Result<Self, FindexCloudError> {
         let mut rng = CsRng::from_entropy();
-        let findex_master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::new(&mut rng);
+        let findex_master_key = KeyingMaterial::new(&mut rng);
 
         Ok(Self {
             index_id,
@@ -428,7 +431,7 @@ impl FindexCloud {
             .send()
             .await
             .map_err(|err| FindexCloudError::Callback {
-                error: format!("Impossible to send the request to FindexCloud: {err}"),
+                error: format!("Unable to send the request to FindexCloud: {err}"),
             })?;
 
         if !response.status().is_success() {
@@ -462,22 +465,30 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
         Ok(true)
     }
 
+    async fn fetch_all_entry_table_uids(
+        &self,
+    ) -> Result<HashSet<Uid<UID_LENGTH>>, FindexCloudError> {
+        Err(FindexCloudError::Callback {
+            error: "fetch all entry table uids not implemented in WASM".to_string(),
+        })
+    }
+
     async fn fetch_entry_table(
         &self,
-        entry_table_uids: &HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<EncryptedTable<UID_LENGTH>, FindexCloudError> {
-        let serialized_uids = serialize_set(entry_table_uids)?;
+        entry_table_uids: HashSet<Uid<UID_LENGTH>>,
+    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexCloudError> {
+        let serialized_uids = serialize_set(&entry_table_uids)?;
 
         let bytes = self.post(Callback::FetchEntries, serialized_uids).await?;
 
-        EncryptedTable::try_from_bytes(&bytes).map_err(FindexCloudError::from)
+        Ok(deserialize_fetch_entry_table_results(&bytes)?)
     }
 
     async fn fetch_chain_table(
         &self,
-        chain_table_uids: &HashSet<Uid<UID_LENGTH>>,
+        chain_table_uids: HashSet<Uid<UID_LENGTH>>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexCloudError> {
-        let serialized_uids = serialize_set(chain_table_uids)?;
+        let serialized_uids = serialize_set(&chain_table_uids)?;
 
         let bytes = self.post(Callback::FetchChains, serialized_uids).await?;
 
@@ -486,7 +497,7 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
 
     async fn upsert_entry_table(
         &mut self,
-        items: &UpsertData<UID_LENGTH>,
+        items: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexCloudError> {
         let serialized_upsert = items.try_to_bytes()?;
 
@@ -499,7 +510,7 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
 
     async fn insert_chain_table(
         &mut self,
-        items: &EncryptedTable<UID_LENGTH>,
+        items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexCloudError> {
         let serialized_insert = items.try_to_bytes()?;
 
@@ -514,28 +525,59 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexCloudError> {
-        todo!("update lines not implemented in WASM")
+        Err(FindexCloudError::Callback {
+            error: "update lines not implemented in WASM".to_string(),
+        })
     }
 
     fn list_removed_locations(
         &self,
-        _locations: &HashSet<Location>,
+        _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexCloudError> {
-        todo!("list removed locations not implemented in WASM")
+        Err(FindexCloudError::Callback {
+            error: "list removed locations not implemented in WASM".to_string(),
+        })
     }
 
-    async fn fetch_all_entry_table_uids(
+    #[cfg(feature = "compact_live")]
+    fn filter_removed_locations(
         &self,
-    ) -> Result<HashSet<Uid<UID_LENGTH>>, FindexCloudError> {
-        todo!("fetch all entry table uids not implemented in WASM")
+        _locations: HashSet<Location>,
+    ) -> Result<HashSet<Location>, FindexCloudError> {
+        Err(FindexCloudError::Callback {
+            error: "filter removed locations not implemented in WASM".to_string(),
+        })
     }
+
+    #[cfg(feature = "compact_live")]
+    async fn delete_chain(
+        &mut self,
+        _uids: HashSet<Uid<UID_LENGTH>>,
+    ) -> Result<(), FindexCloudError> {
+        Err(FindexCloudError::Callback {
+            error: "delete chains not implemented in WASM".to_string(),
+        })
+    }
+}
+
+impl
+    FetchChains<
+        UID_LENGTH,
+        BLOCK_LENGTH,
+        CHAIN_TABLE_WIDTH,
+        KWI_LENGTH,
+        DEM_KEY_LENGTH,
+        DemScheme,
+        FindexCloudError,
+    > for FindexCloud
+{
 }
 
 impl
     FindexSearch<
         UID_LENGTH,
         BLOCK_LENGTH,
-        TABLE_WIDTH,
+        CHAIN_TABLE_WIDTH,
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
@@ -551,7 +593,7 @@ impl
     FindexUpsert<
         UID_LENGTH,
         BLOCK_LENGTH,
-        TABLE_WIDTH,
+        CHAIN_TABLE_WIDTH,
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,

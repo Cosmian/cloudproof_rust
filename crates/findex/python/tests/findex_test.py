@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Sequence
 
 from cloudproof_findex import (
     IndexedValuesAndKeywords,
@@ -113,12 +113,12 @@ class FindexHashmap:
         self.chain_table: Dict[bytes, bytes] = {}
 
     # Create callback functions
-    def fetch_entry(self, uids: List[bytes]) -> Dict[bytes, bytes]:
+    def fetch_entry(self, uids: List[bytes]) -> Sequence[Tuple[bytes, bytes]]:
         """DB request to fetch entry_table elements"""
-        res = {}
+        res = []
         for uid in uids:
             if uid in self.entry_table:
-                res[uid] = self.entry_table[uid]
+                res.append((uid, self.entry_table[uid]))
         return res
 
     def fetch_all_entry_table_uids(self) -> Set[bytes]:
@@ -216,7 +216,7 @@ class TestFindex(unittest.TestCase):
         # Calling Upsert without setting the proper callbacks will raise an Exception
         with self.assertRaises(Exception):
             self.findex_interface.upsert_wrapper(
-                indexed_values_and_keywords, self.msk, self.label
+                self.msk, self.label, indexed_values_and_keywords, {}
             )
 
         # Set upsert callbacks here
@@ -227,7 +227,7 @@ class TestFindex(unittest.TestCase):
         )
 
         self.findex_interface.upsert_wrapper(
-            indexed_values_and_keywords, self.msk, self.label
+            self.msk, self.label, indexed_values_and_keywords, {}
         )
         self.assertEqual(len(self.findex_backend.entry_table), 5)
         self.assertEqual(len(self.findex_backend.chain_table), 5)
@@ -239,14 +239,14 @@ class TestFindex(unittest.TestCase):
         )
 
         res = self.findex_interface.search_wrapper(
-            [Keyword.from_bytes(b'Martial')], self.msk, self.label
+            self.msk, self.label, [Keyword.from_bytes(b'Martial')]
         )
         self.assertEqual(len(res), 1)
         self.assertEqual(len(res[Keyword.from_string('Martial')]), 1)
         self.assertEqual(int(res['Martial'][0]), 2)
 
         res = self.findex_interface.search_wrapper(
-            ['Sheperd', 'Wilkins'], self.msk, self.label
+            self.msk, self.label, ['Sheperd', 'Wilkins']
         )
         self.assertEqual(len(res['Sheperd']), 2)
         self.assertEqual(len(res['Wilkins']), 1)
@@ -266,7 +266,7 @@ class TestFindex(unittest.TestCase):
             Location.from_int(k): v for k, v in self.db.items()
         }
         self.findex_interface.upsert_wrapper(
-            indexed_values_and_keywords, self.msk, self.label
+            self.msk, self.label, indexed_values_and_keywords, {}
         )
 
         # Adding custom keywords graph
@@ -277,12 +277,12 @@ class TestFindex(unittest.TestCase):
             Keyword.from_string('Martia'): ['Marti'],
             Keyword.from_string('Martial'): ['Martia'],
         }
-        self.findex_interface.upsert_wrapper(graph, self.msk, self.label)
+        self.findex_interface.upsert_wrapper(self.msk, self.label, graph, {})
 
         self.assertEqual(len(self.findex_backend.entry_table), 9)
         self.assertEqual(len(self.findex_backend.chain_table), 9)
 
-        res = self.findex_interface.search_wrapper(['Mar'], self.msk, self.label)
+        res = self.findex_interface.search_wrapper(self.msk, self.label, ['Mar'])
         # 2 names starting with Mar
         self.assertEqual(len(res['Mar']), 2)
 
@@ -292,7 +292,10 @@ class TestFindex(unittest.TestCase):
             return False
 
         res = self.findex_interface.search_wrapper(
-            ['Mar'], self.msk, self.label, progress_callback=false_progress_callback
+            self.msk,
+            self.label,
+            ['Mar'],
+            progress_callback=false_progress_callback,
         )
         # no locations returned since the progress_callback stopped the recursion
         self.assertEqual(len(res['Mar']), 0)
@@ -303,9 +306,9 @@ class TestFindex(unittest.TestCase):
             return True
 
         res = self.findex_interface.search_wrapper(
-            ['Mar'],
             self.msk,
             self.label,
+            ['Mar'],
             progress_callback=early_stop_progress_callback,
         )
         # only one location found after early stopping
@@ -334,31 +337,31 @@ class TestFindex(unittest.TestCase):
             Location.from_int(k): v for k, v in self.db.items()
         }
         self.findex_interface.upsert_wrapper(
-            indexed_values_and_keywords, self.msk, self.label
+            self.msk, self.label, indexed_values_and_keywords, {}
         )
 
         new_label = Label.random()
-        res = self.findex_interface.search_wrapper(['Sheperd'], self.msk, new_label)
+        res = self.findex_interface.search_wrapper(self.msk, new_label, ['Sheperd'])
         # new_label cannot search before compacting
-        self.assertEqual(len(res), 0)
+        self.assertEqual(len(res['Sheperd']), 0)
 
         # removing 2nd db line
         del self.db[2]
-        self.findex_interface.compact_wrapper(1, self.msk, self.msk, new_label)
+        self.findex_interface.compact_wrapper(self.msk, self.msk, new_label, 1)
 
         # now new_label can perform search
-        res = self.findex_interface.search_wrapper(['Sheperd'], self.msk, new_label)
+        res = self.findex_interface.search_wrapper(self.msk, new_label, ['Sheperd'])
         self.assertEqual(len(res['Sheperd']), 2)
         # but not the previous label
-        res = self.findex_interface.search_wrapper(['Sheperd'], self.msk, self.label)
-        self.assertEqual(len(res), 0)
+        res = self.findex_interface.search_wrapper(self.msk, self.label, ['Sheperd'])
+        self.assertEqual(len(res['Sheperd']), 0)
 
         # and the keywords corresponding to the 2nd line have been removed
         res = self.findex_interface.search_wrapper(
-            ['Martial', 'Wilkins'], self.msk, new_label
+            self.msk, new_label, ['Martial', 'Wilkins']
         )
-        assert 'Martial' not in res
-        assert 'Wilkins' not in res
+        assert len(res['Martial']) == 0
+        assert len(res['Wilkins']) == 0
 
 
 if __name__ == '__main__':

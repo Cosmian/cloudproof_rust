@@ -1,0 +1,45 @@
+[package]
+name = "cloudproof_anonymization"
+version = "0.1.0"
+authors = [
+  "Hugo Rosenkranz-costa<hugo.rosenkranz@cosmian.com>",
+]
+edition = "2021"
+license = "MIT/Apache-2.0"
+description = "Cosmian Cloudproof Anonymization library"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "cloudproof_anonymization"
+
+[features]
+ffi = ["cosmian_ffi_utils"]
+python = ["pyo3"]
+wasm_bindgen = ["js-sys", "wasm-bindgen"]
+default = []
+
+# waiting for ffi and js
+[package.metadata.cargo-udeps.ignore]
+normal = ["cosmian_ffi_utils", "js-sys", "wasm-bindgen"]
+
+[dependencies]
+argon2 = "0.5"
+base64 = { workspace = true }
+chrono = { version = "0.4", default-features = false, features = ["clock", "wasmbind"] }
+cosmian_crypto_core = { workspace = true }
+hex = { workspace = true }
+rand = { workspace = true }
+rand_distr = "0.4"
+regex = "1.7"
+sha2 = "0.10"
+tiny-keccak = { version = "2.0.0", features = ["sha3"] }
+
+# Optional dependencies
+cosmian_ffi_utils = { workspace = true, optional = true }
+js-sys = { workspace = true, optional = true }
+pyo3 = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+
+[dev-dependencies]
+approx = "0.5.1"
+wasm-bindgen-test = "0.3.34"

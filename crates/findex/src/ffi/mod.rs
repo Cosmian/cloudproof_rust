@@ -1,17 +1,10 @@
 //! Defines the FFI interface for Findex.
 
-use ::core::{fmt::Display, num::TryFromIntError};
+use std::num::TryFromIntError;
 
-use crate::ser_de::SerializableSetError;
+use ::core::fmt::Display;
 
-/// Maximum number of bytes used by a LEB128 encoding.
-const LEB128_MAXIMUM_ENCODED_BYTES_NUMBER: usize = 8;
-
-/// Limit on the recursion to use when none is provided.
-// TODO (TBZ): is this parameter really necessary? It is used when the
-// `max_depth` parameter given is less than 0 => shouldn't an error be returned
-// instead ?
-pub const MAX_DEPTH: usize = 100; // 100 should always be enough
+use self::error::ToErrorCode;
 
 #[repr(i32)]
 #[derive(Debug)]
@@ -22,56 +15,119 @@ pub const MAX_DEPTH: usize = 100; // 100 should always be enough
 /// an exception during a callback, save this exception and re-report this
 /// exception at the end of the main call if the response is 42).
 pub enum ErrorCode {
-    Success = 0,
+    Success,
 
     /// <https://github.com/Cosmian/findex/issues/14>
     /// We use 1 here because we used to always retry in case of non-zero error
     /// code. We may want to change this in future major release (reserve 1
     /// for error and specify another error code for asking for a bigger
     /// buffer).
-    BufferTooSmall = 1,
+    BufferTooSmall,
 
-    MissingCallback = 2,
+    MissingCallback,
 
-    SerializationError = 3,
+    SerializationError,
+
+    Other(i32),
 }
 
-macro_rules! to_error_with_code {
-    ($expr:expr, $code:expr) => {
-        $expr.map_err(|e| FindexFfiError::CallbackErrorCode {
-            name: e.to_string(),
-            code: $code as i32,
+impl ErrorCode {
+    #[must_use]
+    pub fn code(&self) -> i32 {
+        match self {
+            Self::Success => 0,
+            Self::BufferTooSmall => 1,
+            Self::MissingCallback => 2,
+            Self::SerializationError => 3,
+            Self::Other(code) => *code,
+        }
+    }
+}
+
+macro_rules! wrapping_callback_ser_de_error_with_context {
+    ($result:expr, $context:literal) => {
+        $result.map_err(|e| FindexFfiError::WrappingCallbackSerDeError {
+            context: $context.to_owned(),
+            error: e.to_string(),
+        })?
+    };
+    ($result:expr, $context:expr) => {
+        $result.map_err(|e| FindexFfiError::WrappingCallbackSerDeError {
+            context: $context,
+            error: e.to_string(),
         })?
     };
 }
 
 #[derive(Debug)]
-pub enum FindexFfiError {
-    ConversionError(TryFromIntError),
-    CallbackErrorCode { name: String, code: i32 },
+pub(crate) enum FindexFfiError {
+    /// FFI use u32 as a base type for the callbacks (why?) but the input value
+    /// is often a Rust `usize`. Even if these kind of errors should never
+    /// happen in real code, we need a variant to encode these.
+    IntConversionError(TryFromIntError),
+
+    /// This error happen if the FFI callback return an invalid
+    /// error code. We don't know what happen inside it (maybe an exception, the
+    /// user cannot fetch its database, a user error…).
+    UserCallbackErrorCode {
+        callback_name: &'static str,
+        code: i32,
+    },
+
+    /// Findex wrap the FFI callback inside it's own callback that manage the
+    /// serialization/deserialization of the results.
+    ///
+    /// These operations can fail (if there is a bug inside our code or if the
+    /// callbacks returns us invalid bytes) so we should return the maximum
+    /// information to the user so it can fix it's implementation.
+    WrappingCallbackSerDeError { context: String, error: String },
+
+    /// It is here because instead of implementing one trait for each type of
+    /// request (search/upsert/compact), we've created only one trait with
+    /// `Option<Callback>` so we fail at runtime if one of the callback wasn't
+    /// provided for one operation.
+    ///
+    /// We should check that all required
+    /// callback are set in the upper function so this error should never
+    /// happen.
+    CallbackNotImplemented { callback_name: &'static str },
+}
+
+impl ToErrorCode for FindexFfiError {
+    fn to_error_code(&self) -> i32 {
+        match self {
+            Self::IntConversionError(_) => 1,
+            Self::UserCallbackErrorCode { code, .. } => *code,
+            Self::WrappingCallbackSerDeError { .. } => ErrorCode::SerializationError.code(),
+            Self::CallbackNotImplemented { .. } => ErrorCode::MissingCallback.code(),
+        }
+    }
 }
 
 impl From<TryFromIntError> for FindexFfiError {
     fn from(e: TryFromIntError) -> Self {
-        Self::ConversionError(e)
-    }
-}
-
-impl From<SerializableSetError> for FindexFfiError {
-    fn from(value: SerializableSetError) -> Self {
-        Self::CallbackErrorCode {
-            name: format!("{value}"),
-            code: ErrorCode::SerializationError as i32,
-        }
+        Self::IntConversionError(e)
     }
 }
 
 impl Display for FindexFfiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ConversionError(err) => write!(f, "{err}"),
-            Self::CallbackErrorCode { name, code } => {
-                write!(f, "callback returned with error code {code:?}: {name}")
+            Self::IntConversionError(err) => write!(f, "{err}"),
+            Self::UserCallbackErrorCode {
+                callback_name,
+                code,
+            } => {
+                write!(
+                    f,
+                    "your callback {callback_name} returned with error code {code}",
+                )
+            }
+            Self::WrappingCallbackSerDeError { context, error } => {
+                write!(f, "a serialization error occurred while {context}: {error}",)
+            }
+            Self::CallbackNotImplemented { callback_name } => {
+                write!(f, "callback {callback_name} is not implemented",)
             }
         }
     }
@@ -83,3 +139,4 @@ impl cosmian_findex::CallbackError for FindexFfiError {}
 
 pub mod api;
 pub mod core;
+pub mod error;

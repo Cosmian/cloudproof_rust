@@ -9,46 +9,53 @@ class Alphabet:
         Initialize the FormatPreservingEncryption instance with a given
         alphabet type.
 
-        :param alphabet_type: A string indicating the type of alphabet to be used
-        for the encryption. Currently, only the following options are supported:
-            - "numeric",
-            - "hexa_decimal",
-            - "alpha_lower",
-            - "alpha_upper",
-            - "alpha",
-            - "alpha_numeric",
-            - "utf",
-            - "chinese",
-            - "latin1sup",
-            - "latin1sup_alphanum",.
+        Args:
+            alphabet_type (str): A string indicating the type of alphabet to be used
+                for the encryption. Currently, only the following options are supported:
+                - "numeric",
+                - "hexa_decimal",
+                - "alpha_lower",
+                - "alpha_upper",
+                - "alpha",
+                - "alpha_numeric",
+                - "utf",
+                - "chinese",
+                - "latin1sup",
+                - "latin1sup_alphanum".
         """
     def encrypt(self, key: bytes, tweak: bytes, plaintext: str) -> str:
         """
-        Encrypt a plaintext using the specified key and tweak.
+        Encrypts a plaintext using the specified key and tweak.
 
-        :param key: A bytes object containing the key to be used for the encryption.
-        :param tweak: A bytes object containing the tweak to be used for the encryption.
-        :param plaintext: A string containing the plaintext to be encrypted.
-        :return: A string containing the ciphertext produced by encrypting the plaintext
-        using the specified key and tweak.
+        Args:
+            key (bytes): A bytes object containing the key to be used for the encryption.
+            tweak (bytes): A bytes object containing the tweak to be used for the encryption.
+            plaintext (str): A string containing the plaintext to be encrypted.
+
+        Returns:
+            str: A string containing the ciphertext produced by encrypting the plaintext
+                using the specified key and tweak.
         """
     def decrypt(self, key: bytes, tweak: bytes, ciphertext: str) -> str:
         """
-        Decrypt a ciphertext using the specified key and tweak.
+        Decrypts a ciphertext using the specified key and tweak.
 
-        :param key: A bytes object containing the key to be used for the decryption.
-        :param tweak: A bytes object containing the tweak to be used for the decryption.
-        :param ciphertext: A string containing the ciphertext to be decrypted.
-        :return: A string containing the plaintext produced by decrypting the ciphertext
-        using the specified key and tweak.
+        Args:
+            key (bytes): A bytes object containing the key to be used for the decryption.
+            tweak (bytes): A bytes object containing the tweak to be used for the decryption.
+            ciphertext (str): A string containing the ciphertext to be decrypted.
+
+        Returns:
+            str: A string containing the plaintext produced by decrypting the ciphertext
+                using the specified key and tweak.
         """
     def extend_with(self, additional_characters: str) -> None:
         """
         Extends the current alphabet with additional characters.
 
         Args:
-            additional_characters (str): A string containing the additional
-            characters to add to the alphabet.
+            additional_characters (str): A string containing the additional characters
+                to add to the alphabet.
 
         Returns:
             None: This method does not return anything.
@@ -63,25 +70,6 @@ class Integer:
     Parameters:
         radix (int): The radix used for the integer.
         digits (int): The number of digits used for the integer.
-
-    Methods:
-        encrypt(key: bytes, tweak: bytes, plaintext: int) -> int:
-            Encrypts a plaintext integer using the FPE algorithm with the
-            given key and tweak.
-
-        decrypt(key: bytes, tweak: bytes, ciphertext: int) -> int:
-            Decrypts a ciphertext integer using the FPE algorithm with the
-            given key and tweak.
-
-        encrypt_big(key: bytes, tweak: bytes, plaintext: str) -> str:
-            Encrypts a plaintext string using the FPE algorithm with the
-            given key and tweak. The plaintext string is first converted to
-            a big integer using the radix of the Integer instance.
-
-        decrypt_big(key: bytes, tweak: bytes, ciphertext: str) -> str:
-            Decrypts a ciphertext string using the FPE algorithm with the
-            given key and tweak. The ciphertext string is first converted to
-            a big integer using the radix of the Integer instance.
     """
 
     def __init__(self, radix: int, digits: int):
@@ -148,13 +136,6 @@ class Float:
     """
     A class representing a floating point number and providing methods for
     encrypting and decrypting floating point numbers using a specified key and tweak.
-
-    Methods:
-        encrypt(key: bytes, tweak: bytes, plaintext: int) -> int:
-            Encrypts a plaintext floating point number using the specified key and tweak.
-
-        decrypt(key: bytes, tweak: bytes, ciphertext: int) -> int:
-            Decrypts a ciphertext floating point number using the specified key and tweak.
     """
 
     def __init__(self):
@@ -166,18 +147,24 @@ class Float:
         Encrypts the given plaintext floating point number using the specified key and tweak,
         and returns the ciphertext.
 
-        :param key: A bytes object representing the encryption key.
-        :param tweak: A bytes object representing the encryption tweak.
-        :param plaintext: An int representing the plaintext floating point number to encrypt.
-        :return: An int representing the ciphertext value.
+        Args:
+            key (bytes): A bytes object representing the encryption key.
+            tweak (bytes): A bytes object representing the encryption tweak.
+            plaintext (float): A float representing the plaintext floating point number to encrypt.
+
+        Returns:
+            float: A float representing the ciphertext value.
         """
     def decrypt(self, key: bytes, tweak: bytes, ciphertext: float) -> float:
         """
         Decrypts the given ciphertext floating point number using the specified key and tweak,
         and returns the plaintext.
 
-        :param key: A bytes object representing the encryption key.
-        :param tweak: A bytes object representing the encryption tweak.
-        :param ciphertext: An int representing the ciphertext value to decrypt.
-        :return: An int representing the plaintext floating point number.
+        Args:
+            key (bytes): A bytes object representing the encryption key.
+            tweak (bytes): A bytes object representing the encryption tweak.
+            ciphertext (float): A float representing the ciphertext value to decrypt.
+
+        Returns:
+            float: the plaintext floating point number.
         """

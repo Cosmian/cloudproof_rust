@@ -1,5 +1,6 @@
 pub mod core;
 
+#[cfg(any(feature = "ffi", feature = "python", feature = "wasm_bindgen"))]
 static ALPHABET_LIST: &[&str] = &[
     "numeric",
     "hexa_decimal",
@@ -13,6 +14,7 @@ static ALPHABET_LIST: &[&str] = &[
     "latin1sup_alphanum",
 ];
 
+#[cfg(any(feature = "ffi", feature = "python", feature = "wasm_bindgen"))]
 pub(crate) fn get_alphabet(alphabet_id: &str) -> Result<core::Alphabet, core::AnoError> {
     let alphabet = match alphabet_id {
         "numeric" => core::Alphabet::numeric(),

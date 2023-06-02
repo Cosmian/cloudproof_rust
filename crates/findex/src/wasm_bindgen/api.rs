@@ -1,26 +1,20 @@
 //! Defines the Findex WASM API.
 
+use std::collections::HashSet;
 #[cfg(feature = "cloud")]
 use std::str::FromStr;
-use std::{collections::HashSet, num::NonZeroUsize};
 
 use cosmian_crypto_core::bytes_ser_de::Serializable;
-use cosmian_findex::{
-    parameters::{MASTER_KEY_LENGTH, SECURE_FETCH_CHAINS_BATCH_SIZE},
-    FindexSearch, FindexUpsert, KeyingMaterial, Keyword, Label,
-};
+use cosmian_findex::{FindexSearch, FindexUpsert, KeyingMaterial, Keyword, Label};
 use js_sys::{Array, Uint8Array};
 use wasm_bindgen::prelude::*;
 
 use super::core::{Fetch, FindexUser, Insert, Progress, Upsert};
 #[cfg(feature = "cloud")]
 use crate::cloud::{FindexCloud, Token, SIGNATURE_SEED_LENGTH};
-use crate::{
-    wasm_bindgen::core::{
-        search_results_to_js, to_indexed_values_to_keywords, ArrayOfKeywords,
-        IndexedValuesAndWords, SearchResults,
-    },
-    MAX_RESULTS_PER_KEYWORD,
+use crate::wasm_bindgen::core::{
+    search_results_to_js, to_indexed_values_to_keywords, ArrayOfKeywords, IndexedValuesAndWords,
+    SearchResults,
 };
 
 /// See [`FindexSearch::search()`](cosmian_findex::FindexSearch::search).
@@ -30,10 +24,6 @@ use crate::{
 /// - `master_key`              : master key
 /// - `label_bytes`             : bytes of the public label used for hashing
 /// - `keywords`                : list of keyword bytes to search
-/// - `max_results_per_keyword` : maximum results returned for a keyword
-/// - `max_depth`               : maximum recursion level allowed
-/// - `fetch_chains_batch_size` : increase this value to improve performances
-///   but decrease security by batching fetch chains calls
 /// - `progress`                : progress callback
 /// - `fetch_entries`           : callback to fetch from the Entry Table
 /// - `fetch_chains`            : callback to fetch from the Chain Table
@@ -43,14 +33,11 @@ pub async fn webassembly_search(
     master_key: Uint8Array,
     label_bytes: Uint8Array,
     keywords: ArrayOfKeywords,
-    max_results_per_keyword: i32,
-    max_depth: i32,
-    fetch_chains_batch_size: i32,
     progress: Progress,
     fetch_entry: Fetch,
     fetch_chain: Fetch,
 ) -> Result<SearchResults, JsValue> {
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(&master_key.to_vec())
+    let master_key = KeyingMaterial::try_from_bytes(&master_key.to_vec())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex search, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
 
@@ -58,16 +45,6 @@ pub async fn webassembly_search(
         .iter()
         .map(|word| Keyword::from(Uint8Array::new(&word).to_vec()))
         .collect::<HashSet<_>>();
-
-    let max_results_per_keyword = usize::try_from(max_results_per_keyword)
-        .ok()
-        .and_then(NonZeroUsize::new)
-        .unwrap_or(MAX_RESULTS_PER_KEYWORD);
-
-    let fetch_chains_batch_size = usize::try_from(fetch_chains_batch_size)
-        .ok()
-        .and_then(NonZeroUsize::new)
-        .unwrap_or(SECURE_FETCH_CHAINS_BATCH_SIZE);
 
     let mut wasm_search = FindexUser {
         progress: Some(progress),
@@ -78,15 +55,7 @@ pub async fn webassembly_search(
     };
 
     let results = wasm_search
-        .search(
-            &keywords,
-            &master_key,
-            &label,
-            max_results_per_keyword.into(),
-            max_depth.try_into().unwrap_or(usize::MAX),
-            fetch_chains_batch_size,
-            0,
-        )
+        .search(&master_key, &label, keywords)
         .await
         .map_err(|e| JsValue::from(format!("During Findex search: {e}")))?;
 
@@ -107,16 +76,21 @@ pub async fn webassembly_search(
 pub async fn webassembly_upsert(
     master_key: Uint8Array,
     label_bytes: Uint8Array,
-    indexed_values_to_keywords: IndexedValuesAndWords,
+    additions: IndexedValuesAndWords,
+    deletions: IndexedValuesAndWords,
     fetch_entry: Fetch,
     upsert_entry: Upsert,
     insert_chain: Insert,
 ) -> Result<(), JsValue> {
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(&master_key.to_vec())
+    let master_key = KeyingMaterial::try_from_bytes(&master_key.to_vec())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
-    let indexed_values_to_keywords = wasm_unwrap!(
-        to_indexed_values_to_keywords(&indexed_values_to_keywords),
+    let additions = wasm_unwrap!(
+        to_indexed_values_to_keywords(&additions),
+        "error converting to indexed values and keywords"
+    );
+    let deletions = wasm_unwrap!(
+        to_indexed_values_to_keywords(&deletions),
         "error converting to indexed values and keywords"
     );
 
@@ -128,7 +102,7 @@ pub async fn webassembly_upsert(
         insert_chain: Some(insert_chain),
     };
     wasm_upsert
-        .upsert(indexed_values_to_keywords, &master_key, &label)
+        .upsert(&master_key, &label, additions, deletions)
         .await
         .map_err(|e| JsValue::from(format!("During Findex upsert: {e}")))
 }
@@ -140,10 +114,6 @@ pub async fn webassembly_upsert(
 /// - `master_key`              : master key
 /// - `label_bytes`             : bytes of the public label used for hashing
 /// - `keywords`                : list of keyword bytes to search
-/// - `max_results_per_keyword` : maximum results returned for a keyword
-/// - `max_depth`               : maximum recursion level allowed
-/// - `fetch_chains_batch_size` : increase this value to improve performances
-///   but
 /// - `base_url`                : base URL for Findex Cloud (with http prefix
 ///   and port if required). If null, use the default Findex Cloud server.
 #[cfg(feature = "cloud")]
@@ -153,16 +123,11 @@ pub async fn webassembly_search_cloud(
     token: String,
     label_bytes: Uint8Array,
     keywords: ArrayOfKeywords,
-    max_results_per_keyword: i32,
-    max_depth: i32,
-    fetch_chains_batch_size: i32,
     base_url: Option<String>,
 ) -> Result<SearchResults, JsValue> {
     let mut findex_cloud = FindexCloud::new(&token, base_url)?;
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(
-        findex_cloud.token.findex_master_key.as_ref(),
-    )
-    .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
+    let master_key = KeyingMaterial::try_from_bytes(findex_cloud.token.findex_master_key.as_ref())
+        .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
 
     let label = Label::from(label_bytes.to_vec());
 
@@ -171,26 +136,8 @@ pub async fn webassembly_search_cloud(
         .map(|word| Keyword::from(Uint8Array::new(&word).to_vec()))
         .collect::<HashSet<_>>();
 
-    let max_results_per_keyword = usize::try_from(max_results_per_keyword)
-        .ok()
-        .and_then(NonZeroUsize::new)
-        .unwrap_or(MAX_RESULTS_PER_KEYWORD);
-
-    let fetch_chains_batch_size = usize::try_from(fetch_chains_batch_size)
-        .ok()
-        .and_then(NonZeroUsize::new)
-        .unwrap_or(SECURE_FETCH_CHAINS_BATCH_SIZE);
-
     let results = findex_cloud
-        .search(
-            &keywords,
-            &master_key,
-            &label,
-            max_results_per_keyword.into(),
-            max_depth.try_into().unwrap_or(usize::MAX),
-            fetch_chains_batch_size,
-            0,
-        )
+        .search(&master_key, &label, keywords)
         .await
         .map_err(|e| JsValue::from(format!("During Findex search: {e}")))?;
 
@@ -211,23 +158,26 @@ pub async fn webassembly_search_cloud(
 pub async fn webassembly_upsert_cloud(
     token: String,
     label_bytes: Uint8Array,
-    indexed_values_to_keywords: IndexedValuesAndWords,
+    additions: IndexedValuesAndWords,
+    deletions: IndexedValuesAndWords,
     base_url: Option<String>,
 ) -> Result<(), JsValue> {
     let mut findex_cloud = FindexCloud::new(&token, base_url)?;
 
-    let master_key = KeyingMaterial::<MASTER_KEY_LENGTH>::try_from_bytes(
-        findex_cloud.token.findex_master_key.as_ref(),
-    )
-    .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
+    let master_key = KeyingMaterial::try_from_bytes(findex_cloud.token.findex_master_key.as_ref())
+        .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
-    let indexed_values_to_keywords = wasm_unwrap!(
-        to_indexed_values_to_keywords(&indexed_values_to_keywords),
+    let additions = wasm_unwrap!(
+        to_indexed_values_to_keywords(&additions),
+        "error converting indexed values and keywords"
+    );
+    let deletions = wasm_unwrap!(
+        to_indexed_values_to_keywords(&deletions),
         "error converting indexed values and keywords"
     );
 
     findex_cloud
-        .upsert(indexed_values_to_keywords, &master_key, &label)
+        .upsert(&master_key, &label, additions, deletions)
         .await
         .map_err(|e| JsValue::from(format!("During Findex Cloud upsert: {e}")))
 }

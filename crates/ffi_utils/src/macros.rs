@@ -25,7 +25,7 @@ macro_rules! ffi_not_null {
 /// - `msg` : (optional) additional message to use as error
 #[macro_export]
 macro_rules! ffi_unwrap {
-    ($res:expr, $msg:literal) => {
+    ($res:expr, $msg:expr) => {
         match $res {
             Ok(v) => v,
             Err(e) => {
@@ -48,13 +48,17 @@ macro_rules! ffi_unwrap {
 /// - `err` : (optional) error code to return
 #[macro_export]
 macro_rules! ffi_bail {
-    ($msg:expr) => {
-        $crate::error::set_last_error($crate::error::FfiError::Generic($msg));
-        return 1;
+    ($msg:literal $(,)?) => {
+        $crate::error::set_last_error($crate::error::FfiError::Generic($msg.to_owned()));
+        return 1_i32;
     };
-    ($msg:expr, $err:expr) => {
-        $crate::error::set_last_error($crate::error::FfiError::Generic($msg.to_string()));
-        return $err;
+    ($err:expr $(,)?) => {
+        $crate::error::set_last_error($crate::error::FfiError::Generic($err.to_string()));
+        return 1_i32;
+    };
+    ($fmt:expr, $($arg:tt)*) => {
+        $crate::error::set_last_error($crate::error::FfiError::Generic(format!($fmt, $($arg)*)));
+        return 1_i32;
     };
 }
 

@@ -21,10 +21,3 @@ pub mod sqlite;
 
 #[cfg(feature = "wasm_bindgen")]
 pub mod wasm_bindgen;
-
-#[cfg(any(feature = "wasm_bindgen", feature = "ffi"))]
-use core::num::NonZeroUsize;
-
-#[cfg(any(feature = "wasm_bindgen", feature = "ffi"))]
-/// Default number of results returned per keyword.
-pub const MAX_RESULTS_PER_KEYWORD: NonZeroUsize = NonZeroUsize::new(65536).unwrap();
