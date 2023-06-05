@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.2] - 2023-06-05
+
+### Ci
+
+- Publish python packages individually
+
 ## [2.0.1] - 2023-06-02
 
 ### Bug Fixes
