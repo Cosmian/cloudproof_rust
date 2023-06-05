@@ -15,8 +15,8 @@ jobs:
       toolchain: nightly-2023-03-20
       kms-version: 4.3.3
       findex-cloud-version: 0.1.0
-      branch-java: feature/multi_entry_tables
-      branch-js: feature/anonymization
-      branch-flutter: release/v7.0.0
-      branch-python: feature/multi_entry_tables
+      branch-java: v6.0.0
+      branch-js: v9.0.0
+      branch-flutter: v7.0.0
+      branch-python: v4.0.0
     secrets: inherit
