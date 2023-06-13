@@ -32,7 +32,7 @@ use crate::cloud::{FindexCloud, Token};
 use crate::ffi::core::DeleteChainCallback;
 use crate::{
     ffi::core::{
-        utils::parse_indexed_values, FetchAllEntryTableUidsCallback, FetchChainTableCallback,
+        utils::deserialize_indexed_values, FetchAllEntryTableUidsCallback, FetchChainTableCallback,
         FetchEntryTableCallback, FindexUser, InsertChainTableCallback,
         ListRemovedLocationsCallback, ProgressCallback, UpdateLinesCallback,
         UpsertEntryTableCallback,
@@ -181,8 +181,9 @@ pub unsafe extern "C" fn h_upsert(
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
         KeyingMaterial::try_from_bytes(master_key_bytes),
-        "error re-serializing master secret key"
+        "error deserializing master secret key"
     );
+
     if entry_table_number == 0 {
         ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
     }
@@ -753,7 +754,7 @@ unsafe extern "C" fn ffi_upsert<
     let label = Label::from(label_bytes);
 
     let additions = ffi_unwrap!(
-        parse_indexed_values(&ffi_read_string!(
+        deserialize_indexed_values(&ffi_read_string!(
             "added indexed values and keywords",
             additions_ptr
         ),),
@@ -761,7 +762,7 @@ unsafe extern "C" fn ffi_upsert<
     );
 
     let deletions = ffi_unwrap!(
-        parse_indexed_values(&ffi_read_string!(
+        deserialize_indexed_values(&ffi_read_string!(
             "deleted indexed values and keywords",
             deletions_ptr
         ),),

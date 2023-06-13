@@ -140,3 +140,5 @@ impl cosmian_findex::CallbackError for FindexFfiError {}
 pub mod api;
 pub mod core;
 pub mod error;
+#[cfg(test)]
+mod tests;

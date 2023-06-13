@@ -56,6 +56,7 @@ const LEB128_MAXIMUM_ENCODED_BYTES_NUMBER: usize = 8;
 /// - `line_number` : number of lines in the encrypted Entry Table
 /// - `entry_table_number` : number of different entry tables. The number is
 ///   required here since severable entry table could give multiple results
+#[must_use]
 pub const fn get_serialized_encrypted_entry_table_size_bound(
     line_number: usize,
     entry_table_number: usize,
@@ -86,6 +87,7 @@ pub const fn get_serialized_encrypted_entry_table_size_bound(
 ///
 /// # Arguments
 /// - `line_number` : number of lines in the encrypted Entry Table
+#[must_use]
 pub const fn get_allocation_size_for_select_chain_request(line_number: usize) -> usize {
     LEB128_MAXIMUM_ENCODED_BYTES_NUMBER
         + line_number
@@ -152,7 +154,7 @@ pub(crate) fn fetch_callback(
     Ok(output_entries_bytes)
 }
 
-pub(crate) fn parse_indexed_values(
+pub(crate) fn deserialize_indexed_values(
     serialized_values: &str,
 ) -> Result<HashMap<IndexedValue, HashSet<Keyword>>, ParseIndexedValuesError> {
     // Indexed values and keywords are a map of base64 encoded `IndexedValue` to a
@@ -183,10 +185,33 @@ pub(crate) fn parse_indexed_values(
     Ok(additions)
 }
 
-pub(crate) enum ParseIndexedValuesError {
+pub fn serialize_indexed_values(
+    ivs_keywords: HashMap<IndexedValue, HashSet<Keyword>>,
+) -> Result<Vec<u8>, ParseIndexedValuesError> {
+    let mut ivs_keywords_str = HashMap::with_capacity(ivs_keywords.len());
+    for (key, value) in &ivs_keywords {
+        let k = STANDARD.encode(key.to_vec());
+        let mut keywords_str = HashSet::with_capacity(value.len());
+        for keyword in value {
+            let keyword_b64 = STANDARD.encode(keyword);
+            keywords_str.insert(keyword_b64);
+        }
+        ivs_keywords_str.insert(k, keywords_str);
+    }
+
+    Ok(serde_json::to_vec(&ivs_keywords_str)?)
+}
+
+#[derive(Debug)]
+pub enum ParseIndexedValuesError {
     Json(serde_json::Error),
     Base64Decode(base64::DecodeError),
     Decoding(String),
+}
+impl From<serde_json::Error> for ParseIndexedValuesError {
+    fn from(value: serde_json::Error) -> Self {
+        Self::Json(value)
+    }
 }
 
 impl Display for ParseIndexedValuesError {

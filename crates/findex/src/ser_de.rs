@@ -78,6 +78,18 @@ where
     }
 }
 
+pub fn serialize_fetch_entry_table_results(
+    fetch_entry_table_results: Vec<(Uid<UID_LENGTH>, Vec<u8>)>,
+) -> Result<Vec<u8>, SerializableSetError> {
+    let mut se = Serializer::new();
+    se.write_leb128_u64(fetch_entry_table_results.len() as u64)?;
+    for (uid, value) in fetch_entry_table_results {
+        se.write_array(&uid)?;
+        se.write_vec(&value)?;
+    }
+    Ok(se.finalize())
+}
+
 pub fn deserialize_fetch_entry_table_results(
     bytes: &[u8],
 ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, SerializableSetError> {

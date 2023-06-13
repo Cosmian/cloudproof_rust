@@ -2,7 +2,7 @@
 //! callbacks.
 
 #[macro_use]
-pub(crate) mod utils;
+pub mod utils;
 mod callbacks;
 mod traits;
 
