@@ -4,9 +4,9 @@ macro_rules! wasm_unwrap {
     };
 }
 
-pub mod abe_policy;
-pub mod generate_cc_keys;
-pub mod hybrid_cc_aes;
+mod abe_policy;
+mod generate_cc_keys;
+mod hybrid_cc_aes;
 
 #[cfg(test)]
 mod tests;

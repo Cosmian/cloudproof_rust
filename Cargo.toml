@@ -1,8 +1,10 @@
 [workspace]
 members = [
+  "crates/aesgcm",
   "crates/anonymization",
   "crates/cloudproof",
   "crates/cover_crypt",
+  "crates/ecies",
   "crates/ffi_utils",
   "crates/findex",
   "crates/fpe",

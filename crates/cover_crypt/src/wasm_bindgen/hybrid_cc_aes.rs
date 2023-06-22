@@ -14,6 +14,7 @@ use cosmian_crypto_core::{
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
 
+#[allow(dead_code)]
 pub const MAX_CLEAR_TEXT_SIZE: usize = 1 << 30;
 
 #[wasm_bindgen]
