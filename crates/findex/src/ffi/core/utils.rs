@@ -6,9 +6,9 @@ use std::{
 };
 
 use base64::{engine::general_purpose::STANDARD, Engine};
-use cosmian_crypto_core::symmetric_crypto::Dem;
+use cosmian_crypto_core::Aes128Gcm;
 use cosmian_findex::{
-    parameters::{DemScheme, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, UID_LENGTH},
+    parameters::{BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, UID_LENGTH},
     IndexedValue, Keyword,
 };
 
@@ -64,7 +64,7 @@ pub const fn get_serialized_encrypted_entry_table_size_bound(
         + line_number
             * entry_table_number
             * (UID_LENGTH
-                + DemScheme::ENCRYPTION_OVERHEAD
+                + Aes128Gcm::ENCRYPTION_OVERHEAD
                 + KWI_LENGTH
                 + UID_LENGTH
                 + Keyword::HASH_LENGTH)
@@ -90,7 +90,7 @@ pub const fn get_allocation_size_for_select_chain_request(line_number: usize) ->
     LEB128_MAXIMUM_ENCODED_BYTES_NUMBER
         + line_number
             * (UID_LENGTH
-                + DemScheme::ENCRYPTION_OVERHEAD
+                + Aes128Gcm::ENCRYPTION_OVERHEAD
                 + 1
                 + CHAIN_TABLE_WIDTH * (1 + BLOCK_LENGTH))
 }

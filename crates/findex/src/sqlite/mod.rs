@@ -58,7 +58,7 @@ pub async fn upsert(sqlite_db_path: &PathBuf, dataset_path: &str) -> Result<(), 
     let master_key_bytes = general_purpose::STANDARD
         .decode(include_str!("../../datasets/key.json"))
         .map_err(|e| Error::Other(e.to_string()))?;
-    let master_key = KeyingMaterial::try_from_bytes(&master_key_bytes)?;
+    let master_key = KeyingMaterial::deserialize(&master_key_bytes)?;
 
     rusqlite_upsert
         .upsert(&master_key, &label, additions, HashMap::new())
@@ -79,7 +79,7 @@ pub async fn search(
     let master_key_bytes = general_purpose::STANDARD
         .decode(include_str!("../../datasets/key.json"))
         .map_err(|e| Error::Other(e.to_string()))?;
-    let master_key = KeyingMaterial::try_from_bytes(&master_key_bytes)?;
+    let master_key = KeyingMaterial::deserialize(&master_key_bytes)?;
 
     let label = Label::from(include_bytes!("../../datasets/label").to_vec());
     let results = rusqlite_search

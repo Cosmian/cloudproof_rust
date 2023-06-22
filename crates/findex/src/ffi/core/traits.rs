@@ -8,12 +8,12 @@ use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
 use cosmian_findex::FindexLiveCompact;
 use cosmian_findex::{
     parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
-        KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
+        BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
-    EncryptedTable, FetchChains, FindexCallbacks, FindexCompact, FindexSearch, FindexUpsert,
-    IndexedValue, Keyword, Location, Uid, UpsertData,
+    EncryptedMultiTable, EncryptedTable, FetchChains, FindexCallbacks, FindexCompact, FindexSearch,
+    FindexUpsert, IndexedValue, Keyword, Location, Uids, UpsertData,
 };
+use tracing::info;
 
 use crate::{
     ffi::{
@@ -30,6 +30,7 @@ use crate::{
 };
 
 impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
+    #[tracing::instrument(ret, err)]
     async fn progress(
         &self,
         results: &HashMap<Keyword, HashSet<IndexedValue>>,
@@ -58,7 +59,8 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         Ok(progress(results.as_ptr(), results.len() as c_uint) != 0)
     }
 
-    async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, FindexFfiError> {
+    #[tracing::instrument(ret(Display), err)]
+    async fn fetch_all_entry_table_uids(&self) -> Result<Uids<UID_LENGTH>, FindexFfiError> {
         let fetch_all_entry_table_uids = unwrap_callback!(
             "fetch_all_entry_table_uids",
             self,
@@ -74,30 +76,33 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
                 let uids_bytes = unsafe {
                     std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize)
                 };
-                return Ok(wrapping_callback_ser_de_error_with_context!(
+                return Ok(Uids(wrapping_callback_ser_de_error_with_context!(
                     deserialize_set(uids_bytes),
                     "deserializing uids from fetch all entries callback"
-                ));
+                )));
             } else {
                 allocation_size = output_len as usize;
             }
         }
     }
 
+    #[tracing::instrument(fields(entry_table_uids = %entry_table_uids), ret(Display), err)]
     async fn fetch_entry_table(
         &self,
-        entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexFfiError> {
+        entry_table_uids: Uids<UID_LENGTH>,
+    ) -> Result<EncryptedMultiTable<UID_LENGTH>, FindexFfiError> {
+        info!("fetch_entry address: {:?}", self.fetch_entry);
         let fetch_entry = unwrap_callback!("fetch_entry", self, fetch_entry);
+        info!("fetch_entry address (unwrapped): {:?}", fetch_entry);
 
         let serialized_uids = wrapping_callback_ser_de_error_with_context!(
-            serialize_set(&entry_table_uids),
+            serialize_set(&entry_table_uids.0),
             "serializing entries uids to send to fetch entries callback"
         );
         let res = fetch_callback(
             &serialized_uids,
             get_serialized_encrypted_entry_table_size_bound(
-                entry_table_uids.len(),
+                entry_table_uids.0.len(),
                 self.entry_table_number,
             ),
             *fetch_entry,
@@ -108,32 +113,47 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             deserialize_fetch_entry_table_results(&res),
             "deserializing entries from fetch entries callback"
         );
+        let encrypted_multi_table = EncryptedMultiTable(encrypted_table);
+        info!(
+            "results entries: (nb: {}): {encrypted_multi_table}",
+            encrypted_multi_table.0.len()
+        );
 
-        Ok(encrypted_table)
+        Ok(encrypted_multi_table)
     }
 
+    #[tracing::instrument(fields(chain_uids = %chain_uids), ret(Display), err)]
     async fn fetch_chain_table(
         &self,
-        chain_uids: HashSet<Uid<UID_LENGTH>>,
+        chain_uids: Uids<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexFfiError> {
+        info!("fetch_chain address: {:?}", self.fetch_chain);
+        let fetch_chain = unwrap_callback!("fetch_chain", self, fetch_chain);
+        info!("fetch_chain address (unwrapped): {:?}", fetch_chain);
+
         let fetch_chain = unwrap_callback!("fetch_chain", self, fetch_chain);
         let serialized_chain_uids = wrapping_callback_ser_de_error_with_context!(
-            serialize_set(&chain_uids),
+            serialize_set(&chain_uids.0),
             "serializing entries uids to send to fetch entries callback"
         );
         let res = fetch_callback(
             &serialized_chain_uids,
-            get_allocation_size_for_select_chain_request(chain_uids.len()),
+            get_allocation_size_for_select_chain_request(chain_uids.0.len()),
             *fetch_chain,
             "fetch chains",
         )?;
         let encrypted_table = wrapping_callback_ser_de_error_with_context!(
-            EncryptedTable::try_from_bytes(&res),
+            EncryptedTable::deserialize(&res),
             "deserializing chains from fetch chains callback"
+        );
+        info!(
+            "results chains: (nb: {}): {encrypted_table}",
+            encrypted_table.len()
         );
         Ok(encrypted_table)
     }
 
+    #[tracing::instrument(fields(modifications = %modifications), ret(Display), err)]
     async fn upsert_entry_table(
         &mut self,
         modifications: UpsertData<UID_LENGTH>,
@@ -142,7 +162,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
 
         // Callback input
         let serialized_upsert_data = wrapping_callback_ser_de_error_with_context!(
-            modifications.try_to_bytes(),
+            modifications.serialize(),
             "serializing upsert data to send to upsert entries callback"
         );
 
@@ -177,22 +197,24 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         }
 
         let encrypted_table = wrapping_callback_ser_de_error_with_context!(
-            EncryptedTable::try_from_bytes(&serialized_rejected_items),
+            EncryptedTable::deserialize(&serialized_rejected_items),
             "deserializing rejected items from upsert entries callback response"
         );
 
         Ok(encrypted_table)
     }
 
+    #[tracing::instrument(fields(items = %items), ret, err)]
     async fn insert_chain_table(
         &mut self,
         items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexFfiError> {
+        info!("items: {items}");
         let insert_chain = unwrap_callback!("insert_chain", self, insert_chain);
 
         // Callback input
         let serialized_items = wrapping_callback_ser_de_error_with_context!(
-            items.try_to_bytes(),
+            items.serialize(),
             "serializing data to send to insert entries callback"
         );
 
@@ -209,24 +231,33 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         Ok(())
     }
 
+    #[tracing::instrument(
+        fields(
+            chain_table_uids_to_remove,
+            new_encrypted_entry_table_items,
+            new_encrypted_chain_table_items
+        ),
+        ret,
+        err
+    )]
     fn update_lines(
         &mut self,
-        chain_table_uids_to_remove: HashSet<Uid<UID_LENGTH>>,
+        chain_table_uids_to_remove: Uids<UID_LENGTH>,
         new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexFfiError> {
         let update_lines = unwrap_callback!("update_lines", self, update_lines);
 
         let serialized_chain_table_uids_to_remove = wrapping_callback_ser_de_error_with_context!(
-            serialize_set(&chain_table_uids_to_remove),
+            serialize_set(&chain_table_uids_to_remove.0),
             "serializing chains uids to remove to send to update lines callback"
         );
         let serialized_new_encrypted_entry_table_items = wrapping_callback_ser_de_error_with_context!(
-            new_encrypted_entry_table_items.try_to_bytes(),
+            new_encrypted_entry_table_items.serialize(),
             "serializing new entries to send to update lines callback"
         );
         let serialized_new_encrypted_chain_table_items = wrapping_callback_ser_de_error_with_context!(
-            new_encrypted_chain_table_items.try_to_bytes(),
+            new_encrypted_chain_table_items.serialize(),
             "serializing new chains to send to update lines callback"
         );
 
@@ -249,6 +280,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         Ok(())
     }
 
+    #[tracing::instrument(ret, err)]
     fn list_removed_locations(
         &self,
         locations: HashSet<Location>,
@@ -348,12 +380,12 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     }
 
     #[cfg(feature = "compact_live")]
-    async fn delete_chain(&mut self, uids: HashSet<Uid<UID_LENGTH>>) -> Result<(), FindexFfiError> {
+    async fn delete_chain(&mut self, uids: Uids<UID_LENGTH>) -> Result<(), FindexFfiError> {
         let delete_chain = unwrap_callback!("delete_chain", self, delete_chain);
 
         // Callback input
         let serialized_items = wrapping_callback_ser_de_error_with_context!(
-            serialize_set(&uids),
+            serialize_set(&uids.0),
             "serializing uids for delete chains callback"
         );
 
@@ -371,16 +403,8 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     }
 }
 
-impl
-    FetchChains<
-        UID_LENGTH,
-        BLOCK_LENGTH,
-        CHAIN_TABLE_WIDTH,
-        KWI_LENGTH,
-        DEM_KEY_LENGTH,
-        DemScheme,
-        FindexFfiError,
-    > for FindexUser
+impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, FindexFfiError>
+    for FindexUser
 {
 }
 
@@ -392,9 +416,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexFfiError,
     > for FindexUser
 {
@@ -408,9 +429,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexFfiError,
     > for FindexUser
 {
@@ -424,9 +442,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexFfiError,
     > for FindexUser
 {
@@ -441,9 +456,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexFfiError,
     > for FindexUser
 {

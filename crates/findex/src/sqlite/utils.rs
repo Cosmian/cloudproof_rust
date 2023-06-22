@@ -52,13 +52,13 @@ pub fn sqlite_fetch_entry_table_items(
     let mut entry_table_items = HashMap::new();
     while let Some(row) = rows.next()? {
         entry_table_items.insert(
-            Uid::try_from_bytes(&row.get::<usize, Vec<u8>>(0)?)?,
+            Uid::deserialize(&row.get::<usize, Vec<u8>>(0)?)?,
             row.get(1)?,
         );
     }
-    EncryptedTable::<UID_LENGTH>::from(entry_table_items)
-        .try_to_bytes()
-        .map_err(Error::from)
+    Ok(EncryptedTable::<UID_LENGTH>::from(entry_table_items)
+        .serialize()
+        .map_err(Error::from)?.to_vec())
 }
 
 pub fn delete_db(sqlite_path: &PathBuf) -> Result<(), Error> {

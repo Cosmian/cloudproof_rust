@@ -37,7 +37,7 @@ pub async fn webassembly_search(
     fetch_entry: Fetch,
     fetch_chain: Fetch,
 ) -> Result<SearchResults, JsValue> {
-    let master_key = KeyingMaterial::try_from_bytes(&master_key.to_vec())
+    let master_key = KeyingMaterial::deserialize(&master_key.to_vec())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex search, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
 
@@ -82,7 +82,7 @@ pub async fn webassembly_upsert(
     upsert_entry: Upsert,
     insert_chain: Insert,
 ) -> Result<(), JsValue> {
-    let master_key = KeyingMaterial::try_from_bytes(&master_key.to_vec())
+    let master_key = KeyingMaterial::deserialize(&master_key.to_vec())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
     let additions = wasm_unwrap!(
@@ -126,7 +126,7 @@ pub async fn webassembly_search_cloud(
     base_url: Option<String>,
 ) -> Result<SearchResults, JsValue> {
     let mut findex_cloud = FindexCloud::new(&token, base_url)?;
-    let master_key = KeyingMaterial::try_from_bytes(findex_cloud.token.findex_master_key.as_ref())
+    let master_key = KeyingMaterial::deserialize(findex_cloud.token.findex_master_key.as_ref())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
 
     let label = Label::from(label_bytes.to_vec());
@@ -164,7 +164,7 @@ pub async fn webassembly_upsert_cloud(
 ) -> Result<(), JsValue> {
     let mut findex_cloud = FindexCloud::new(&token, base_url)?;
 
-    let master_key = KeyingMaterial::try_from_bytes(findex_cloud.token.findex_master_key.as_ref())
+    let master_key = KeyingMaterial::deserialize(findex_cloud.token.findex_master_key.as_ref())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
     let additions = wasm_unwrap!(
@@ -223,8 +223,8 @@ fn uint8array_to_seed(
     seed: Uint8Array,
     debug_name: &str,
 ) -> Result<KeyingMaterial<SIGNATURE_SEED_LENGTH>, JsValue> {
-    let key_material = wasm_unwrap!(
-        KeyingMaterial::try_from_bytes(seed.to_vec().as_slice()),
+    let key_material: KeyingMaterial<16> = wasm_unwrap!(
+        KeyingMaterial::deserialize(seed.to_vec().as_slice()),
         format!(
             "{debug_name} is of wrong size ({} received, {SIGNATURE_SEED_LENGTH} expected)",
             seed.length()

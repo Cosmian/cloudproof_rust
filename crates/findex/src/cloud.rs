@@ -11,11 +11,12 @@ use cosmian_crypto_core::{bytes_ser_de::Serializable, reexport::rand_core::Seeda
 use cosmian_findex::{
     kmac,
     parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
-        KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
+        KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH,
+        UID_LENGTH,
     },
-    CoreError as FindexCoreError, EncryptedTable, FetchChains, FindexCallbacks, FindexSearch,
-    FindexUpsert, IndexedValue, KeyingMaterial, Keyword, Location, Uid, UpsertData,
+    CoreError as FindexCoreError, EncryptedMultiTable, EncryptedTable, FetchChains,
+    FindexCallbacks, FindexSearch, FindexUpsert, IndexedValue, KeyingMaterial, Keyword, Location,
+    Uids, UpsertData,
 };
 #[cfg(feature = "wasm_bindgen")]
 use js_sys::Date;
@@ -188,7 +189,7 @@ impl FromStr for Token {
         let original_length = bytes.len();
 
         let findex_master_key =
-            KeyingMaterial::try_from_bytes(&bytes.next_chunk::<MASTER_KEY_LENGTH>().map_err(
+            KeyingMaterial::deserialize(&bytes.next_chunk::<MASTER_KEY_LENGTH>().map_err(
                 |e| FindexCloudError::MalformedToken {
                     error: format!(
                         "cannot read the Findex master key at the beginning of the keys section \
@@ -286,7 +287,7 @@ impl Token {
 
     fn get_key(&self, callback: Callback) -> Option<KmacKey> {
         self.get_seed(callback)
-            .map(|seed| seed.derive_kmac_key(self.index_id.as_bytes()))
+            .map(|seed| seed.derive_kmac_key::<KMAC_KEY_LENGTH>(self.index_id.as_bytes()))
     }
 
     fn set_seed(
@@ -465,9 +466,7 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
         Ok(true)
     }
 
-    async fn fetch_all_entry_table_uids(
-        &self,
-    ) -> Result<HashSet<Uid<UID_LENGTH>>, FindexCloudError> {
+    async fn fetch_all_entry_table_uids(&self) -> Result<Uids<UID_LENGTH>, FindexCloudError> {
         Err(FindexCloudError::Callback {
             error: "fetch all entry table uids not implemented in WASM".to_string(),
         })
@@ -475,53 +474,55 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
 
     async fn fetch_entry_table(
         &self,
-        entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexCloudError> {
-        let serialized_uids = serialize_set(&entry_table_uids)?;
+        entry_table_uids: Uids<UID_LENGTH>,
+    ) -> Result<EncryptedMultiTable<UID_LENGTH>, FindexCloudError> {
+        let serialized_uids = serialize_set(&entry_table_uids.0)?;
 
         let bytes = self.post(Callback::FetchEntries, serialized_uids).await?;
 
-        Ok(deserialize_fetch_entry_table_results(&bytes)?)
+        Ok(EncryptedMultiTable(deserialize_fetch_entry_table_results(
+            &bytes,
+        )?))
     }
 
     async fn fetch_chain_table(
         &self,
-        chain_table_uids: HashSet<Uid<UID_LENGTH>>,
+        chain_table_uids: Uids<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexCloudError> {
-        let serialized_uids = serialize_set(&chain_table_uids)?;
+        let serialized_uids = serialize_set(&chain_table_uids.0)?;
 
         let bytes = self.post(Callback::FetchChains, serialized_uids).await?;
 
-        EncryptedTable::try_from_bytes(&bytes).map_err(FindexCloudError::from)
+        EncryptedTable::deserialize(&bytes).map_err(FindexCloudError::from)
     }
 
     async fn upsert_entry_table(
         &mut self,
         items: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexCloudError> {
-        let serialized_upsert = items.try_to_bytes()?;
+        let serialized_upsert = items.serialize()?;
 
         let bytes = self
-            .post(Callback::UpsertEntries, serialized_upsert)
+            .post(Callback::UpsertEntries, serialized_upsert.to_vec())
             .await?;
 
-        EncryptedTable::try_from_bytes(&bytes).map_err(FindexCloudError::from)
+        EncryptedTable::deserialize(&bytes).map_err(FindexCloudError::from)
     }
 
     async fn insert_chain_table(
         &mut self,
         items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexCloudError> {
-        let serialized_insert = items.try_to_bytes()?;
+        let serialized_insert = items.serialize()?;
 
-        self.post(Callback::InsertChains, serialized_insert).await?;
+        self.post(Callback::InsertChains, serialized_insert.to_vec()).await?;
 
         Ok(())
     }
 
     fn update_lines(
         &mut self,
-        _chain_table_uids_to_remove: HashSet<Uid<UID_LENGTH>>,
+        _chain_table_uids_to_remove: Uids<UID_LENGTH>,
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexCloudError> {
@@ -550,26 +551,15 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
     }
 
     #[cfg(feature = "compact_live")]
-    async fn delete_chain(
-        &mut self,
-        _uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<(), FindexCloudError> {
+    async fn delete_chain(&mut self, _uids: Uids<UID_LENGTH>) -> Result<(), FindexCloudError> {
         Err(FindexCloudError::Callback {
             error: "delete chains not implemented in WASM".to_string(),
         })
     }
 }
 
-impl
-    FetchChains<
-        UID_LENGTH,
-        BLOCK_LENGTH,
-        CHAIN_TABLE_WIDTH,
-        KWI_LENGTH,
-        DEM_KEY_LENGTH,
-        DemScheme,
-        FindexCloudError,
-    > for FindexCloud
+impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, FindexCloudError>
+    for FindexCloud
 {
 }
 
@@ -581,9 +571,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexCloudError,
     > for FindexCloud
 {
@@ -597,9 +584,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexCloudError,
     > for FindexCloud
 {

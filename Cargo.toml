@@ -10,12 +10,17 @@ members = [
 
 [workspace.dependencies]
 base64 = "0.21.0"
-cosmian_crypto_core = "7.0"
+cosmian_crypto_core = { git = "https://github.com/Cosmian/crypto_core.git", branch = "findex_integration" }
+# cosmian_crypto_core = "7.0"
 cosmian_ffi_utils = "0.1.1"
 hex = "0.4.3"
 js-sys = "0.3"
 pyo3 = { version = "0.18", features = ["extension-module", "abi3", "abi3-py37", "generate-import-lib"] }
 rand = "0.8"
+tracing = "0.1"
+tracing-log = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-tree = "0.2"
 wasm-bindgen = "0.2.84"
 
 [profile.release]

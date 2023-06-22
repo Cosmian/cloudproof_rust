@@ -349,7 +349,7 @@ fn uint8slice_to_seed(
     seed: &[u8],
     debug_name: &str,
 ) -> Result<KeyingMaterial<SIGNATURE_SEED_LENGTH>, PyErr> {
-    KeyingMaterial::try_from_bytes(seed).map_err(|_| {
+    KeyingMaterial::deserialize(seed).map_err(|_| {
         pyo3::exceptions::PyException::new_err(format!(
             "{debug_name} is of wrong size ({SIGNATURE_SEED_LENGTH} expected)",
         ))
