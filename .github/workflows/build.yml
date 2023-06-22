@@ -13,7 +13,7 @@ jobs:
     with:
       project-name: cloudproof_rust
       toolchain: nightly-2023-03-20
-      kms-version: 4.4.1
+      kms-version: 4.4.2
       findex-cloud-version: 0.1.0
       branch-java: v6.0.0
       branch-js: v9.0.0
