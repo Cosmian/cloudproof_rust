@@ -17,6 +17,6 @@ jobs:
       findex-cloud-version: 0.1.0
       branch-java: v6.0.0
       branch-js: v9.0.0
-      branch-flutter: v7.0.0
+      branch-flutter: integration_tests
       branch-python: v4.0.0
     secrets: inherit
