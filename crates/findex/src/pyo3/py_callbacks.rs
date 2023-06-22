@@ -5,11 +5,11 @@ use std::{
 
 use cosmian_findex::{
     parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
-        KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
+        BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
-    CallbackError, EncryptedTable, FetchChains, FindexCallbacks, FindexCompact, FindexSearch,
-    FindexUpsert, IndexedValue as IndexedValueRust, Keyword, Location, Uid, UpsertData,
+    CallbackError, EncryptedMultiTable, EncryptedTable, FetchChains, FindexCallbacks,
+    FindexCompact, FindexSearch, FindexUpsert, IndexedValue as IndexedValueRust, Keyword, Location,
+    Uid, Uids, UpsertData,
 };
 use pyo3::{
     prelude::*,
@@ -75,9 +75,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
         })
     }
 
-    async fn fetch_all_entry_table_uids(
-        &self,
-    ) -> Result<HashSet<Uid<UID_LENGTH>>, FindexPyo3Error> {
+    async fn fetch_all_entry_table_uids(&self) -> Result<Uids<UID_LENGTH>, FindexPyo3Error> {
         Python::with_gil(|py| {
             let results = self.fetch_all_entry_table_uids.call0(py).map_err(|e| {
                 FindexPyo3Error::Callback(format!("{e} (fetch_all_entry_table_uids)"))
@@ -86,17 +84,18 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
                 .extract(py)
                 .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (fetch_entry)")))?;
 
-            // Convert python result (HashSet<[u8; UID_LENGTH]>) to HashSet<Uid<UID_LENGTH>>
-            Ok(py_result_table.into_iter().map(Uid::from).collect())
+            // Convert python result (HashSet<[u8; UID_LENGTH]>) to Uids<UID_LENGTH>
+            Ok(Uids(py_result_table.into_iter().map(Uid::from).collect()))
         })
     }
 
     async fn fetch_entry_table(
         &self,
-        entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexPyo3Error> {
+        entry_table_uids: Uids<UID_LENGTH>,
+    ) -> Result<EncryptedMultiTable<UID_LENGTH>, FindexPyo3Error> {
         Python::with_gil(|py| {
             let py_entry_uids = entry_table_uids
+                .0
                 .iter()
                 .map(|uid| PyBytes::new(py, uid))
                 .collect::<Vec<_>>();
@@ -108,21 +107,24 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
                 .extract(py)
                 .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (fetch_entry)")))?;
 
-            // Convert python result (Vec<(Uid<UID_LENGTH>, Vec<u8>)>) to
+            // Convert python result (EncryptedMultiTable<UID_LENGTH>) to
             // EncryptedEntryTable<UID_LENGTH>
-            Ok(py_result_table
-                .into_iter()
-                .map(|(k, v)| (Uid::from(k), v))
-                .collect())
+            Ok(EncryptedMultiTable(
+                py_result_table
+                    .into_iter()
+                    .map(|(k, v)| (Uid::from(k), v))
+                    .collect(),
+            ))
         })
     }
 
     async fn fetch_chain_table(
         &self,
-        chain_uids: HashSet<Uid<UID_LENGTH>>,
+        chain_uids: Uids<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexPyo3Error> {
         Python::with_gil(|py| {
             let py_chain_uids = chain_uids
+                .0
                 .iter()
                 .map(|uid| PyBytes::new(py, uid))
                 .collect::<Vec<_>>();
@@ -200,7 +202,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
 
     fn update_lines(
         &mut self,
-        chain_table_uids_to_remove: HashSet<Uid<UID_LENGTH>>,
+        chain_table_uids_to_remove: Uids<UID_LENGTH>,
         new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexPyo3Error> {
@@ -213,6 +215,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
             }
 
             let py_removed_chain_uids: Vec<&PyBytes> = chain_table_uids_to_remove
+                .0
                 .iter()
                 .map(|item| PyBytes::new(py, item))
                 .collect();
@@ -271,26 +274,15 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
     }
 
     #[cfg(feature = "compact_live")]
-    async fn delete_chain(
-        &mut self,
-        _uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<(), FindexPyo3Error> {
+    async fn delete_chain(&mut self, _uids: Uids<UID_LENGTH>) -> Result<(), FindexPyo3Error> {
         Err(FindexPyo3Error::Callback(
             "delete_chain not implemented".to_string(),
         ))
     }
 }
 
-impl
-    FetchChains<
-        UID_LENGTH,
-        BLOCK_LENGTH,
-        CHAIN_TABLE_WIDTH,
-        KWI_LENGTH,
-        DEM_KEY_LENGTH,
-        DemScheme,
-        FindexPyo3Error,
-    > for InternalFindex
+impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, FindexPyo3Error>
+    for InternalFindex
 {
 }
 
@@ -302,9 +294,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexPyo3Error,
     > for InternalFindex
 {
@@ -318,9 +307,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexPyo3Error,
     > for InternalFindex
 {
@@ -334,9 +320,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexPyo3Error,
     > for InternalFindex
 {

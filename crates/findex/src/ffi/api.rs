@@ -1,5 +1,4 @@
 //! Defines the Findex FFI API.
-
 use std::{
     collections::HashSet,
     convert::TryFrom,
@@ -18,14 +17,13 @@ use cosmian_ffi_utils::{
 use cosmian_findex::FindexLiveCompact;
 use cosmian_findex::{
     parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
-        KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
+        BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
     CallbackError, Error as FindexError, FindexCompact, FindexSearch, FindexUpsert, KeyingMaterial,
     Keyword, Label,
 };
 
-use super::error::ToErrorCode;
+use super::{error::ToErrorCode, logger::log_init};
 #[cfg(feature = "cloud")]
 use crate::cloud::{FindexCloud, Token};
 #[cfg(feature = "compact_live")]
@@ -95,7 +93,7 @@ pub unsafe extern "C" fn h_search(
 ) -> c_int {
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(master_key_bytes),
+        KeyingMaterial::deserialize(master_key_bytes),
         "error deserializing master secret key"
     );
     if entry_table_number == 0 {
@@ -126,6 +124,37 @@ pub unsafe extern "C" fn h_search(
         label_ptr,
         label_len,
         keywords_ptr,
+    )
+}
+
+#[no_mangle]
+#[tracing::instrument(ret)]
+pub unsafe extern "C" fn h_search_with_logs(
+    search_results_ptr: *mut c_char,
+    search_results_len: *mut c_int,
+    master_key_ptr: *const c_char,
+    master_key_len: c_int,
+    label_ptr: *const u8,
+    label_len: c_int,
+    keywords_ptr: *const c_char,
+    entry_table_number: c_uint,
+    progress_callback: ProgressCallback,
+    fetch_entry_callback: FetchEntryTableCallback,
+    fetch_chain_callback: FetchChainTableCallback,
+) -> c_int {
+    log_init("info", 1);
+    h_search(
+        search_results_ptr,
+        search_results_len,
+        master_key_ptr,
+        master_key_len,
+        label_ptr,
+        label_len,
+        keywords_ptr,
+        entry_table_number,
+        progress_callback,
+        fetch_entry_callback,
+        fetch_chain_callback,
     )
 }
 
@@ -180,7 +209,7 @@ pub unsafe extern "C" fn h_upsert(
 ) -> c_int {
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(master_key_bytes),
+        KeyingMaterial::deserialize(master_key_bytes),
         "error re-serializing master secret key"
     );
     if entry_table_number == 0 {
@@ -210,6 +239,35 @@ pub unsafe extern "C" fn h_upsert(
         label_len,
         additions_ptr,
         deletions_ptr,
+    )
+}
+
+#[no_mangle]
+#[tracing::instrument(ret)]
+pub unsafe extern "C" fn h_upsert_with_logs(
+    master_key_ptr: *const u8,
+    master_key_len: c_int,
+    label_ptr: *const u8,
+    label_len: c_int,
+    additions_ptr: *const c_char,
+    deletions_ptr: *const c_char,
+    entry_table_number: c_uint,
+    fetch_entry: FetchEntryTableCallback,
+    upsert_entry: UpsertEntryTableCallback,
+    insert_chain: InsertChainTableCallback,
+) -> c_int {
+    log_init("info", 1);
+    h_upsert(
+        master_key_ptr,
+        master_key_len,
+        label_ptr,
+        label_len,
+        additions_ptr,
+        deletions_ptr,
+        entry_table_number,
+        fetch_entry,
+        upsert_entry,
+        insert_chain,
     )
 }
 
@@ -271,7 +329,7 @@ pub unsafe extern "C" fn h_live_compact(
 
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(master_key_bytes),
+        KeyingMaterial::deserialize(master_key_bytes),
         "error deserializing master secret key"
     );
 
@@ -364,14 +422,14 @@ pub unsafe extern "C" fn h_compact(
     let old_master_key_bytes =
         ffi_read_bytes!("master key", old_master_key_ptr, old_master_key_len);
     let old_master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(old_master_key_bytes),
+        KeyingMaterial::deserialize(old_master_key_bytes),
         "error old deserializing master secret key"
     );
 
     let new_master_key_bytes =
         ffi_read_bytes!("new master key", new_master_key_ptr, new_master_key_len);
     let new_master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(new_master_key_bytes),
+        KeyingMaterial::deserialize(new_master_key_bytes),
         "error deserializing new master secret key"
     );
 
@@ -410,6 +468,41 @@ pub unsafe extern "C" fn h_compact(
     );
 
     0
+}
+
+#[no_mangle]
+#[tracing::instrument(ret)]
+pub unsafe extern "C" fn h_compact_with_logs(
+    old_master_key_ptr: *const u8,
+    old_master_key_len: c_int,
+    new_master_key_ptr: *const u8,
+    new_master_key_len: c_int,
+    new_label_ptr: *const u8,
+    new_label_len: c_int,
+    num_reindexing_before_full_set: c_int,
+    entry_table_number: c_uint,
+    fetch_all_entry_table_uids: FetchAllEntryTableUidsCallback,
+    fetch_entry: FetchEntryTableCallback,
+    fetch_chain: FetchChainTableCallback,
+    update_lines: UpdateLinesCallback,
+    list_removed_locations: ListRemovedLocationsCallback,
+) -> c_int {
+    log_init("info", 1);
+    h_compact(
+        old_master_key_ptr,
+        old_master_key_len,
+        new_master_key_ptr,
+        new_master_key_len,
+        new_label_ptr,
+        new_label_len,
+        num_reindexing_before_full_set,
+        entry_table_number,
+        fetch_all_entry_table_uids,
+        fetch_entry,
+        fetch_chain,
+        update_lines,
+        list_removed_locations,
+    )
 }
 
 #[cfg(feature = "cloud")]
@@ -591,19 +684,19 @@ pub unsafe extern "C" fn h_generate_new_token(
         Token::random_findex_master_key(
             index_id,
             ffi_unwrap!(
-                KeyingMaterial::try_from_bytes(fetch_entries_seed),
+                KeyingMaterial::deserialize(fetch_entries_seed),
                 "fetch_entries_seed is of wrong size"
             ),
             ffi_unwrap!(
-                KeyingMaterial::try_from_bytes(fetch_chains_seed),
+                KeyingMaterial::deserialize(fetch_chains_seed),
                 "fetch_chains_seed is of wrong size"
             ),
             ffi_unwrap!(
-                KeyingMaterial::try_from_bytes(upsert_entries_seed),
+                KeyingMaterial::deserialize(upsert_entries_seed),
                 "upsert_entries_seed is of wrong size"
             ),
             ffi_unwrap!(
-                KeyingMaterial::try_from_bytes(insert_chains_seed),
+                KeyingMaterial::deserialize(insert_chains_seed),
                 "insert_chains_seed is of wrong size"
             ),
         ),
@@ -635,9 +728,6 @@ unsafe fn ffi_search<
             MASTER_KEY_LENGTH,
             KWI_LENGTH,
             KMAC_KEY_LENGTH,
-            DEM_KEY_LENGTH,
-            KmacKey,
-            DemScheme,
             Error,
         >,
 >(
@@ -736,9 +826,6 @@ unsafe extern "C" fn ffi_upsert<
             MASTER_KEY_LENGTH,
             KWI_LENGTH,
             KMAC_KEY_LENGTH,
-            DEM_KEY_LENGTH,
-            KmacKey,
-            DemScheme,
             Error,
         >,
 >(
