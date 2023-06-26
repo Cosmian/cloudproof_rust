@@ -1,10 +1,17 @@
-use std::{collections::HashSet, fmt::Display, hash::Hash, num::TryFromIntError};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    hash::Hash,
+    num::TryFromIntError,
+};
 
 use cosmian_crypto_core::{
     bytes_ser_de::{Deserializer, Serializable, Serializer},
     CryptoCoreError,
 };
-use cosmian_findex::{parameters::UID_LENGTH, CoreError as FindexCoreError, Uid};
+use cosmian_findex::{
+    parameters::UID_LENGTH, CoreError as FindexCoreError, Keyword, Location, Uid,
+};
 
 #[derive(Debug)]
 pub enum SerializableSetError {
@@ -74,6 +81,32 @@ where
     } else {
         Err(SerializableSetError::Serialization(
             "Remaining bytes after set deserialization".to_string(),
+        ))
+    }
+}
+
+pub fn deserialize_hashmap(
+    bytes: &[u8],
+) -> Result<HashMap<Keyword, HashSet<Location>>, SerializableSetError> {
+    let mut de = Deserializer::new(bytes);
+    let length = usize::try_from(de.read_leb128_u64()?)?;
+    let mut map = HashMap::with_capacity(length);
+    for _ in 0..length {
+        let keyword = de.read::<Keyword>()?;
+
+        let length = usize::try_from(de.read_leb128_u64()?)?;
+        let mut set = HashSet::with_capacity(length);
+        for _ in 0..length {
+            set.insert(de.read::<Location>()?);
+        }
+
+        map.insert(keyword, set);
+    }
+    if de.value().is_empty() {
+        Ok(map)
+    } else {
+        Err(SerializableSetError::Serialization(
+            "Remaining bytes after map deserialization".to_string(),
         ))
     }
 }
