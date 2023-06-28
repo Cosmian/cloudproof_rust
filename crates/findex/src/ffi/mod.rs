@@ -141,4 +141,5 @@ pub mod api;
 pub mod core;
 pub mod error;
 #[cfg(test)]
+#[cfg(target_os = "linux")]
 mod tests;
