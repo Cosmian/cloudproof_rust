@@ -149,7 +149,7 @@ pub(crate) fn fetch_callback(
     // Recopy buffer in Vec<u8>
     //
     let output_entries_bytes = unsafe {
-        std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize).to_vec()
+        std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize).to_vec()
     };
     Ok(output_entries_bytes)
 }
@@ -186,10 +186,10 @@ pub(crate) fn deserialize_indexed_values(
 }
 
 pub fn serialize_indexed_values(
-    ivs_keywords: HashMap<IndexedValue, HashSet<Keyword>>,
+    ivs_keywords: &HashMap<IndexedValue, HashSet<Keyword>>,
 ) -> Result<Vec<u8>, ParseIndexedValuesError> {
     let mut ivs_keywords_str = HashMap::with_capacity(ivs_keywords.len());
-    for (key, value) in &ivs_keywords {
+    for (key, value) in ivs_keywords {
         let k = STANDARD.encode(key.to_vec());
         let mut keywords_str = HashSet::with_capacity(value.len());
         for keyword in value {
@@ -221,5 +221,55 @@ impl Display for ParseIndexedValuesError {
             Self::Base64Decode(e) => write!(f, "base64 error {e}"),
             Self::Decoding(e) => write!(f, "bytes error {e}"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::{HashMap, HashSet};
+
+    use cosmian_findex::{IndexedValue, Keyword, Location};
+
+    use super::serialize_indexed_values;
+    use crate::ffi::core::utils::deserialize_indexed_values;
+
+    fn hashset_keywords(keywords: &[&'static str]) -> HashSet<Keyword> {
+        keywords
+            .iter()
+            .map(|keyword| Keyword::from(*keyword))
+            .collect()
+    }
+
+    #[test]
+    fn test_indexed_values_serialization() {
+        let mut additions = HashMap::new();
+        let robert_location = Location::from("robert");
+        additions.insert(
+            IndexedValue::Location(robert_location),
+            hashset_keywords(&["robert"]),
+        );
+
+        let serialized = serialize_indexed_values(&additions.clone()).unwrap();
+        println!("serialized: {serialized:?}");
+        let serialized_str = match std::str::from_utf8(&serialized) {
+            Ok(v) => v,
+            Err(e) => panic!("Invalid UTF-8 sequence: {e}"),
+        };
+        let deserialized = deserialize_indexed_values(serialized_str).unwrap();
+        println!("deserialized: {deserialized:?}");
+        assert_eq!(additions, deserialized);
+    }
+
+    #[test]
+    fn test_indexed_values_serialization_empty() {
+        let serialized = serialize_indexed_values(&HashMap::new()).unwrap();
+        println!("serialized: {serialized:?}");
+        let serialized_str = match std::str::from_utf8(&serialized) {
+            Ok(v) => v,
+            Err(e) => panic!("Invalid UTF-8 sequence: {e}"),
+        };
+        let deserialized = deserialize_indexed_values(serialized_str).unwrap();
+        println!("deserialized: {deserialized:?}");
+        assert_eq!(HashMap::new(), deserialized);
     }
 }

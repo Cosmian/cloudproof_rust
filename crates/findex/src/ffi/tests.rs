@@ -269,18 +269,25 @@ unsafe fn ffi_upsert(
     let label_cs = CString::new(label).unwrap();
     let label_ptr = label_cs.as_ptr();
 
-    let mut additions_bytes = serialize_indexed_values(additions).unwrap();
+    let mut additions_bytes = serialize_indexed_values(&additions).unwrap();
     let additions_ptr: *mut c_char = additions_bytes.as_mut_ptr().cast();
     let mut additions_len = additions_bytes.len() as c_int;
     let additions_len = &mut additions_len;
     ffi_write_bytes!("additions", &additions_bytes, additions_ptr, additions_len);
 
-    let mut deletions_bytes = serialize_indexed_values(HashMap::new()).unwrap();
-    println!("deletions_bytes: {deletions_bytes:?}");
+    let mut deletions_bytes = serialize_indexed_values(&HashMap::new()).unwrap();
+    // let mut deletions_bytes = serde_json::to_vec(&{}).unwrap();
+    // let mut deletions_bytes = vec![123, 125];
+    println!(
+        "deletions_bytes: {deletions_bytes:?}, length: {}",
+        deletions_bytes.len()
+    );
     let deletions_ptr: *mut c_char = deletions_bytes.as_mut_ptr().cast();
     let mut deletions_len = deletions_bytes.len() as c_int;
     let deletions_len = &mut deletions_len;
     ffi_write_bytes!("deletions", &deletions_bytes, deletions_ptr, deletions_len);
+
+    println!("deletions_ptr: {deletions_ptr:?}, length: {deletions_len}");
 
     let ret = h_upsert(
         master_key_ptr,
@@ -315,7 +322,7 @@ unsafe fn ffi_search(master_key: &[u8], label: &str, keywords: HashSet<Keyword>)
     for keyword in &keywords {
         keywords_base64.insert(STANDARD.encode(keyword));
     }
-    let keywords_json = serde_json::to_vec(&keywords_base64).unwrap();
+    let keywords_json = serde_json::to_string(&keywords_base64).unwrap();
     let keywords_ptr = keywords_json.as_ptr().cast();
 
     // OUTPUT
@@ -351,7 +358,6 @@ unsafe fn ffi_search(master_key: &[u8], label: &str, keywords: HashSet<Keyword>)
 }
 
 #[test]
-
 fn test_interfaces() {
     let master_key = vec![0u8; MASTER_KEY_LENGTH];
     let label = "my label";

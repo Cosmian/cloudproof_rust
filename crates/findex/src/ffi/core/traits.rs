@@ -55,7 +55,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             );
         }
         let results = serializer.finalize();
-        Ok(progress(results.as_ptr(), results.len() as c_uint) != 0)
+        Ok(progress(results.as_ptr(), c_uint::try_from(results.len())?) != 0)
     }
 
     async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, FindexFfiError> {
@@ -72,15 +72,14 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             let ret = fetch_all_entry_table_uids(output_ptr, &mut output_len);
             if ret == 0 {
                 let uids_bytes = unsafe {
-                    std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize)
+                    std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize)
                 };
                 return Ok(wrapping_callback_ser_de_error_with_context!(
                     deserialize_set(uids_bytes),
                     "deserializing uids from fetch all entries callback"
                 ));
-            } else {
-                allocation_size = output_len as usize;
             }
+            allocation_size = output_len as usize;
         }
     }
 
@@ -152,7 +151,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             self.entry_table_number,
         );
         let mut serialized_rejected_items = vec![0; allocation_size];
-        let mut serialized_rejected_items_len = allocation_size as u32;
+        let mut serialized_rejected_items_len = u32::try_from(allocation_size)?;
         let serialized_rejected_items_ptr =
             serialized_rejected_items.as_mut_ptr().cast::<c_uchar>();
 
@@ -161,7 +160,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             serialized_rejected_items_ptr,
             &mut serialized_rejected_items_len,
             serialized_upsert_data.as_ptr(),
-            serialized_upsert_data.len() as u32,
+            u32::try_from(serialized_upsert_data.len())?,
         );
 
         if error_code != ErrorCode::Success.code() {
@@ -197,7 +196,10 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         );
 
         // FFI callback
-        let res = insert_chain(serialized_items.as_ptr(), serialized_items.len() as u32);
+        let res = insert_chain(
+            serialized_items.as_ptr(),
+            u32::try_from(serialized_items.len())?,
+        );
 
         if ErrorCode::Success.code() != res {
             return Err(FindexFfiError::UserCallbackErrorCode {
@@ -286,7 +288,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         }
 
         let output_locations_bytes =
-            unsafe { std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize) };
+            unsafe { std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize) };
 
         let locations_to_remove = wrapping_callback_ser_de_error_with_context!(
             deserialize_set(output_locations_bytes),
@@ -335,7 +337,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         }
 
         let output_locations_bytes =
-            unsafe { std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize) };
+            unsafe { std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize) };
 
         let locations = wrapping_callback_ser_de_error_with_context!(
             deserialize_set(output_locations_bytes),
@@ -358,7 +360,10 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         );
 
         // FFI callback
-        let res = delete_chain(serialized_items.as_ptr(), serialized_items.len() as u32);
+        let res = delete_chain(
+            serialized_items.as_ptr(),
+            u32::try_from(serialized_items.len())?,
+        );
 
         if ErrorCode::Success.code() != res {
             return Err(FindexFfiError::UserCallbackErrorCode {
