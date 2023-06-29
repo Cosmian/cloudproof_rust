@@ -17,6 +17,7 @@ ffi = [
   "base64",
   "serde_json",
   "tokio/rt-multi-thread",
+  "tracing",
   "tracing-log",
   "tracing-subscriber",
   "tracing-tree",
@@ -29,21 +30,23 @@ wasm_bindgen = [
   "hex",
   "wasm-bindgen",
   "wasm-bindgen-futures",
+  "log",
+  "wasm-logger",
 ]
 compact_live = ["cosmian_findex/live_compact"]
 default = []
 
 [dependencies]
-cosmian_crypto_core = { git = "https://github.com/Cosmian/crypto_core.git", branch = "findex_integration", features = ["aes", "sha3", "ser"], default-features = false }
-cosmian_findex = { git = "https://github.com/Cosmian/findex.git", branch = "update_crypto_core_8" }
-
 # Optional dependencies
 base64 = { workspace = true, optional = true }
+cosmian_crypto_core = { git = "https://github.com/Cosmian/crypto_core.git", branch = "findex_integration", features = ["aes", "sha3", "ser"], default-features = false }
 cosmian_ffi_utils = { workspace = true, optional = true }
+cosmian_findex = { git = "https://github.com/Cosmian/findex.git", branch = "update_crypto_core_8" }
 faker_rand = { version = "0.1", optional = true }
 futures = { version = "0.3.26", optional = true }
 hex = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
+log = { version = "0.4.6", optional = true }
 pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 rand = { workspace = true, optional = true }
 reqwest = { version = "0.11.14", features = ["rustls-tls"], default-features = false, optional = true }
@@ -51,12 +54,13 @@ rusqlite = { version = "0.28", features = ["bundled"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0.93", optional = true }
 tokio = { version = "1.25.0", optional = true }
-tracing = { workspace = true }
+tracing = { workspace = true, optional = true }
 tracing-log = { workspace = true, optional = true }
 tracing-subscriber = { workspace = true, optional = true }
 tracing-tree = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 wasm-bindgen-futures = { version = "0.4.34", optional = true }
+wasm-logger = { version = "0.2.0", optional = true }
 
 [dev-dependencies]
 actix-rt = "2.8"

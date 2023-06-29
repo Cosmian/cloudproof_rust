@@ -62,6 +62,12 @@ pub async fn webassembly_search(
     search_results_to_js(&results)
 }
 
+#[wasm_bindgen]
+pub async fn webassembly_logger_init() {
+    wasm_logger::init(wasm_logger::Config::default());
+    log::info!("wasm_logger initialized");
+}
+
 /// See [`FindexUpsert::upsert()`](cosmian_findex::FindexUpsert::upsert).
 ///
 /// # Parameters
@@ -101,10 +107,12 @@ pub async fn webassembly_upsert(
         upsert_entry: Some(upsert_entry),
         insert_chain: Some(insert_chain),
     };
-    wasm_upsert
+    let ret = wasm_upsert
         .upsert(&master_key, &label, additions, deletions)
         .await
-        .map_err(|e| JsValue::from(format!("During Findex upsert: {e}")))
+        .map_err(|e| JsValue::from(format!("During Findex upsert: {e}")));
+    log::info!("upsert result: {:?}", ret);
+    ret
 }
 
 /// See [`FindexSearch::search()`](cosmian_findex::FindexSearch::search).

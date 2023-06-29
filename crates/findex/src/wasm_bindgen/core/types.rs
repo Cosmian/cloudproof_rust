@@ -22,6 +22,7 @@ extern "C" {
     #[wasm_bindgen(
         typescript_type = "(uids: Uint8Array[]) => Promise<{uid: Uint8Array, value: Uint8Array}[]>"
     )]
+    #[derive(Debug)]
     pub type Fetch;
 }
 
@@ -34,6 +35,7 @@ extern "C" {
                            newValue: Uint8Array}[]) => Promise<{uid: Uint8Array, value: \
                            Uint8Array}[]>"
     )]
+    #[derive(Debug)]
     pub type Upsert;
 }
 
@@ -45,6 +47,7 @@ extern "C" {
         typescript_type = "(uidsAndValues: {uid: Uint8Array, value: Uint8Array}[]) => \
                            Promise<void>"
     )]
+    #[derive(Debug)]
     pub type Insert;
 }
 
