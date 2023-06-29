@@ -34,7 +34,7 @@ compact_live = ["cosmian_findex/live_compact"]
 default = []
 
 [dependencies]
-cosmian_crypto_core.workspace = true
+cosmian_crypto_core = { git = "https://github.com/Cosmian/crypto_core.git", branch = "findex_integration", features = ["aes", "sha3", "ser"], default-features = false }
 cosmian_findex = { git = "https://github.com/Cosmian/findex.git", branch = "update_crypto_core_8" }
 
 # Optional dependencies

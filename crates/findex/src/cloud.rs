@@ -515,7 +515,8 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
     ) -> Result<(), FindexCloudError> {
         let serialized_insert = items.serialize()?;
 
-        self.post(Callback::InsertChains, serialized_insert.to_vec()).await?;
+        self.post(Callback::InsertChains, serialized_insert.to_vec())
+            .await?;
 
         Ok(())
     }

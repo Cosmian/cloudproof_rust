@@ -58,7 +58,8 @@ pub fn sqlite_fetch_entry_table_items(
     }
     Ok(EncryptedTable::<UID_LENGTH>::from(entry_table_items)
         .serialize()
-        .map_err(Error::from)?.to_vec())
+        .map_err(Error::from)?
+        .to_vec())
 }
 
 pub fn delete_db(sqlite_path: &PathBuf) -> Result<(), Error> {
