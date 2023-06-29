@@ -33,7 +33,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2023-06-27
           override: true
 
       - name: Run python tests
