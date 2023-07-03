@@ -2,7 +2,7 @@ use std::ffi::{c_char, c_int, c_uchar};
 
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes};
 
-use crate::core::{ReExposedAesGcm, KEY_LENGTH, NONCE_LENGTH};
+use crate::{ReExposedAesGcm, KEY_LENGTH, NONCE_LENGTH};
 
 unsafe extern "C" fn aesgcm(
     output_ptr: *mut c_uchar,

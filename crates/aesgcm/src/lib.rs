@@ -9,3 +9,5 @@ pub mod wasm_bindgen;
 
 mod core;
 mod error;
+
+pub use crate::core::aesgcm::{ReExposedAesGcm, BLOCK_LENGTH, KEY_LENGTH, NONCE_LENGTH};

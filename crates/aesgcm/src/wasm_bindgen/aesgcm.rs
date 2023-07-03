@@ -1,7 +1,7 @@
 use js_sys::Uint8Array;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
-use crate::core::{ReExposedAesGcm, KEY_LENGTH, NONCE_LENGTH};
+use crate::{ReExposedAesGcm, KEY_LENGTH, NONCE_LENGTH};
 
 fn aesgcm(
     input_data: Vec<u8>,

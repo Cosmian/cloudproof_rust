@@ -1,6 +1,6 @@
 use pyo3::{exceptions::PyException, pyclass, pymethods, PyResult};
 
-use crate::core::{ReExposedAesGcm, KEY_LENGTH, NONCE_LENGTH};
+use crate::{ReExposedAesGcm, KEY_LENGTH, NONCE_LENGTH};
 
 #[pyclass]
 pub struct AesGcm(ReExposedAesGcm);

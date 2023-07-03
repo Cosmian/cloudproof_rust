@@ -1,8 +1,8 @@
 use wasm_bindgen_test::wasm_bindgen_test;
 
 use crate::{
-    core::{KEY_LENGTH, NONCE_LENGTH},
     wasm_bindgen::aesgcm::{webassembly_aesgcm_decrypt, webassembly_aesgcm_encrypt},
+    KEY_LENGTH, NONCE_LENGTH,
 };
 
 #[wasm_bindgen_test]

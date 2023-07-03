@@ -3,7 +3,7 @@ use std::ffi::{c_char, c_int};
 use cosmian_ffi_utils::error::get_last_error;
 
 use super::aesgcm::{h_aesgcm_decrypt, h_aesgcm_encrypt};
-use crate::core::{BLOCK_LENGTH, KEY_LENGTH, NONCE_LENGTH};
+use crate::{BLOCK_LENGTH, KEY_LENGTH, NONCE_LENGTH};
 
 #[test]
 fn encrypt_decrypt() {
