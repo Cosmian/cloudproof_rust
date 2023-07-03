@@ -12,8 +12,8 @@ jobs:
     uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
     with:
       project-name: cloudproof_rust
-      toolchain: nightly-2023-03-20
-      kms-version: 4.4.2
+      toolchain: nightly-2023-06-27
+      kms-version: 4.4
       findex-cloud-version: 0.1.0
       branch-java: v6.0.0
       branch-js: add_logs_on_callbacks

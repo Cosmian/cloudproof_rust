@@ -14,8 +14,6 @@ use cosmian_crypto_core::{
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
 
-pub const MAX_CLEAR_TEXT_SIZE: usize = 1 << 30;
-
 #[wasm_bindgen]
 pub fn webassembly_encrypt_hybrid_header(
     policy_bytes: Vec<u8>,

@@ -137,7 +137,7 @@ impl std::error::Error for FindexFfiError {}
 
 impl cosmian_findex::CallbackError for FindexFfiError {}
 
-pub mod api;
-pub mod core;
+mod api;
+mod core;
 pub mod error;
 mod logger;

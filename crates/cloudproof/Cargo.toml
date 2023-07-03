@@ -27,6 +27,7 @@ default = [
 ]
 
 [dependencies]
+aes-gcm = "0.10.1"
 ######
 # Watchout: for convenience in development mode, we can set one of those following dependencies such as:
 # cloudproof_anonymization = { path = "../anonymization", optional = true }
