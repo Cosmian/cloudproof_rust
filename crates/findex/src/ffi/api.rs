@@ -1,5 +1,4 @@
 //! Defines the Findex FFI API.
-
 use std::{
     collections::HashSet,
     convert::TryFrom,
@@ -18,14 +17,15 @@ use cosmian_ffi_utils::{
 use cosmian_findex::FindexLiveCompact;
 use cosmian_findex::{
     parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
-        KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
+        BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
     CallbackError, Error as FindexError, FindexCompact, FindexSearch, FindexUpsert, KeyingMaterial,
     Keyword, Label,
 };
 
 use super::error::ToErrorCode;
+#[cfg(debug_assertions)]
+use super::logger::log_init;
 #[cfg(feature = "cloud")]
 use crate::cloud::{FindexCloud, Token};
 #[cfg(feature = "compact_live")]
@@ -93,9 +93,12 @@ pub unsafe extern "C" fn h_search(
     fetch_entry_callback: FetchEntryTableCallback,
     fetch_chain_callback: FetchChainTableCallback,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(master_key_bytes),
+        KeyingMaterial::deserialize(master_key_bytes),
         "error deserializing master secret key"
     );
     if entry_table_number == 0 {
@@ -178,9 +181,12 @@ pub unsafe extern "C" fn h_upsert(
     upsert_entry: UpsertEntryTableCallback,
     insert_chain: InsertChainTableCallback,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(master_key_bytes),
+        KeyingMaterial::deserialize(master_key_bytes),
         "error re-serializing master secret key"
     );
     if entry_table_number == 0 {
@@ -255,6 +261,9 @@ pub unsafe extern "C" fn h_live_compact(
     delete_chain: DeleteChainCallback,
     filter_removed_locations: ListRemovedLocationsCallback,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let num_reindexing_before_full_set = ffi_unwrap!(
         u32::try_from(num_reindexing_before_full_set)
             .ok()
@@ -271,7 +280,7 @@ pub unsafe extern "C" fn h_live_compact(
 
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(master_key_bytes),
+        KeyingMaterial::deserialize(master_key_bytes),
         "error deserializing master secret key"
     );
 
@@ -347,6 +356,9 @@ pub unsafe extern "C" fn h_compact(
     update_lines: UpdateLinesCallback,
     list_removed_locations: ListRemovedLocationsCallback,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let num_reindexing_before_full_set = ffi_unwrap!(
         u32::try_from(num_reindexing_before_full_set)
             .ok()
@@ -364,14 +376,14 @@ pub unsafe extern "C" fn h_compact(
     let old_master_key_bytes =
         ffi_read_bytes!("master key", old_master_key_ptr, old_master_key_len);
     let old_master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(old_master_key_bytes),
+        KeyingMaterial::deserialize(old_master_key_bytes),
         "error old deserializing master secret key"
     );
 
     let new_master_key_bytes =
         ffi_read_bytes!("new master key", new_master_key_ptr, new_master_key_len);
     let new_master_key = ffi_unwrap!(
-        KeyingMaterial::try_from_bytes(new_master_key_bytes),
+        KeyingMaterial::deserialize(new_master_key_bytes),
         "error deserializing new master secret key"
     );
 
@@ -446,6 +458,9 @@ pub unsafe extern "C" fn h_search_cloud(
     keywords_ptr: *const c_char,
     base_url_ptr: *const c_char,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let token = ffi_read_string!("keywords", token_ptr);
 
     let base_url = if base_url_ptr.is_null() {
@@ -514,6 +529,9 @@ pub unsafe extern "C" fn h_upsert_cloud(
     deletions_ptr: *const c_char,
     base_url_ptr: *const c_char,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let token = ffi_read_string!("keywords", token_ptr);
 
     let base_url = if base_url_ptr.is_null() {
@@ -564,6 +582,9 @@ pub unsafe extern "C" fn h_generate_new_token(
     insert_chains_seed_ptr: *const u8,
     insert_chains_seed_len: c_int,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let index_id: String = ffi_read_string!("index id", index_id_ptr);
 
     let fetch_entries_seed = ffi_read_bytes!(
@@ -591,19 +612,19 @@ pub unsafe extern "C" fn h_generate_new_token(
         Token::random_findex_master_key(
             index_id,
             ffi_unwrap!(
-                KeyingMaterial::try_from_bytes(fetch_entries_seed),
+                KeyingMaterial::deserialize(fetch_entries_seed),
                 "fetch_entries_seed is of wrong size"
             ),
             ffi_unwrap!(
-                KeyingMaterial::try_from_bytes(fetch_chains_seed),
+                KeyingMaterial::deserialize(fetch_chains_seed),
                 "fetch_chains_seed is of wrong size"
             ),
             ffi_unwrap!(
-                KeyingMaterial::try_from_bytes(upsert_entries_seed),
+                KeyingMaterial::deserialize(upsert_entries_seed),
                 "upsert_entries_seed is of wrong size"
             ),
             ffi_unwrap!(
-                KeyingMaterial::try_from_bytes(insert_chains_seed),
+                KeyingMaterial::deserialize(insert_chains_seed),
                 "insert_chains_seed is of wrong size"
             ),
         ),
@@ -635,9 +656,6 @@ unsafe fn ffi_search<
             MASTER_KEY_LENGTH,
             KWI_LENGTH,
             KMAC_KEY_LENGTH,
-            DEM_KEY_LENGTH,
-            KmacKey,
-            DemScheme,
             Error,
         >,
 >(
@@ -736,9 +754,6 @@ unsafe extern "C" fn ffi_upsert<
             MASTER_KEY_LENGTH,
             KWI_LENGTH,
             KMAC_KEY_LENGTH,
-            DEM_KEY_LENGTH,
-            KmacKey,
-            DemScheme,
             Error,
         >,
 >(

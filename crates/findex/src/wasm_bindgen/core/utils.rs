@@ -1,7 +1,5 @@
-use std::collections::HashSet;
-
 use cosmian_crypto_core::bytes_ser_de::Serializable;
-use cosmian_findex::{EncryptedTable, Uid};
+use cosmian_findex::{EncryptedMultiTable, EncryptedTable, Uid, Uids};
 use js_sys::{Array, JsString, Object, Reflect, Uint8Array};
 pub use js_sys::{Function, Promise};
 use wasm_bindgen::JsCast;
@@ -47,13 +45,13 @@ macro_rules! callback {
 /// - `fetch_entries`: JS callback calling the DB
 #[inline]
 pub async fn fetch_uids<const UID_LENGTH: usize>(
-    uids: &HashSet<Uid<UID_LENGTH>>,
+    uids: &Uids<UID_LENGTH>,
     fetch_callback: &Fetch,
     source_for_errors: &'static str,
-) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexWasmError> {
+) -> Result<EncryptedMultiTable<UID_LENGTH>, FindexWasmError> {
     // Convert Inputs to array of Uint8Array
     let input = Array::new();
-    for uid in uids {
+    for uid in &uids.0 {
         let js_uid = unsafe { Uint8Array::new(&Uint8Array::view(uid)) };
         input.push(&js_uid);
     }
@@ -81,7 +79,7 @@ pub fn set_bytes_in_object_property(
 pub fn js_value_to_entry_table_items<const UID_LENGTH: usize>(
     encrypted_table: &JsValue,
     callback_name_for_errors: &'static str,
-) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, JsValue> {
+) -> Result<EncryptedMultiTable<UID_LENGTH>, JsValue> {
     if !Array::is_array(encrypted_table) {
         return Err(JsValue::from_str(
             format!(
@@ -118,7 +116,7 @@ pub fn js_value_to_entry_table_items<const UID_LENGTH: usize>(
 
         let value = get_bytes_from_object_property(&obj, "value", &object_source_for_errors, i)?;
         encrypted_table.push((
-            Uid::try_from_bytes(&uid).map_err(|e| {
+            Uid::deserialize(&uid).map_err(|e| {
                 JsValue::from_str(
                     format!(
                         "cannot parse the `uid` returned by `{callback_name_for_errors}` at \
@@ -131,7 +129,7 @@ pub fn js_value_to_entry_table_items<const UID_LENGTH: usize>(
             value.clone(),
         ));
     }
-    Ok(encrypted_table)
+    Ok(EncryptedMultiTable(encrypted_table))
 }
 
 pub fn encrypted_table_to_js_value<const UID_LENGTH: usize>(

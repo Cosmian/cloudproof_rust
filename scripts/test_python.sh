@@ -35,12 +35,18 @@ if [ -z "$test_crate" ]; then
     test_python_interface cover_crypt
     test_python_interface fpe
     test_python_interface anonymization
+    test_python_interface aesgcm
+    test_python_interface ecies
 elif [ "$test_crate" = "findex" ]; then
     test_python_interface findex
 elif [ "$test_crate" = "cover_crypt" ]; then
     test_python_interface cover_crypt
 elif [ "$test_crate" = "fpe" ]; then
     test_python_interface fpe
+elif [ "$test_crate" = "aesgcm" ]; then
+    test_python_interface aesgcm
+elif [ "$test_crate" = "ecies" ]; then
+    test_python_interface ecies
 elif [ "$test_crate" = "anonymization" ]; then
     test_python_interface anonymization
 else

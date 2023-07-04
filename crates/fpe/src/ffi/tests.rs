@@ -123,7 +123,7 @@ unsafe fn fpe_alphabet(
         }
     } else {
         let output_bytes: &[u8] =
-            std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize);
+            std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize);
         String::from_utf8(output_bytes.to_vec()).unwrap()
     }
 }
@@ -408,7 +408,7 @@ unsafe fn fpe_big_integer(
         }
     } else {
         let output_bytes: &[u8] =
-            std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize);
+            std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize);
         String::from_utf8(output_bytes.to_vec()).unwrap()
     }
 }

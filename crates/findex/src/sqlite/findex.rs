@@ -3,11 +3,10 @@ use std::collections::{HashMap, HashSet};
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
     parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
-        KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
+        BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
-    EncryptedTable, FetchChains, FindexCallbacks, FindexSearch, FindexUpsert, IndexedValue,
-    Keyword, Location, Uid, UpsertData,
+    EncryptedMultiTable, EncryptedTable, FetchChains, FindexCallbacks, FindexSearch, FindexUpsert,
+    IndexedValue, Keyword, Location, Uid, Uids, UpsertData,
 };
 use rusqlite::{Connection, OptionalExtension, Result};
 
@@ -31,7 +30,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         Ok(true)
     }
 
-    async fn fetch_all_entry_table_uids(&self) -> Result<HashSet<Uid<UID_LENGTH>>, Error> {
+    async fn fetch_all_entry_table_uids(&self) -> Result<Uids<UID_LENGTH>, Error> {
         Err(Error::Other(
             "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
         ))
@@ -39,20 +38,22 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
 
     async fn fetch_entry_table(
         &self,
-        entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, Error> {
+        entry_table_uids: Uids<UID_LENGTH>,
+    ) -> Result<EncryptedMultiTable<UID_LENGTH>, Error> {
         let serialized_res =
-            sqlite_fetch_entry_table_items(self.connection, &serialize_set(&entry_table_uids)?)?;
-        deserialize_fetch_entry_table_results(&serialized_res).map_err(Error::from)
+            sqlite_fetch_entry_table_items(self.connection, &serialize_set(&entry_table_uids.0)?)?;
+        Ok(EncryptedMultiTable(
+            deserialize_fetch_entry_table_results(&serialized_res).map_err(Error::from)?,
+        ))
     }
 
     async fn fetch_chain_table(
         &self,
-        chain_table_uids: HashSet<Uid<UID_LENGTH>>,
+        chain_table_uids: Uids<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, Error> {
         let mut stmt = prepare_statement(
             self.connection,
-            &serialize_set(&chain_table_uids)?,
+            &serialize_set(&chain_table_uids.0)?,
             "chain_table",
         )?;
 
@@ -60,7 +61,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         let mut chain_table_items = EncryptedTable::default();
         while let Some(row) = rows.next()? {
             let uid: Vec<u8> = row.get(0)?;
-            chain_table_items.insert(Uid::try_from_bytes(&uid)?, row.get(1)?);
+            chain_table_items.insert(Uid::deserialize(&uid)?, row.get(1)?);
         }
         Ok(chain_table_items)
     }
@@ -111,7 +112,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
 
     fn update_lines(
         &mut self,
-        _chain_table_uids_to_remove: HashSet<Uid<UID_LENGTH>>,
+        _chain_table_uids_to_remove: Uids<UID_LENGTH>,
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), Error> {
@@ -140,26 +141,15 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         ))
     }
 
-    async fn delete_chain(
-        &mut self,
-        _uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> std::result::Result<(), Error> {
+    async fn delete_chain(&mut self, _uids: Uids<UID_LENGTH>) -> std::result::Result<(), Error> {
         Err(Error::Other(
             "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
         ))
     }
 }
 
-impl
-    FetchChains<
-        UID_LENGTH,
-        BLOCK_LENGTH,
-        CHAIN_TABLE_WIDTH,
-        KWI_LENGTH,
-        DEM_KEY_LENGTH,
-        DemScheme,
-        Error,
-    > for RusqliteFindex<'_>
+impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, Error>
+    for RusqliteFindex<'_>
 {
 }
 
@@ -171,9 +161,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         Error,
     > for RusqliteFindex<'_>
 {
@@ -187,9 +174,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         Error,
     > for RusqliteFindex<'_>
 {
