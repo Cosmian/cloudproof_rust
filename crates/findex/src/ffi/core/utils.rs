@@ -139,7 +139,7 @@ pub(crate) fn fetch_callback(
     // Recopy buffer in Vec<u8>
     //
     let output_entries_bytes = unsafe {
-        std::slice::from_raw_parts(output_ptr as *const u8, output_len as usize).to_vec()
+        std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize).to_vec()
     };
     Ok(output_entries_bytes)
 }

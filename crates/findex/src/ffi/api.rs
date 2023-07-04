@@ -91,6 +91,9 @@ pub unsafe extern "C" fn h_search(
     fetch_entry_callback: FetchEntryTableCallback,
     fetch_chain_callback: FetchChainTableCallback,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
         KeyingMaterial::deserialize(master_key_bytes),
@@ -124,37 +127,6 @@ pub unsafe extern "C" fn h_search(
         label_ptr,
         label_len,
         keywords_ptr,
-    )
-}
-
-#[no_mangle]
-#[tracing::instrument(ret)]
-pub unsafe extern "C" fn h_search_with_logs(
-    search_results_ptr: *mut c_char,
-    search_results_len: *mut c_int,
-    master_key_ptr: *const c_char,
-    master_key_len: c_int,
-    label_ptr: *const u8,
-    label_len: c_int,
-    keywords_ptr: *const c_char,
-    entry_table_number: c_uint,
-    progress_callback: ProgressCallback,
-    fetch_entry_callback: FetchEntryTableCallback,
-    fetch_chain_callback: FetchChainTableCallback,
-) -> c_int {
-    log_init("info", 1);
-    h_search(
-        search_results_ptr,
-        search_results_len,
-        master_key_ptr,
-        master_key_len,
-        label_ptr,
-        label_len,
-        keywords_ptr,
-        entry_table_number,
-        progress_callback,
-        fetch_entry_callback,
-        fetch_chain_callback,
     )
 }
 
@@ -207,6 +179,9 @@ pub unsafe extern "C" fn h_upsert(
     upsert_entry: UpsertEntryTableCallback,
     insert_chain: InsertChainTableCallback,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
     let master_key = ffi_unwrap!(
         KeyingMaterial::deserialize(master_key_bytes),
@@ -239,35 +214,6 @@ pub unsafe extern "C" fn h_upsert(
         label_len,
         additions_ptr,
         deletions_ptr,
-    )
-}
-
-#[no_mangle]
-#[tracing::instrument(ret)]
-pub unsafe extern "C" fn h_upsert_with_logs(
-    master_key_ptr: *const u8,
-    master_key_len: c_int,
-    label_ptr: *const u8,
-    label_len: c_int,
-    additions_ptr: *const c_char,
-    deletions_ptr: *const c_char,
-    entry_table_number: c_uint,
-    fetch_entry: FetchEntryTableCallback,
-    upsert_entry: UpsertEntryTableCallback,
-    insert_chain: InsertChainTableCallback,
-) -> c_int {
-    log_init("info", 1);
-    h_upsert(
-        master_key_ptr,
-        master_key_len,
-        label_ptr,
-        label_len,
-        additions_ptr,
-        deletions_ptr,
-        entry_table_number,
-        fetch_entry,
-        upsert_entry,
-        insert_chain,
     )
 }
 
@@ -313,6 +259,9 @@ pub unsafe extern "C" fn h_live_compact(
     delete_chain: DeleteChainCallback,
     filter_removed_locations: ListRemovedLocationsCallback,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let num_reindexing_before_full_set = ffi_unwrap!(
         u32::try_from(num_reindexing_before_full_set)
             .ok()
@@ -405,6 +354,9 @@ pub unsafe extern "C" fn h_compact(
     update_lines: UpdateLinesCallback,
     list_removed_locations: ListRemovedLocationsCallback,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let num_reindexing_before_full_set = ffi_unwrap!(
         u32::try_from(num_reindexing_before_full_set)
             .ok()
@@ -470,41 +422,6 @@ pub unsafe extern "C" fn h_compact(
     0
 }
 
-#[no_mangle]
-#[tracing::instrument(ret)]
-pub unsafe extern "C" fn h_compact_with_logs(
-    old_master_key_ptr: *const u8,
-    old_master_key_len: c_int,
-    new_master_key_ptr: *const u8,
-    new_master_key_len: c_int,
-    new_label_ptr: *const u8,
-    new_label_len: c_int,
-    num_reindexing_before_full_set: c_int,
-    entry_table_number: c_uint,
-    fetch_all_entry_table_uids: FetchAllEntryTableUidsCallback,
-    fetch_entry: FetchEntryTableCallback,
-    fetch_chain: FetchChainTableCallback,
-    update_lines: UpdateLinesCallback,
-    list_removed_locations: ListRemovedLocationsCallback,
-) -> c_int {
-    log_init("info", 1);
-    h_compact(
-        old_master_key_ptr,
-        old_master_key_len,
-        new_master_key_ptr,
-        new_master_key_len,
-        new_label_ptr,
-        new_label_len,
-        num_reindexing_before_full_set,
-        entry_table_number,
-        fetch_all_entry_table_uids,
-        fetch_entry,
-        fetch_chain,
-        update_lines,
-        list_removed_locations,
-    )
-}
-
 #[cfg(feature = "cloud")]
 #[no_mangle]
 /// Recursively searches Findex graphs for values indexed by the given keywords.
@@ -539,6 +456,9 @@ pub unsafe extern "C" fn h_search_cloud(
     keywords_ptr: *const c_char,
     base_url_ptr: *const c_char,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let token = ffi_read_string!("keywords", token_ptr);
 
     let base_url = if base_url_ptr.is_null() {
@@ -607,6 +527,9 @@ pub unsafe extern "C" fn h_upsert_cloud(
     deletions_ptr: *const c_char,
     base_url_ptr: *const c_char,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let token = ffi_read_string!("keywords", token_ptr);
 
     let base_url = if base_url_ptr.is_null() {
@@ -657,6 +580,9 @@ pub unsafe extern "C" fn h_generate_new_token(
     insert_chains_seed_ptr: *const u8,
     insert_chains_seed_len: c_int,
 ) -> c_int {
+    #[cfg(debug_assertions)]
+    log_init("info", 1);
+
     let index_id: String = ffi_read_string!("index id", index_id_ptr);
 
     let fetch_entries_seed = ffi_read_bytes!(
