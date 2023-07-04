@@ -23,7 +23,9 @@ use cosmian_findex::{
     Keyword, Label,
 };
 
-use super::{error::ToErrorCode, logger::log_init};
+use super::error::ToErrorCode;
+#[cfg(debug_assertions)]
+use super::logger::log_init;
 #[cfg(feature = "cloud")]
 use crate::cloud::{FindexCloud, Token};
 #[cfg(feature = "compact_live")]

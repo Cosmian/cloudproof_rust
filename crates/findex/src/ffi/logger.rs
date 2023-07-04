@@ -4,7 +4,7 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter};
 
 static LOG_INIT: Once = Once::new();
 
-pub(crate) fn log_init(paths: &str, force_logging: c_uint) {
+pub fn log_init(paths: &str, force_logging: c_uint) {
     // We want to log:
     //  - if the environment variable RUST_LOG is defined
     //  - if force_logging is gt 0

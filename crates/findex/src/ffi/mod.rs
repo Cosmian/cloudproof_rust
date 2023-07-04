@@ -141,3 +141,5 @@ mod api;
 mod core;
 pub mod error;
 mod logger;
+
+pub use logger::log_init;
