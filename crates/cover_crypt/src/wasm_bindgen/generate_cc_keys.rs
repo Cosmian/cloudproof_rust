@@ -1,7 +1,6 @@
 use cosmian_cover_crypt::{
     abe_policy::{AccessPolicy, Policy},
-    statics::{CoverCryptX25519Aes256, MasterSecretKey},
-    CoverCrypt,
+    Covercrypt, MasterSecretKey,
 };
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use js_sys::Uint8Array;
@@ -20,13 +19,13 @@ pub fn webassembly_generate_master_keys(policy_bytes: Vec<u8>) -> Result<Uint8Ar
     //
     // Setup CoverCrypt
     let (msk, mpk) = wasm_unwrap!(
-        CoverCryptX25519Aes256::default().generate_master_keys(&policy),
+        Covercrypt::default().generate_master_keys(&policy),
         "Error generating master keys"
     );
 
     // Serialize master keys
-    let msk_bytes = wasm_unwrap!(msk.try_to_bytes(), "Error serializing master secret key");
-    let mpk_bytes = wasm_unwrap!(mpk.try_to_bytes(), "Error serializing master public key");
+    let msk_bytes = wasm_unwrap!(msk.serialize(), "Error serializing master secret key");
+    let mpk_bytes = wasm_unwrap!(mpk.serialize(), "Error serializing master public key");
 
     let mut master_keys_bytes = Vec::with_capacity(4 + msk_bytes.len() + msk_bytes.len());
     master_keys_bytes.extend_from_slice(&u32::to_be_bytes(wasm_unwrap!(
@@ -50,7 +49,7 @@ pub fn webassembly_generate_user_secret_key(
     policy_bytes: Vec<u8>,
 ) -> Result<Uint8Array, JsValue> {
     let msk = wasm_unwrap!(
-        MasterSecretKey::try_from_bytes(&msk_bytes.to_vec()),
+        MasterSecretKey::deserialize(&msk_bytes.to_vec()),
         "Error deserializing master secret key"
     );
     let policy = wasm_unwrap!(
@@ -62,9 +61,9 @@ pub fn webassembly_generate_user_secret_key(
         "Error deserializing access policy"
     );
     let user_key = wasm_unwrap!(
-        CoverCryptX25519Aes256::default().generate_user_secret_key(&msk, &access_policy, &policy),
+        Covercrypt::default().generate_user_secret_key(&msk, &access_policy, &policy),
         "Error generating user secret key"
     );
-    let user_key_bytes = wasm_unwrap!(user_key.try_to_bytes(), "Error serializing user key");
+    let user_key_bytes = wasm_unwrap!(user_key.serialize(), "Error serializing user key");
     Ok(Uint8Array::from(user_key_bytes.as_slice()))
 }

@@ -2,8 +2,7 @@ use std::os::raw::{c_char, c_int};
 
 use cosmian_cover_crypt::{
     abe_policy::{AccessPolicy, Policy},
-    statics::{CoverCryptX25519Aes256, MasterSecretKey, PublicKey, UserSecretKey},
-    CoverCrypt,
+    Covercrypt, MasterPublicKey, MasterSecretKey, UserSecretKey,
 };
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
@@ -31,12 +30,12 @@ pub unsafe extern "C" fn h_generate_master_keys(
     let policy: Policy = ffi_unwrap!(Policy::try_from(policy_bytes), "error deserializing policy");
 
     let (msk, mpk) = ffi_unwrap!(
-        CoverCryptX25519Aes256::default().generate_master_keys(&policy),
+        Covercrypt::default().generate_master_keys(&policy),
         "error generating master keys"
     );
 
-    let msk_bytes = ffi_unwrap!(msk.try_to_bytes(), "error serializing master secret key");
-    let mpk_bytes = ffi_unwrap!(mpk.try_to_bytes(), "error serializing public key");
+    let msk_bytes = ffi_unwrap!(msk.serialize(), "error serializing master secret key");
+    let mpk_bytes = ffi_unwrap!(mpk.serialize(), "error serializing public key");
     ffi_write_bytes!(
         "master secret key",
         &msk_bytes,
@@ -73,7 +72,7 @@ pub unsafe extern "C" fn h_generate_user_secret_key(
 ) -> c_int {
     let msk_bytes = ffi_read_bytes!("master secret key", msk_ptr, msk_len);
     let msk = ffi_unwrap!(
-        MasterSecretKey::try_from_bytes(msk_bytes),
+        MasterSecretKey::deserialize(msk_bytes),
         "error deserializing master secret key"
     );
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
@@ -88,11 +87,11 @@ pub unsafe extern "C" fn h_generate_user_secret_key(
     );
 
     let usk = ffi_unwrap!(
-        CoverCryptX25519Aes256::default().generate_user_secret_key(&msk, &user_policy, &policy),
+        Covercrypt::default().generate_user_secret_key(&msk, &user_policy, &policy),
         "error generating user secret key"
     );
 
-    let usk_bytes = ffi_unwrap!(usk.try_to_bytes(), "error serializing user secret key");
+    let usk_bytes = ffi_unwrap!(usk.serialize(), "error serializing user secret key");
     ffi_write_bytes!("user secret key", &usk_bytes, usk_ptr, usk_len);
 
     0
@@ -131,12 +130,12 @@ pub unsafe extern "C" fn h_update_master_keys(
         current_msk_len
     );
     let mut msk = ffi_unwrap!(
-        MasterSecretKey::try_from_bytes(msk_bytes),
+        MasterSecretKey::deserialize(msk_bytes),
         "error deserializing master secret key"
     );
     let mpk_bytes = ffi_read_bytes!("current public key", current_mpk_ptr, current_mpk_len);
     let mut mpk = ffi_unwrap!(
-        PublicKey::try_from_bytes(mpk_bytes),
+        MasterPublicKey::deserialize(mpk_bytes),
         "error deserializing public key"
     );
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
@@ -146,12 +145,12 @@ pub unsafe extern "C" fn h_update_master_keys(
     );
 
     ffi_unwrap!(
-        CoverCryptX25519Aes256::default().update_master_keys(&policy, &mut msk, &mut mpk),
+        Covercrypt::default().update_master_keys(&policy, &mut msk, &mut mpk),
         "error updating master keys"
     );
 
-    let msk_bytes = ffi_unwrap!(msk.try_to_bytes(), "error serializing master secret key");
-    let mpk_bytes = ffi_unwrap!(mpk.try_to_bytes(), "error serializing public key");
+    let msk_bytes = ffi_unwrap!(msk.serialize(), "error serializing master secret key");
+    let mpk_bytes = ffi_unwrap!(mpk.serialize(), "error serializing public key");
     ffi_write_bytes!(
         "updated master secret key",
         &msk_bytes,
@@ -201,12 +200,12 @@ pub unsafe extern "C" fn h_refresh_user_secret_key(
 ) -> c_int {
     let msk_bytes = ffi_read_bytes!("master secret key", msk_ptr, msk_len);
     let msk = ffi_unwrap!(
-        MasterSecretKey::try_from_bytes(msk_bytes),
+        MasterSecretKey::deserialize(msk_bytes),
         "error deserializing master secret key"
     );
     let usk_bytes = ffi_read_bytes!("current user secret key", current_usk_ptr, current_usk_len);
     let mut usk = ffi_unwrap!(
-        UserSecretKey::try_from_bytes(usk_bytes),
+        UserSecretKey::deserialize(usk_bytes),
         "error deserializing user secret key"
     );
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
@@ -221,7 +220,7 @@ pub unsafe extern "C" fn h_refresh_user_secret_key(
     );
 
     ffi_unwrap!(
-        CoverCryptX25519Aes256::default().refresh_user_secret_key(
+        Covercrypt::default().refresh_user_secret_key(
             &mut usk,
             &user_policy,
             &msk,
@@ -231,7 +230,7 @@ pub unsafe extern "C" fn h_refresh_user_secret_key(
         "error refreshing user secret key"
     );
 
-    let usk_bytes = ffi_unwrap!(usk.try_to_bytes(), "error serializing user secret key");
+    let usk_bytes = ffi_unwrap!(usk.serialize(), "error serializing user secret key");
     ffi_write_bytes!(
         "updated user secret key",
         &usk_bytes,

@@ -1,38 +1,39 @@
+use cloudproof_cover_crypt::reexport::crypto_core::Aes256Gcm;
 use pyo3::{exceptions::PyException, pyclass, pymethods, PyResult};
 
-use crate::{ReExposedAesGcm, KEY_LENGTH, NONCE_LENGTH};
+use crate::{decrypt, encrypt};
 
 #[pyclass]
-pub struct AesGcm(ReExposedAesGcm);
+pub struct AesGcm;
 
 #[pymethods]
 impl AesGcm {
-    #[new]
-    fn new(key: Vec<u8>, nonce: Vec<u8>) -> PyResult<Self> {
+    #[staticmethod]
+    fn encrypt(key: Vec<u8>, plaintext: Vec<u8>, authenticated_data: Vec<u8>) -> PyResult<Vec<u8>> {
         // Copy the key bytes into a 32-byte array
-        let k: [u8; KEY_LENGTH] = key.try_into().map_err(|_e| {
+        let key: [u8; Aes256Gcm::KEY_LENGTH] = key.try_into().map_err(|_e| {
             PyException::new_err(format!(
-                "AESGCM error: key length incorrect: expected {KEY_LENGTH}"
+                "AESGCM error: key length incorrect: expected {}",
+                Aes256Gcm::KEY_LENGTH
             ))
         })?;
-        // Copy the nonce bytes into a 12-byte array
-        let n: [u8; NONCE_LENGTH] = nonce.try_into().map_err(|_e| {
+        Ok(encrypt(key, &plaintext, &authenticated_data)?)
+    }
+
+    #[staticmethod]
+    fn decrypt(
+        key: Vec<u8>,
+        ciphertext: Vec<u8>,
+        authenticated_data: Vec<u8>,
+    ) -> PyResult<Vec<u8>> {
+        // Copy the key bytes into a 32-byte array
+        let key: [u8; Aes256Gcm::KEY_LENGTH] = key.try_into().map_err(|_e| {
             PyException::new_err(format!(
-                "AESGCM error: nonce length incorrect: expected {NONCE_LENGTH}"
+                "AESGCM error: key length incorrect: expected {}",
+                Aes256Gcm::KEY_LENGTH
             ))
         })?;
 
-        let aesgcm = ReExposedAesGcm::instantiate(&k, &n).map_err(|e| {
-            PyException::new_err(format!("AESGCM error: cipher instantiation failed: {e}"))
-        })?;
-        Ok(Self(aesgcm))
-    }
-
-    fn encrypt(&self, plaintext: Vec<u8>) -> PyResult<Vec<u8>> {
-        Ok(self.0.encrypt(&plaintext)?)
-    }
-
-    fn decrypt(&self, ciphertext: Vec<u8>) -> PyResult<Vec<u8>> {
-        Ok(self.0.decrypt(&ciphertext)?)
+        Ok(decrypt(key, &ciphertext, &authenticated_data)?)
     }
 }

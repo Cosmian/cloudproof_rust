@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use cloudproof_cover_crypt::reexport::crypto_core::CryptoCoreError;
 #[cfg(feature = "python")]
 use pyo3::{exceptions::PyException, PyErr};
 #[cfg(feature = "wasm_bindgen")]
@@ -9,6 +10,7 @@ use wasm_bindgen::JsValue;
 pub enum AesGcmError {
     AesGcm(String),
     AesGcmInvalidLength(String),
+    CryptoCore(CryptoCoreError),
 }
 
 impl Display for AesGcmError {
@@ -16,18 +18,14 @@ impl Display for AesGcmError {
         match self {
             Self::AesGcm(err) => write!(f, "{err}"),
             Self::AesGcmInvalidLength(err) => write!(f, "{err}"),
+            Self::CryptoCore(err) => write!(f, "{err}"),
         }
     }
 }
 
-impl From<aes_gcm::Error> for AesGcmError {
-    fn from(value: aes_gcm::Error) -> Self {
-        Self::AesGcm(value.to_string())
-    }
-}
-impl From<aes_gcm::aes::cipher::InvalidLength> for AesGcmError {
-    fn from(value: aes_gcm::aes::cipher::InvalidLength) -> Self {
-        Self::AesGcmInvalidLength(value.to_string())
+impl From<CryptoCoreError> for AesGcmError {
+    fn from(e: CryptoCoreError) -> Self {
+        Self::CryptoCore(e)
     }
 }
 

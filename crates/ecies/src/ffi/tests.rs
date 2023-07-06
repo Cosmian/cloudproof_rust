@@ -1,7 +1,7 @@
 use std::ffi::{c_char, c_int};
 
-use cloudproof_cover_crypt::reexport::crypto_core::asymmetric_crypto::curve25519::{
-    X25519_PRIVATE_KEY_LENGTH, X25519_PUBLIC_KEY_LENGTH,
+use cloudproof_cover_crypt::reexport::crypto_core::{
+    FixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
 };
 use cosmian_ffi_utils::error::get_last_error;
 
@@ -11,15 +11,18 @@ use crate::ffi::ecies::{h_ecies_decrypt, h_ecies_encrypt};
 #[test]
 fn encrypt_decrypt() {
     let plaintext = b"plaintext";
-
     let plaintext_ptr = plaintext.as_ptr().cast();
     let plaintext_len = plaintext.len() as c_int;
 
+    let authenticated_data = b"authenticated_data";
+    let authenticated_data_ptr = authenticated_data.as_ptr().cast();
+    let authenticated_data_len = authenticated_data.len() as c_int;
+
     // FFI 'key generation' output
-    let mut public_key_bytes = vec![0u8; X25519_PUBLIC_KEY_LENGTH];
+    let mut public_key_bytes = vec![0u8; X25519PublicKey::LENGTH];
     let public_key_ptr = public_key_bytes.as_mut_ptr().cast();
     let mut public_key_len = public_key_bytes.len() as c_int;
-    let mut private_key_bytes = vec![0u8; X25519_PRIVATE_KEY_LENGTH];
+    let mut private_key_bytes = vec![0u8; X25519PrivateKey::LENGTH];
     let private_key_ptr = private_key_bytes.as_mut_ptr().cast();
     let mut private_key_len = private_key_bytes.len() as c_int;
 
@@ -56,6 +59,8 @@ fn encrypt_decrypt() {
             plaintext_len,
             public_key_ptr as *const c_char,
             public_key_len,
+            authenticated_data_ptr,
+            authenticated_data_len,
         );
         assert!(
             0 == ret,
@@ -73,6 +78,8 @@ fn encrypt_decrypt() {
             ciphertext_len,
             private_key_ptr as *const c_char,
             private_key_len,
+            authenticated_data_ptr,
+            authenticated_data_len,
         );
         assert!(
             0 == ret,

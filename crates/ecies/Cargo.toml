@@ -17,7 +17,6 @@ wasm_bindgen = ["js-sys", "wasm-bindgen"]
 default = []
 
 [dependencies]
-aes-gcm = "0.10.1"
 # cloudproof_cover_crypt = "11.1.0"
 cloudproof_cover_crypt = { path = "../cover_crypt" }
 

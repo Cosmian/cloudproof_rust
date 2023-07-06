@@ -1,78 +1,67 @@
-use aes_gcm::{
-    aead::{consts::U12, generic_array::GenericArray, Aead, KeyInit},
-    Aes256Gcm, Nonce,
+use cloudproof_cover_crypt::reexport::crypto_core::{
+    reexport::rand_core::SeedableRng, Aes256Gcm as Aes256GcmRust, CryptoCoreError, CsRng, Dem,
+    FixedSizeCBytes, Instantiable, Nonce, RandomFixedSizeCBytes, SymmetricKey,
 };
 
 use crate::error::AesGcmError;
 
-pub const KEY_LENGTH: usize = 32;
-pub const NONCE_LENGTH: usize = 12;
-
 pub const BLOCK_LENGTH: usize = 16;
 
-/// The `ReExposedAesGcm` struct contains an instance of the `Aes256Gcm` cipher
-/// and a nonce of length 12. The crate `aesgcm` has received one security audit
-/// by NCC Group, with no significant findings. We would like to thank
-/// `MobileCoin` for funding the audit.
-///
-/// Properties:
-///
-/// * `nonce`: The `nonce` property is a 12-byte array used as a unique value
-///   for each encryption operation in the AES-GCM encryption mode. It is
-///   important that the nonce is never reused with the same key, as this can
-///   compromise the security of the encryption.
-pub struct ReExposedAesGcm {
-    cipher: Aes256Gcm,
-    nonce: GenericArray<u8, U12>,
+const ENCRYPTION_OVERHEAD: usize = Aes256GcmRust::NONCE_LENGTH + Aes256GcmRust::MAC_LENGTH;
+
+pub fn encrypt(
+    key: [u8; Aes256GcmRust::KEY_LENGTH],
+    plaintext: &[u8],
+    authenticated_data: &[u8],
+) -> Result<Vec<u8>, AesGcmError> {
+    let key = SymmetricKey::try_from_bytes(key)?;
+    let mut rng = CsRng::from_entropy();
+
+    let nonce = Nonce::new(&mut rng);
+    let mut result = Vec::with_capacity(plaintext.len() + ENCRYPTION_OVERHEAD);
+    result.extend(nonce.as_bytes());
+    result.extend(Aes256GcmRust::new(&key).encrypt(&nonce, plaintext, Some(authenticated_data))?);
+
+    Ok(result)
 }
 
-impl ReExposedAesGcm {
-    /// This function instantiates an AES-256-GCM cipher object with a given key
-    /// and nonce.
-    ///
-    /// Arguments:
-    ///
-    /// * `key`: The `key` parameter is a reference to a byte array of length
-    ///   32, which is used to create an instance of the `Aes256Gcm` cipher
-    ///   object. This key is used to encrypt and decrypt data using the cipher.
-    /// * `nonce`: The `nonce` parameter is a 12-byte array representing a
-    ///   unique value used in the encryption process to ensure that each
-    ///   message encrypted with the same key is unique. It stands for "number
-    ///   used once".
-    pub fn instantiate(
-        key: &[u8; KEY_LENGTH],
-        nonce: &[u8; NONCE_LENGTH],
-    ) -> Result<Self, AesGcmError> {
-        // Create the cipher object
-        let cipher = Aes256Gcm::new_from_slice(key)?;
-
-        // Transformed from a byte array:
-        let nonce = *Nonce::from_slice(nonce);
-
-        Ok(Self { cipher, nonce })
+pub fn decrypt(
+    key: [u8; Aes256GcmRust::KEY_LENGTH],
+    ciphertext: &[u8],
+    authenticated_data: &[u8],
+) -> Result<Vec<u8>, AesGcmError> {
+    if ciphertext.len() <= ENCRYPTION_OVERHEAD {
+        return Err(AesGcmError::CryptoCore(
+            CryptoCoreError::CiphertextTooSmallError {
+                ciphertext_len: ciphertext.len(),
+                min: ENCRYPTION_OVERHEAD as u64,
+            },
+        ));
     }
+    let key = SymmetricKey::try_from_bytes(key)?;
+    let nonce = Nonce::try_from_slice(&ciphertext[..Aes256GcmRust::NONCE_LENGTH])?;
+    let bytes = Aes256GcmRust::new(&key).decrypt(
+        &nonce,
+        &ciphertext[Aes256GcmRust::NONCE_LENGTH..],
+        Some(authenticated_data),
+    )?;
 
-    pub fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>, AesGcmError> {
-        Ok(self.cipher.encrypt(&self.nonce, plaintext)?)
-    }
-
-    pub fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, AesGcmError> {
-        Ok(self.cipher.decrypt(&self.nonce, ciphertext)?)
-    }
+    Ok(bytes)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{ReExposedAesGcm, KEY_LENGTH, NONCE_LENGTH};
+    use cloudproof_cover_crypt::reexport::crypto_core::Aes256Gcm;
+
+    use crate::core::aesgcm::{decrypt, encrypt};
 
     #[test]
     fn test_encrypt_decrypt() {
-        let key = [42_u8; KEY_LENGTH];
-        let nonce = [42_u8; NONCE_LENGTH];
+        let key = [42_u8; Aes256Gcm::KEY_LENGTH];
         let plaintext = b"plaintext";
-        let aesgcm = ReExposedAesGcm::instantiate(&key, &nonce).unwrap();
-        let ciphertext = aesgcm.encrypt(plaintext).unwrap();
-        let cleartext = aesgcm.decrypt(&ciphertext).unwrap();
+        let authenticated_data = b"authenticated_data";
+        let ciphertext = encrypt(key, plaintext, authenticated_data).unwrap();
+        let cleartext = decrypt(key, &ciphertext, authenticated_data).unwrap();
         assert_eq!(plaintext.to_vec(), cleartext);
     }
 }

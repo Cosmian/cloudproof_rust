@@ -188,28 +188,28 @@ class MasterSecretKey:
             MasterSecretKey
         """
 
-class PublicKey:
+class MasterPublicKey:
     def to_bytes(self) -> bytes:
         """Converts key to bytes.
 
         Returns:
             bytes
         """
-    def deep_copy(self) -> PublicKey:
+    def deep_copy(self) -> MasterPublicKey:
         """Clones the key.
 
         Returns:
-            PublicKey
+            MasterPublicKey
         """
     @staticmethod
-    def from_bytes(key_bytes: bytes) -> PublicKey:
+    def from_bytes(key_bytes: bytes) -> MasterPublicKey:
         """Reads key from bytes.
 
         Args:
             key_bytes (bytes)
 
         Returns:
-            PublicKey
+            MasterPublicKey
         """
 
 class UserSecretKey:
