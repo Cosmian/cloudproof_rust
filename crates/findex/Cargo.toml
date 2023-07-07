@@ -39,7 +39,7 @@ default = []
 [dependencies]
 # Optional dependencies
 base64 = { workspace = true, optional = true }
-cosmian_crypto_core = { version = "8.0.0", features = ["aes", "sha3", "ser"], default-features = false }
+cosmian_crypto_core = { workspace = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
 cosmian_findex = "4.0.2"
 faker_rand = { version = "0.1", optional = true }

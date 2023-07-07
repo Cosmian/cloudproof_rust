@@ -29,7 +29,7 @@ num-integer = { version = "0.1", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 
 # Optional dependencies
-cosmian_ffi_utils = { path = "../ffi_utils", optional = true }
+cosmian_ffi_utils = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
 pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 wasm-bindgen = { workspace = true, optional = true }
