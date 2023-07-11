@@ -18,5 +18,8 @@ pub use cloudproof_fpe::ffi as fpe_ffi;
 // do  not have to depend on them directly, avoiding version conflicts.
 #[cfg(feature = "default")]
 pub mod reexport {
+    pub use cloudproof_anonymization as anonymization;
     pub use cloudproof_cover_crypt::reexport::{cover_crypt, crypto_core};
+    pub use cloudproof_findex as findex;
+    pub use cloudproof_fpe as fpe;
 }

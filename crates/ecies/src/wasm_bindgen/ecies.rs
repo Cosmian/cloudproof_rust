@@ -6,7 +6,7 @@ use js_sys::Uint8Array;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 #[wasm_bindgen]
-pub fn webassembly_ecies_generate_key_pair() -> Result<Uint8Array, JsValue> {
+pub fn webassembly_x25519_generate_key_pair() -> Result<Uint8Array, JsValue> {
     let mut rng = CsRng::from_entropy();
     let private_key = X25519PrivateKey::new(&mut rng);
     let public_key = X25519PublicKey::from(&private_key);
@@ -19,7 +19,7 @@ pub fn webassembly_ecies_generate_key_pair() -> Result<Uint8Array, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn webassembly_ecies_encrypt(
+pub fn webassembly_ecies_salsa_seal_box_encrypt(
     plaintext: Vec<u8>,
     public_key: Vec<u8>,
     authenticated_data: Vec<u8>,
@@ -43,7 +43,7 @@ pub fn webassembly_ecies_encrypt(
 }
 
 #[wasm_bindgen]
-pub fn webassembly_ecies_decrypt(
+pub fn webassembly_ecies_salsa_seal_box_decrypt(
     ciphertext: Vec<u8>,
     private_key: Vec<u8>,
     authenticated_data: Vec<u8>,

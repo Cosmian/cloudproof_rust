@@ -11,6 +11,10 @@ AUTHENTICATION_DATA = os.urandom(1024)
 
 
 class TestEncryption(unittest.TestCase):
+    """
+    Test on ECIES salsa seal box encryption and decryption
+    """
+
     def test_encrypt(self) -> None:
         """
         ECIES test encrypt decrypt

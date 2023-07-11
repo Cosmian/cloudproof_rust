@@ -22,7 +22,7 @@ impl Aes256Gcm {
                 Aes256GcmRust::KEY_LENGTH
             ))
         })?;
-        // Copy the nonce bytes into a 32-byte array
+        // Copy the nonce bytes into a 12-byte array
         let nonce: [u8; Aes256GcmRust::NONCE_LENGTH] = nonce.try_into().map_err(|_e| {
             PyException::new_err(format!(
                 "AESGCM error: nonce length incorrect: expected {}",
@@ -46,7 +46,7 @@ impl Aes256Gcm {
                 Aes256GcmRust::KEY_LENGTH
             ))
         })?;
-        // Copy the nonce bytes into a 32-byte array
+        // Copy the nonce bytes into a 12-byte array
         let nonce: [u8; Aes256GcmRust::NONCE_LENGTH] = nonce.try_into().map_err(|_e| {
             PyException::new_err(format!(
                 "AESGCM error: nonce length incorrect: expected {}",

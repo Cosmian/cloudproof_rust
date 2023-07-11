@@ -1,6 +1,7 @@
 class Aes256Gcm:
     """Use aes256gcm standard rust implementation"""
 
+    @staticmethod
     def encrypt(
         key: bytes, nonce: bytes, plaintext: bytes, authenticated_data: bytes
     ) -> bytes:
@@ -14,6 +15,7 @@ class Aes256Gcm:
         Returns:
             bytes
         """
+    @staticmethod
     def decrypt(
         key: bytes, nonce: bytes, ciphertext: bytes, authenticated_data: bytes
     ) -> bytes:
