@@ -3,10 +3,11 @@ import os
 import unittest
 
 from cloudproof_aesgcm import (
-    AesGcm,
+    Aes256Gcm,
 )
 
 KEY = os.urandom(32)
+NONCE = os.urandom(12)
 AUTHENTICATED_DATA = os.urandom(1024)
 
 
@@ -20,8 +21,8 @@ class TestEncryption(unittest.TestCase):
         AESGCM test encrypt decrypt
         """
         plaintext = os.urandom(1024)
-        ciphertext = AesGcm.encrypt(KEY, plaintext, AUTHENTICATED_DATA)
-        cleartext = AesGcm.decrypt(KEY, ciphertext, AUTHENTICATED_DATA)
+        ciphertext = Aes256Gcm.encrypt(KEY, NONCE, plaintext, AUTHENTICATED_DATA)
+        cleartext = Aes256Gcm.decrypt(KEY, NONCE, ciphertext, AUTHENTICATED_DATA)
         print(type(plaintext))
         print(type(cleartext))
         assert plaintext == bytes(cleartext)

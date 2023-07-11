@@ -1,14 +1,15 @@
 use cloudproof_cover_crypt::reexport::crypto_core::{
-    reexport::rand_core::SeedableRng, CsRng, Ecies as EciesRust, EciesX25519XChaCha20,
-    FixedSizeCBytes, RandomFixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
+    reexport::rand_core::SeedableRng, CsRng, Ecies as EciesRust,
+    EciesSalsaSealBox as EciesSalsaSealBoxRust, FixedSizeCBytes, RandomFixedSizeCBytes,
+    X25519PrivateKey, X25519PublicKey,
 };
 use pyo3::{exceptions::PyException, pyclass, pymethods, PyResult};
 
 #[pyclass]
-pub struct Ecies;
+pub struct EciesSalsaSealBox;
 
 #[pymethods]
-impl Ecies {
+impl EciesSalsaSealBox {
     #[staticmethod]
     fn generate_key_pair() -> PyResult<(Vec<u8>, Vec<u8>)> {
         let mut rng = CsRng::from_entropy();
@@ -38,7 +39,7 @@ impl Ecies {
         })?;
 
         // Encrypt the message
-        let ciphertext = EciesX25519XChaCha20::encrypt(
+        let ciphertext = EciesSalsaSealBoxRust::encrypt(
             &mut rng,
             &public_key,
             &plaintext,
@@ -65,7 +66,7 @@ impl Ecies {
         })?;
 
         let plaintext =
-            EciesX25519XChaCha20::decrypt(&private_key, &ciphertext, Some(&authenticated_data))
+            EciesSalsaSealBoxRust::decrypt(&private_key, &ciphertext, Some(&authenticated_data))
                 .map_err(|e| PyException::new_err(format!("ECIES error: decryption: {e:?}")))?;
         Ok(plaintext)
     }

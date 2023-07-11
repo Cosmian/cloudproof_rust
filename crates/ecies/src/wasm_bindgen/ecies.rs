@@ -1,5 +1,5 @@
 use cloudproof_cover_crypt::reexport::crypto_core::{
-    reexport::rand_core::SeedableRng, CsRng, Ecies, EciesX25519XChaCha20, FixedSizeCBytes,
+    reexport::rand_core::SeedableRng, CsRng, Ecies, EciesSalsaSealBox, FixedSizeCBytes,
     RandomFixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
 };
 use js_sys::Uint8Array;
@@ -36,7 +36,7 @@ pub fn webassembly_ecies_encrypt(
 
     // Encrypt the message
     let ciphertext =
-        EciesX25519XChaCha20::encrypt(&mut rng, &public_key, &plaintext, Some(&authenticated_data))
+        EciesSalsaSealBox::encrypt(&mut rng, &public_key, &plaintext, Some(&authenticated_data))
             .map_err(|e| JsValue::from_str(&format!("ECIES error: encryption: {e:?}")))?;
 
     Ok(Uint8Array::from(ciphertext.as_slice()))
@@ -59,7 +59,7 @@ pub fn webassembly_ecies_decrypt(
     })?;
 
     let plaintext =
-        EciesX25519XChaCha20::decrypt(&private_key, &ciphertext, Some(&authenticated_data))
+        EciesSalsaSealBox::decrypt(&private_key, &ciphertext, Some(&authenticated_data))
             .map_err(|e| JsValue::from_str(&format!("ECIES error: decryption: {e:?}")))?;
     Ok(Uint8Array::from(plaintext.as_slice()))
 }

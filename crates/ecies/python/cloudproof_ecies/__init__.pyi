@@ -1,6 +1,6 @@
 from typing import Tuple
 
-class Ecies:
+class EciesSalsaSealBox:
     """Use Ecies scheme"""
 
     def generate_key_pair() -> Tuple[bytes, bytes]:

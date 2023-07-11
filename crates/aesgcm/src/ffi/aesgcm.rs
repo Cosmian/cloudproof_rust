@@ -12,6 +12,8 @@ unsafe extern "C" fn aesgcm(
     input_data_len: c_int,
     key_ptr: *const c_char,
     key_len: c_int,
+    nonce_ptr: *const c_char,
+    nonce_len: c_int,
     authenticated_data_ptr: *const c_char,
     authenticated_data_len: c_int,
     encrypt_flag: bool,
@@ -20,7 +22,18 @@ unsafe extern "C" fn aesgcm(
     let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
     let key: [u8; Aes256Gcm::KEY_LENGTH] = ffi_unwrap!(
         key_bytes.try_into(),
-        "AESGCM invalid key length, expected {KEY_LENGTH:?}"
+        format!(
+            "AESGCM invalid key length, expected {}",
+            Aes256Gcm::KEY_LENGTH
+        )
+    );
+    let nonce_bytes = ffi_read_bytes!("nonce", nonce_ptr, nonce_len);
+    let nonce: [u8; Aes256Gcm::NONCE_LENGTH] = ffi_unwrap!(
+        nonce_bytes.try_into(),
+        format!(
+            "AESGCM invalid nonce length, expected {}",
+            Aes256Gcm::NONCE_LENGTH
+        )
     );
     let authenticated_data = ffi_read_bytes!(
         "authenticated_data",
@@ -29,12 +42,12 @@ unsafe extern "C" fn aesgcm(
     );
     let output = if encrypt_flag {
         ffi_unwrap!(
-            encrypt(key, input_data_bytes, authenticated_data),
+            encrypt(key, nonce, input_data_bytes, authenticated_data),
             "AESGCM encrypt error"
         )
     } else {
         ffi_unwrap!(
-            decrypt(key, input_data_bytes, authenticated_data),
+            decrypt(key, nonce, input_data_bytes, authenticated_data),
             "AESGCM decrypt error"
         )
     };
@@ -45,13 +58,15 @@ unsafe extern "C" fn aesgcm(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn h_aesgcm_encrypt(
+pub unsafe extern "C" fn h_aes256gcm_encrypt(
     output_ptr: *mut c_uchar,
     output_len: *mut c_int,
     plaintext_ptr: *const c_char,
     plaintext_len: c_int,
     key_ptr: *const c_char,
     key_len: c_int,
+    nonce_ptr: *const c_char,
+    nonce_len: c_int,
     authenticated_data_ptr: *const c_char,
     authenticated_data_len: c_int,
 ) -> c_int {
@@ -62,6 +77,8 @@ pub unsafe extern "C" fn h_aesgcm_encrypt(
         plaintext_len,
         key_ptr,
         key_len,
+        nonce_ptr,
+        nonce_len,
         authenticated_data_ptr,
         authenticated_data_len,
         true,
@@ -69,13 +86,15 @@ pub unsafe extern "C" fn h_aesgcm_encrypt(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn h_aesgcm_decrypt(
+pub unsafe extern "C" fn h_aes256gcm_decrypt(
     output_ptr: *mut c_uchar,
     output_len: *mut c_int,
     ciphertext_ptr: *const c_char,
     ciphertext_len: c_int,
     key_ptr: *const c_char,
     key_len: c_int,
+    nonce_ptr: *const c_char,
+    nonce_len: c_int,
     authenticated_data_ptr: *const c_char,
     authenticated_data_len: c_int,
 ) -> c_int {
@@ -86,6 +105,8 @@ pub unsafe extern "C" fn h_aesgcm_decrypt(
         ciphertext_len,
         key_ptr,
         key_len,
+        nonce_ptr,
+        nonce_len,
         authenticated_data_ptr,
         authenticated_data_len,
         false,

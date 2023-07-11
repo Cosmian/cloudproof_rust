@@ -1,7 +1,9 @@
-class AesGcm:
+class Aes256Gcm:
     """Use aes256gcm standard rust implementation"""
 
-    def encrypt(key: bytes, plaintext: bytes, authenticated_data: bytes) -> bytes:
+    def encrypt(
+        key: bytes, nonce: bytes, plaintext: bytes, authenticated_data: bytes
+    ) -> bytes:
         """AES256GCM encryption
 
         Args:
@@ -12,7 +14,9 @@ class AesGcm:
         Returns:
             bytes
         """
-    def decrypt(key: bytes, ciphertext: bytes, authenticated_data: bytes) -> bytes:
+    def decrypt(
+        key: bytes, nonce: bytes, ciphertext: bytes, authenticated_data: bytes
+    ) -> bytes:
         """AES256GCM decryption
 
         Args:

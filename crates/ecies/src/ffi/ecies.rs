@@ -2,13 +2,13 @@ use core::ffi::c_size_t;
 use std::ffi::{c_char, c_int, c_uchar};
 
 use cloudproof_cover_crypt::reexport::crypto_core::{
-    reexport::rand_core::SeedableRng, CsRng, Ecies, EciesX25519XChaCha20, FixedSizeCBytes,
+    reexport::rand_core::SeedableRng, CsRng, Ecies, EciesSalsaSealBox, FixedSizeCBytes,
     RandomFixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
 };
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes};
 
 #[no_mangle]
-pub unsafe extern "C" fn h_ecies_generate_key_pair(
+pub unsafe extern "C" fn h_ecies_x25519_generate_key_pair(
     public_key_ptr: *mut c_uchar,
     public_key_len: *mut c_int,
     private_key_ptr: *mut c_uchar,
@@ -32,7 +32,7 @@ pub unsafe extern "C" fn h_ecies_generate_key_pair(
     0
 }
 
-unsafe extern "C" fn ecies(
+unsafe extern "C" fn ecies_salsa_seal_box(
     output_ptr: *mut c_uchar,
     output_len: *mut c_int,
     input_data_ptr: *const c_char,
@@ -66,7 +66,7 @@ unsafe extern "C" fn ecies(
         );
 
         ffi_unwrap!(
-            EciesX25519XChaCha20::encrypt(
+            EciesSalsaSealBox::encrypt(
                 &mut rng,
                 &public_key,
                 input_data_bytes,
@@ -88,7 +88,7 @@ unsafe extern "C" fn ecies(
         );
 
         ffi_unwrap!(
-            EciesX25519XChaCha20::decrypt(
+            EciesSalsaSealBox::decrypt(
                 &private_key,
                 input_data_bytes,
                 Some(authenticated_data_bytes)
@@ -102,7 +102,7 @@ unsafe extern "C" fn ecies(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn h_ecies_encrypt(
+pub unsafe extern "C" fn h_ecies_salsa_seal_box_encrypt(
     output_ptr: *mut c_uchar,
     output_len: *mut c_int,
     plaintext_ptr: *const c_char,
@@ -112,7 +112,7 @@ pub unsafe extern "C" fn h_ecies_encrypt(
     authentication_data_ptr: *const c_char,
     authentication_data_len: c_int,
 ) -> c_int {
-    ecies(
+    ecies_salsa_seal_box(
         output_ptr,
         output_len,
         plaintext_ptr,
@@ -126,12 +126,12 @@ pub unsafe extern "C" fn h_ecies_encrypt(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn h_ecies_encrypt_get_overhead_size() -> c_size_t {
-    EciesX25519XChaCha20::ENCRYPTION_OVERHEAD
+pub unsafe extern "C" fn h_ecies_salsa_seal_box_get_encryption_overhead() -> c_size_t {
+    EciesSalsaSealBox::ENCRYPTION_OVERHEAD
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn h_ecies_decrypt(
+pub unsafe extern "C" fn h_ecies_salsa_seal_box_decrypt(
     output_ptr: *mut c_uchar,
     output_len: *mut c_int,
     ciphertext_ptr: *const c_char,
@@ -141,7 +141,7 @@ pub unsafe extern "C" fn h_ecies_decrypt(
     authentication_data_ptr: *const c_char,
     authentication_data_len: c_int,
 ) -> c_int {
-    ecies(
+    ecies_salsa_seal_box(
         output_ptr,
         output_len,
         ciphertext_ptr,

@@ -5,8 +5,10 @@ use cloudproof_cover_crypt::reexport::crypto_core::{
 };
 use cosmian_ffi_utils::error::get_last_error;
 
-use super::ecies::{h_ecies_encrypt_get_overhead_size, h_ecies_generate_key_pair};
-use crate::ffi::ecies::{h_ecies_decrypt, h_ecies_encrypt};
+use super::ecies::{
+    h_ecies_salsa_seal_box_get_encryption_overhead, h_ecies_x25519_generate_key_pair,
+};
+use crate::ffi::ecies::{h_ecies_salsa_seal_box_decrypt, h_ecies_salsa_seal_box_encrypt};
 
 #[test]
 fn encrypt_decrypt() {
@@ -27,7 +29,7 @@ fn encrypt_decrypt() {
     let mut private_key_len = private_key_bytes.len() as c_int;
 
     unsafe {
-        let ret = h_ecies_generate_key_pair(
+        let ret = h_ecies_x25519_generate_key_pair(
             public_key_ptr,
             &mut public_key_len,
             private_key_ptr,
@@ -40,7 +42,8 @@ fn encrypt_decrypt() {
         );
 
         // FFI encrypt output
-        let mut ciphertext_bytes = vec![0u8; plaintext.len() + h_ecies_encrypt_get_overhead_size()];
+        let mut ciphertext_bytes =
+            vec![0u8; plaintext.len() + h_ecies_salsa_seal_box_get_encryption_overhead()];
         let ciphertext_ptr = ciphertext_bytes.as_mut_ptr().cast();
         let mut ciphertext_len = ciphertext_bytes.len() as c_int;
 
@@ -52,7 +55,7 @@ fn encrypt_decrypt() {
         //
         // ENCRYPT
         //
-        let ret = h_ecies_encrypt(
+        let ret = h_ecies_salsa_seal_box_encrypt(
             ciphertext_ptr,
             &mut ciphertext_len,
             plaintext_ptr,
@@ -71,7 +74,7 @@ fn encrypt_decrypt() {
         //
         // DECRYPT
         //
-        let ret = h_ecies_decrypt(
+        let ret = h_ecies_salsa_seal_box_decrypt(
             cleartext_ptr,
             &mut cleartext_len,
             ciphertext_ptr as *const c_char,
