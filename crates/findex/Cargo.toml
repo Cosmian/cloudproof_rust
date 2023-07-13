@@ -3,7 +3,8 @@ name = "cloudproof_findex"
 version = "4.0.1"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
-license = "MIT/Apache-2.0"
+license-file = "../../LICENSE.md"
+repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Findex Cloudproof library"
 
 [lib]

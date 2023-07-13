@@ -3,7 +3,8 @@ name = "cloudproof_aesgcm"
 version = "0.1.0"
 authors = ["Emmanuel Coste<emmanuel.coste@cosmian.com>"]
 edition = "2021"
-license = "MIT/Apache-2.0"
+license-file = "../../LICENSE.md"
+repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian AES256GCM library"
 
 [lib]

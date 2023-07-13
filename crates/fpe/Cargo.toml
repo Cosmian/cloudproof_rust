@@ -3,7 +3,8 @@ name = "cloudproof_fpe"
 version = "0.2.0"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
-license = "MIT/Apache-2.0"
+license-file = "../../LICENSE.md"
+repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Cloudproof FPE library"
 
 [lib]
