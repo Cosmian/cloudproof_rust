@@ -12,10 +12,10 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 name = "cloudproof_ecies"
 
 [features]
+default = []
 ffi = ["cosmian_ffi_utils"]
 python = ["pyo3"]
 wasm_bindgen = ["js-sys", "wasm-bindgen"]
-default = []
 
 [dependencies]
 # cloudproof_cover_crypt = "11.1.0"

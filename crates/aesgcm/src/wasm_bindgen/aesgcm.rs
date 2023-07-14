@@ -1,4 +1,3 @@
-use cloudproof_cover_crypt::reexport::crypto_core::Aes256Gcm;
 use js_sys::Uint8Array;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
@@ -11,25 +10,10 @@ fn aes256gcm(
     authenticated_data: Vec<u8>,
     encrypt_flag: bool,
 ) -> Result<Uint8Array, JsValue> {
-    // Copy the key bytes into a 32-byte array
-    let k: [u8; Aes256Gcm::KEY_LENGTH] = key.try_into().map_err(|_e| {
-        JsValue::from_str(&format!(
-            "AESGCM error: key length incorrect: expected {}",
-            Aes256Gcm::KEY_LENGTH
-        ))
-    })?;
-    // Copy the nonce bytes into a 12-byte array
-    let n: [u8; Aes256Gcm::NONCE_LENGTH] = nonce.try_into().map_err(|_e| {
-        JsValue::from_str(&format!(
-            "AESGCM error: nonce length incorrect: expected {}",
-            Aes256Gcm::NONCE_LENGTH
-        ))
-    })?;
-
     let output = if encrypt_flag {
-        encrypt(k, n, &input_data, &authenticated_data)?
+        encrypt(&key, &nonce, &input_data, &authenticated_data)?
     } else {
-        decrypt(k, n, &input_data, &authenticated_data)?
+        decrypt(&key, &nonce, &input_data, &authenticated_data)?
     };
 
     Ok(Uint8Array::from(output.as_slice()))

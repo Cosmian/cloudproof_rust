@@ -12,16 +12,8 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 name = "cloudproof"
 
 [features]
-compact_live = ["cloudproof_findex/compact_live"]
 cloud = ["cloudproof_findex/cloud"]
-ffi = [
-  "cloudproof_aesgcm/ffi",
-  "cloudproof_anonymization/ffi",
-  "cloudproof_cover_crypt/ffi",
-  "cloudproof_ecies/ffi",
-  "cloudproof_findex/ffi",
-  "cloudproof_fpe/ffi",
-]
+compact_live = ["cloudproof_findex/compact_live"]
 default = [
   "cloudproof_aesgcm/default",
   "cloudproof_anonymization/default",
@@ -29,6 +21,14 @@ default = [
   "cloudproof_ecies/default",
   "cloudproof_findex/default",
   "cloudproof_fpe/default",
+]
+ffi = [
+  "cloudproof_aesgcm/ffi",
+  "cloudproof_anonymization/ffi",
+  "cloudproof_cover_crypt/ffi",
+  "cloudproof_ecies/ffi",
+  "cloudproof_findex/ffi",
+  "cloudproof_fpe/ffi",
 ]
 
 [dependencies]

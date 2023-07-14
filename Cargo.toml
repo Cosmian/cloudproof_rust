@@ -9,12 +9,14 @@ members = [
   "crates/findex",
   "crates/fpe",
 ]
+# The code below resolves the following cargo warning:
+# some crates are on edition 2021 which defaults to `resolver = "2"`, but virtual workspaces default to `resolver = "1"`
 resolver = "2"
 
 [workspace.dependencies]
 base64 = "0.21.0"
-cosmian_ffi_utils = "0.1.1"
 cosmian_crypto_core = "9.0.0"
+cosmian_ffi_utils = "0.1.1"
 hex = "0.4.3"
 js-sys = "0.3"
 pyo3 = { version = "0.18", features = ["extension-module", "abi3", "abi3-py37", "generate-import-lib"] }

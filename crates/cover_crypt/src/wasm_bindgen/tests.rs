@@ -1,11 +1,8 @@
 use cosmian_cover_crypt::{
-    abe_policy::Policy, test_utils::policy, CleartextHeader, EncryptedHeader, MasterPublicKey,
-    MasterSecretKey, UserSecretKey,
+    abe_policy::Policy, core::SYM_KEY_LENGTH, test_utils::policy, CleartextHeader, EncryptedHeader,
+    MasterPublicKey, MasterSecretKey, UserSecretKey,
 };
-use cosmian_crypto_core::{
-    bytes_ser_de::{Deserializer, Serializable},
-    Aes256Gcm,
-};
+use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializable};
 use js_sys::{Array, JsString, Uint8Array};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -42,7 +39,7 @@ fn encrypt_header(
         ),
         "Error encrypting header"
     );
-    EncryptedHeader::deserialize(&encrypted_header.to_vec()[Aes256Gcm::KEY_LENGTH..])
+    EncryptedHeader::deserialize(&encrypted_header.to_vec()[SYM_KEY_LENGTH..])
         .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 

@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{array::TryFromSliceError, fmt::Display};
 
 use cloudproof_cover_crypt::reexport::crypto_core::CryptoCoreError;
 #[cfg(feature = "python")]
@@ -8,17 +8,15 @@ use wasm_bindgen::JsValue;
 
 #[derive(Debug)]
 pub enum AesGcmError {
-    AesGcm(String),
-    AesGcmInvalidLength(String),
     CryptoCore(CryptoCoreError),
+    TryFromSliceError(TryFromSliceError),
 }
 
 impl Display for AesGcmError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::AesGcm(err) => write!(f, "{err}"),
-            Self::AesGcmInvalidLength(err) => write!(f, "{err}"),
             Self::CryptoCore(err) => write!(f, "{err}"),
+            Self::TryFromSliceError(err) => write!(f, "{err}"),
         }
     }
 }
@@ -26,6 +24,12 @@ impl Display for AesGcmError {
 impl From<CryptoCoreError> for AesGcmError {
     fn from(e: CryptoCoreError) -> Self {
         Self::CryptoCore(e)
+    }
+}
+
+impl From<TryFromSliceError> for AesGcmError {
+    fn from(e: TryFromSliceError) -> Self {
+        Self::TryFromSliceError(e)
     }
 }
 

@@ -13,6 +13,8 @@ name = "cloudproof_findex"
 
 [features]
 cloud = ["reqwest", "base64"]
+compact_live = ["cosmian_findex/live_compact"]
+default = []
 ffi = [
   "cosmian_ffi_utils",
   "base64",
@@ -34,8 +36,6 @@ wasm_bindgen = [
   "log",
   "wasm-logger",
 ]
-compact_live = ["cosmian_findex/live_compact"]
-default = []
 
 [dependencies]
 # Optional dependencies

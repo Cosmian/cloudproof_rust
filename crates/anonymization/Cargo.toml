@@ -12,10 +12,10 @@ crate-type = ["cdylib", "rlib"]
 name = "cloudproof_anonymization"
 
 [features]
+default = []
 ffi = ["cosmian_ffi_utils"]
 python = ["pyo3"]
 wasm_bindgen = ["js-sys", "wasm-bindgen"]
-default = []
 
 # waiting for ffi and js
 [package.metadata.cargo-udeps.ignore]

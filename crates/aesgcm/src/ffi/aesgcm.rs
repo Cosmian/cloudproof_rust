@@ -1,6 +1,5 @@
 use std::ffi::{c_char, c_int, c_uchar};
 
-use cloudproof_cover_crypt::reexport::crypto_core::Aes256Gcm;
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes};
 
 use crate::{decrypt, encrypt};
@@ -20,21 +19,7 @@ unsafe extern "C" fn aesgcm(
 ) -> c_int {
     let input_data_bytes = ffi_read_bytes!("input_data", input_data_ptr, input_data_len);
     let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
-    let key: [u8; Aes256Gcm::KEY_LENGTH] = ffi_unwrap!(
-        key_bytes.try_into(),
-        format!(
-            "AESGCM invalid key length, expected {}",
-            Aes256Gcm::KEY_LENGTH
-        )
-    );
     let nonce_bytes = ffi_read_bytes!("nonce", nonce_ptr, nonce_len);
-    let nonce: [u8; Aes256Gcm::NONCE_LENGTH] = ffi_unwrap!(
-        nonce_bytes.try_into(),
-        format!(
-            "AESGCM invalid nonce length, expected {}",
-            Aes256Gcm::NONCE_LENGTH
-        )
-    );
     let authenticated_data = ffi_read_bytes!(
         "authenticated_data",
         authenticated_data_ptr,
@@ -42,13 +27,13 @@ unsafe extern "C" fn aesgcm(
     );
     let output = if encrypt_flag {
         ffi_unwrap!(
-            encrypt(key, nonce, input_data_bytes, authenticated_data),
-            "AESGCM encrypt error"
+            encrypt(key_bytes, nonce_bytes, input_data_bytes, authenticated_data),
+            "AES-256 GCM encryption error"
         )
     } else {
         ffi_unwrap!(
-            decrypt(key, nonce, input_data_bytes, authenticated_data),
-            "AESGCM decrypt error"
+            decrypt(key_bytes, nonce_bytes, input_data_bytes, authenticated_data),
+            "AES-256 GCM decryption error"
         )
     };
 

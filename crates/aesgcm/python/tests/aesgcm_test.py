@@ -13,7 +13,7 @@ AUTHENTICATED_DATA = os.urandom(1024)
 
 class TestEncryption(unittest.TestCase):
     """
-    Test on AES256GCM encryption and decryption
+    Test AES256GCM encryption and decryption
     """
 
     def test_encrypt(self) -> None:

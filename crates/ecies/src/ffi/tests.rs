@@ -1,14 +1,14 @@
 use std::ffi::{c_char, c_int};
 
 use cloudproof_cover_crypt::reexport::crypto_core::{
-    FixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
+    Ecies, EciesSalsaSealBox, FixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
 };
 use cosmian_ffi_utils::error::get_last_error;
 
-use super::ecies::{
-    h_ecies_salsa_seal_box_get_encryption_overhead, h_ecies_x25519_generate_key_pair,
+use crate::ffi::ecies::{
+    h_ecies_salsa_seal_box_decrypt, h_ecies_salsa_seal_box_encrypt,
+    h_ecies_x25519_generate_key_pair,
 };
-use crate::ffi::ecies::{h_ecies_salsa_seal_box_decrypt, h_ecies_salsa_seal_box_encrypt};
 
 #[test]
 fn encrypt_decrypt() {
@@ -43,7 +43,7 @@ fn encrypt_decrypt() {
 
         // FFI encrypt output
         let mut ciphertext_bytes =
-            vec![0u8; plaintext.len() + h_ecies_salsa_seal_box_get_encryption_overhead()];
+            vec![0u8; plaintext.len() + EciesSalsaSealBox::ENCRYPTION_OVERHEAD];
         let ciphertext_ptr = ciphertext_bytes.as_mut_ptr().cast();
         let mut ciphertext_len = ciphertext_bytes.len() as c_int;
 
