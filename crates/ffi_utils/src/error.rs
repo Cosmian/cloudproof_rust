@@ -1,8 +1,5 @@
 use core::{cell::RefCell, fmt::Display};
-use std::{
-    ffi::CString,
-    os::raw::{c_char, c_int},
-};
+use std::ffi::CString;
 
 #[derive(Debug)]
 pub enum FfiError {
@@ -56,7 +53,7 @@ pub fn get_last_error() -> String {
 ///
 /// - `error_message_ptr`   : pointer to the error message to set
 #[no_mangle]
-pub unsafe extern "C" fn h_set_error(error_message_ptr: *const c_char) -> i32 {
+pub unsafe extern "C" fn h_set_error(error_message_ptr: *const i8) -> i32 {
     let error_message = ffi_read_string!("error message", error_message_ptr);
     set_last_error(FfiError::Generic(error_message));
     0
@@ -76,7 +73,7 @@ pub unsafe extern "C" fn h_set_error(error_message_ptr: *const c_char) -> i32 {
 /// - `error_ptr`: pointer to the buffer to which to write the error
 /// - `error_len`: size of the allocated memory
 #[no_mangle]
-pub unsafe extern "C" fn h_get_error(error_ptr: *mut c_char, error_len: *mut c_int) -> c_int {
+pub unsafe extern "C" fn h_get_error(error_ptr: *mut i8, error_len: *mut i32) -> i32 {
     // Get the error message as a null terminated string.
     let cs = ffi_unwrap!(
         CString::new(get_last_error()),
@@ -106,7 +103,7 @@ mod tests {
         let res = unsafe {
             let mut bytes = [0u8; 8192];
             let ptr = bytes.as_mut_ptr().cast();
-            let mut len = bytes.len() as c_int;
+            let mut len = bytes.len() as i32;
             h_get_error(ptr, &mut len);
             String::from_utf8(bytes[..len as usize].to_vec()).unwrap()
         };
@@ -123,7 +120,7 @@ mod tests {
         let res = unsafe {
             let mut bytes = [0u8; 8192];
             let ptr = bytes.as_mut_ptr().cast();
-            let mut len = bytes.len() as c_int;
+            let mut len = bytes.len() as i32;
             h_get_error(ptr, &mut len);
             String::from_utf8(bytes[..len as usize].to_vec()).unwrap()
         };

@@ -1,7 +1,5 @@
 //! Defines the FFI types for the callbacks used in Findex.
 
-use std::ffi::{c_int, c_uchar, c_uint};
-
 /// See [`FindexCallbacks::progress()`](cosmian_findex::FindexCallbacks::progress).
 ///
 /// # Serialization
@@ -27,10 +25,8 @@ use std::ffi::{c_int, c_uchar, c_uint};
 ///
 /// where `prefix` is `l` (only `Location`s are returned) and the `byte_vector`
 /// is the byte representation of the location.
-pub type ProgressCallback = extern "C" fn(
-    intermediate_results_ptr: *const c_uchar,
-    intermediate_results_len: c_uint,
-) -> c_int;
+pub type ProgressCallback =
+    extern "C" fn(intermediate_results_ptr: *const u8, intermediate_results_len: u32) -> i32;
 
 /// See [`FindexCallbacks::fetch_all_entry_table_uids()`](cosmian_findex::FindexCallbacks::fetch_all_entry_table_uids).
 ///
@@ -38,7 +34,7 @@ pub type ProgressCallback = extern "C" fn(
 ///
 /// `UID_1 || UID_2 || ... || UID_n`
 pub type FetchAllEntryTableUidsCallback =
-    extern "C" fn(uids_ptr: *mut c_uchar, uids_len: *mut c_uint) -> c_int;
+    extern "C" fn(uids_ptr: *mut u8, uids_len: *mut u32) -> i32;
 
 /// See [`FindexCallbacks::fetch_entry_table()`](cosmian_findex::FindexCallbacks::fetch_entry_table).
 ///
@@ -52,11 +48,11 @@ pub type FetchAllEntryTableUidsCallback =
 ///
 /// `LEB128(n_entries) || UID_1 || LEB128(value_1.len()) || value_1 || ...`
 pub type FetchEntryTableCallback = extern "C" fn(
-    entries_ptr: *mut c_uchar,
-    entries_len: *mut c_uint,
-    uids_ptr: *const c_uchar,
-    uids_len: c_uint,
-) -> c_int;
+    entries_ptr: *mut u8,
+    entries_len: *mut u32,
+    uids_ptr: *const u8,
+    uids_len: u32,
+) -> i32;
 
 /// See [`FindexCallbacks::fetch_chain_table()`](cosmian_findex::FindexCallbacks::fetch_chain_table).
 ///
@@ -70,11 +66,11 @@ pub type FetchEntryTableCallback = extern "C" fn(
 ///
 /// `LEB128(n_lines) || UID_1 || LEB128(value_1.len()) || value_1 || ...`
 pub type FetchChainTableCallback = extern "C" fn(
-    chains_ptr: *mut c_uchar,
-    chains_len: *mut c_uint,
-    uids_ptr: *const c_uchar,
-    uids_len: c_uint,
-) -> c_int;
+    chains_ptr: *mut u8,
+    chains_len: *mut u32,
+    uids_ptr: *const u8,
+    uids_len: u32,
+) -> i32;
 
 /// See [`FindexCallbacks::upsert_entry_table()`](cosmian_findex::FindexCallbacks::upsert_entry_table).
 ///
@@ -91,11 +87,11 @@ pub type FetchChainTableCallback = extern "C" fn(
 ///
 /// `LEB128(n_lines) || UID_1 || LEB128(value_1.len()) || value_1 || ...`
 pub type UpsertEntryTableCallback = extern "C" fn(
-    outputs_ptr: *mut c_uchar,
-    outputs_len: *mut c_uint,
-    entries_ptr: *const c_uchar,
-    entries_len: c_uint,
-) -> c_int;
+    outputs_ptr: *mut u8,
+    outputs_len: *mut u32,
+    entries_ptr: *const u8,
+    entries_len: u32,
+) -> i32;
 
 /// See [`FindexCallbacks::insert_chain_table()`](cosmian_findex::FindexCallbacks::insert_chain_table).
 ///
@@ -104,8 +100,7 @@ pub type UpsertEntryTableCallback = extern "C" fn(
 /// The input is serialized as follows:
 ///
 /// `LEB128(n_lines) || UID_1 || LEB128(value_1.len() || value_1 || ...`
-pub type InsertChainTableCallback =
-    extern "C" fn(chains_ptr: *const c_uchar, chains_len: c_uint) -> c_int;
+pub type InsertChainTableCallback = extern "C" fn(chains_ptr: *const u8, chains_len: u32) -> i32;
 
 /// See [`FindexCallbacks::delete_chain()`](cosmian_findex::FindexCallbacks::delete_chain).
 ///
@@ -115,8 +110,7 @@ pub type InsertChainTableCallback =
 ///
 /// `LEB128(n_uids) || UID_1 || UID_2 || ...`
 #[cfg(feature = "compact_live")]
-pub type DeleteChainCallback =
-    extern "C" fn(chains_ptr: *const c_uchar, chains_len: c_uint) -> c_int;
+pub type DeleteChainCallback = extern "C" fn(chains_ptr: *const u8, chains_len: u32) -> i32;
 
 /// See [`FindexCallbacks::update_lines()`](cosmian_findex::FindexCallbacks::update_lines).
 ///
@@ -130,13 +124,13 @@ pub type DeleteChainCallback =
 ///
 /// `LEB128(n_items) || UID_1 || LEB128(value_1.len()) || value_1 || ...`
 pub type UpdateLinesCallback = extern "C" fn(
-    chain_table_uids_to_remove_ptr: *const c_uchar,
-    chain_table_uids_to_remove_len: c_uint,
-    new_encrypted_entry_table_items_ptr: *const c_uchar,
-    new_encrypted_entry_table_items_len: c_uint,
-    new_encrypted_chain_table_items_ptr: *const c_uchar,
-    new_encrypted_chain_table_items_len: c_uint,
-) -> c_int;
+    chain_table_uids_to_remove_ptr: *const u8,
+    chain_table_uids_to_remove_len: u32,
+    new_encrypted_entry_table_items_ptr: *const u8,
+    new_encrypted_entry_table_items_len: u32,
+    new_encrypted_chain_table_items_ptr: *const u8,
+    new_encrypted_chain_table_items_len: u32,
+) -> i32;
 
 /// See
 /// [`FindexCallbacks::list_removed_locations()`](cosmian_findex::FindexCallbacks::list_removed_locations).
@@ -150,11 +144,11 @@ pub type UpdateLinesCallback = extern "C" fn(
 ///
 /// Outputs should follow the same serialization.
 pub type ListRemovedLocationsCallback = extern "C" fn(
-    removed_locations_ptr: *mut c_uchar,
-    removed_locations_len: *mut c_uint,
-    locations_ptr: *const c_uchar,
-    locations_len: c_uint,
-) -> c_int;
+    removed_locations_ptr: *mut u8,
+    removed_locations_len: *mut u32,
+    locations_ptr: *const u8,
+    locations_len: u32,
+) -> i32;
 
 /// See
 /// [`FindexCallbacks::filter_removed_locations()`](cosmian_findex::FindexCallbacks::filter_removed_locations).
@@ -169,8 +163,8 @@ pub type ListRemovedLocationsCallback = extern "C" fn(
 /// Outputs should follow the same serialization.
 #[cfg(feature = "compact_live")]
 pub type FilterRemovedLocationsCallback = extern "C" fn(
-    remaining_locations_ptr: *mut c_uchar,
-    remaining_locations_len: *mut c_uint,
-    locations_ptr: *const c_uchar,
-    locations_len: c_uint,
-) -> c_int;
+    remaining_locations_ptr: *mut u8,
+    remaining_locations_len: *mut u32,
+    locations_ptr: *const u8,
+    locations_len: u32,
+) -> i32;

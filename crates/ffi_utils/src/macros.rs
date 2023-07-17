@@ -104,7 +104,7 @@ macro_rules! ffi_write_bytes {
                 error_code += 1;
             } else {
                 let allocated = *$len;
-                *$len = $bytes.len() as c_int;
+                *$len = $bytes.len() as i32;
                 if allocated < *$len {
                     $crate::error::set_last_error($crate::error::FfiError::Generic(format!(
                         "The pre-allocated {} buffer is too small; need {} bytes, allocated {allocated}",

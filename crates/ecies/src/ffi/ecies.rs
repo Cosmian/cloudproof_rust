@@ -1,6 +1,3 @@
-use core::ffi::c_size_t;
-use std::ffi::{c_char, c_int, c_uchar};
-
 use cloudproof_cover_crypt::reexport::crypto_core::{
     reexport::rand_core::SeedableRng, CsRng, Ecies, EciesSalsaSealBox, FixedSizeCBytes,
     RandomFixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
@@ -9,11 +6,11 @@ use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes};
 
 #[no_mangle]
 pub unsafe extern "C" fn h_ecies_x25519_generate_key_pair(
-    public_key_ptr: *mut c_uchar,
-    public_key_len: *mut c_int,
-    private_key_ptr: *mut c_uchar,
-    private_key_len: *mut c_int,
-) -> c_int {
+    public_key_ptr: *mut u8,
+    public_key_len: *mut i32,
+    private_key_ptr: *mut u8,
+    private_key_len: *mut i32,
+) -> i32 {
     let mut rng = CsRng::from_entropy();
     let private_key = X25519PrivateKey::new(&mut rng);
     let public_key = X25519PublicKey::from(&private_key);
@@ -33,16 +30,16 @@ pub unsafe extern "C" fn h_ecies_x25519_generate_key_pair(
 }
 
 unsafe extern "C" fn ecies_salsa_seal_box(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    input_data_ptr: *const c_char,
-    input_data_len: c_int,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    authenticated_data_ptr: *const c_char,
-    authenticated_data_len: c_int,
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    input_data_ptr: *const i8,
+    input_data_len: i32,
+    key_ptr: *const i8,
+    key_len: i32,
+    authenticated_data_ptr: *const i8,
+    authenticated_data_len: i32,
     encrypt_flag: bool,
-) -> c_int {
+) -> i32 {
     let input_data_bytes = ffi_read_bytes!("input_data", input_data_ptr, input_data_len);
     let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
     let authenticated_data_bytes = ffi_read_bytes!(
@@ -103,15 +100,15 @@ unsafe extern "C" fn ecies_salsa_seal_box(
 
 #[no_mangle]
 pub unsafe extern "C" fn h_ecies_salsa_seal_box_encrypt(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    plaintext_ptr: *const c_char,
-    plaintext_len: c_int,
-    public_key_ptr: *const c_char,
-    public_key_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-) -> c_int {
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    plaintext_ptr: *const i8,
+    plaintext_len: i32,
+    public_key_ptr: *const i8,
+    public_key_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+) -> i32 {
     ecies_salsa_seal_box(
         output_ptr,
         output_len,
@@ -126,21 +123,21 @@ pub unsafe extern "C" fn h_ecies_salsa_seal_box_encrypt(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn h_ecies_salsa_seal_box_get_encryption_overhead() -> c_size_t {
-    EciesSalsaSealBox::ENCRYPTION_OVERHEAD
+pub unsafe extern "C" fn h_ecies_salsa_seal_box_get_encryption_overhead() -> u32 {
+    EciesSalsaSealBox::ENCRYPTION_OVERHEAD as u32
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn h_ecies_salsa_seal_box_decrypt(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    ciphertext_ptr: *const c_char,
-    ciphertext_len: c_int,
-    private_key_ptr: *const c_char,
-    private_key_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-) -> c_int {
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    ciphertext_ptr: *const i8,
+    ciphertext_len: i32,
+    private_key_ptr: *const i8,
+    private_key_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+) -> i32 {
     ecies_salsa_seal_box(
         output_ptr,
         output_len,

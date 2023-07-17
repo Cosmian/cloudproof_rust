@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    ffi::{c_uchar, c_uint},
-};
+use std::collections::{HashMap, HashSet};
 
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
 #[cfg(feature = "compact_live")]
@@ -56,7 +53,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
             );
         }
         let results = serializer.finalize();
-        Ok(progress(results.as_ptr(), results.len() as c_uint) != 0)
+        Ok(progress(results.as_ptr(), results.len() as u32) != 0)
     }
 
     #[tracing::instrument(ret(Display), err)]
@@ -69,7 +66,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         let mut allocation_size = 1_000_000 * UID_LENGTH; // about 32MB
         loop {
             let mut output_bytes = vec![0_u8; allocation_size];
-            let output_ptr = output_bytes.as_mut_ptr().cast::<c_uchar>();
+            let output_ptr = output_bytes.as_mut_ptr().cast::<u8>();
             let mut output_len = u32::try_from(allocation_size)?;
             let ret = fetch_all_entry_table_uids(output_ptr, &mut output_len);
             if ret == 0 {
@@ -173,8 +170,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         );
         let mut serialized_rejected_items = vec![0; allocation_size];
         let mut serialized_rejected_items_len = allocation_size as u32;
-        let serialized_rejected_items_ptr =
-            serialized_rejected_items.as_mut_ptr().cast::<c_uchar>();
+        let serialized_rejected_items_ptr = serialized_rejected_items.as_mut_ptr().cast::<u8>();
 
         // FFI callback
         let error_code = upsert_entry(
@@ -296,7 +292,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         );
 
         let mut output_bytes = vec![0_u8; locations_as_bytes.len()];
-        let output_ptr = output_bytes.as_mut_ptr().cast::<c_uchar>();
+        let output_ptr = output_bytes.as_mut_ptr().cast::<u8>();
         let mut output_len = u32::try_from(locations_as_bytes.len())?;
 
         let error_code = list_removed_locations(
@@ -345,7 +341,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         );
 
         let mut output_bytes = vec![0_u8; serialized_chain_table_uids_to_remove.len()];
-        let output_ptr = output_bytes.as_mut_ptr().cast::<c_uchar>();
+        let output_ptr = output_bytes.as_mut_ptr().cast::<u8>();
         let mut output_len = u32::try_from(serialized_chain_table_uids_to_remove.len())?;
 
         let error_code = filter_removed_locations(
