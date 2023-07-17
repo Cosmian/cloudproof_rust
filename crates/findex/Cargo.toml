@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_findex"
-version = "4.0.1"
+version = "4.0.2"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
