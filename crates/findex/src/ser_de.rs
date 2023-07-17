@@ -53,7 +53,7 @@ where
     for element in set {
         ser.write(element)?;
     }
-    Ok(ser.finalize())
+    Ok(ser.finalize().to_vec())
 }
 
 pub fn deserialize_set<SerializationError, T>(

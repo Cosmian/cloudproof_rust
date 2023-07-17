@@ -2,11 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use cosmian_findex::{
     parameters::{
-        DemScheme, KmacKey, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, DEM_KEY_LENGTH, KMAC_KEY_LENGTH,
-        KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
+        BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
-    EncryptedTable, FetchChains, FindexCallbacks, FindexSearch, FindexUpsert, IndexedValue,
-    Keyword, Location, Uid, UpsertData,
+    EncryptedMultiTable, EncryptedTable, FetchChains, FindexCallbacks, FindexSearch, FindexUpsert,
+    IndexedValue, Keyword, Location, Uids, UpsertData,
 };
 use js_sys::{Array, Object};
 
@@ -35,9 +34,7 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         })
     }
 
-    async fn fetch_all_entry_table_uids(
-        &self,
-    ) -> Result<HashSet<Uid<UID_LENGTH>>, FindexWasmError> {
+    async fn fetch_all_entry_table_uids(&self) -> Result<Uids<UID_LENGTH>, FindexWasmError> {
         Err(FindexWasmError::Callback(
             "fetch all entry table uids not implemented in WASM".to_string(),
         ))
@@ -45,21 +42,27 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
 
     async fn fetch_entry_table(
         &self,
-        entry_table_uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<Vec<(Uid<UID_LENGTH>, Vec<u8>)>, FindexWasmError> {
+        entry_table_uids: Uids<UID_LENGTH>,
+    ) -> Result<EncryptedMultiTable<UID_LENGTH>, FindexWasmError> {
+        log::info!("fetch_entry_table: entry_table_uids: {entry_table_uids}");
         let fetch_entry = unwrap_callback!(self, fetch_entry);
-        fetch_uids(
-            &entry_table_uids.iter().copied().collect(),
+        log::info!("fetch_entry_table: fetch_entry: {fetch_entry:?}");
+        let uids = fetch_uids(
+            &Uids(entry_table_uids.0.iter().copied().collect()),
             fetch_entry,
             "fetchEntries",
         )
-        .await
+        .await?;
+        log::info!("fetch_entry_table: output: {uids}");
+        Ok(uids)
     }
 
     async fn fetch_chain_table(
         &self,
-        chain_table_uids: HashSet<Uid<UID_LENGTH>>,
+        chain_table_uids: Uids<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexWasmError> {
+        log::info!("fetch_chain_table: chain_table_uids: {chain_table_uids}");
+
         let fetch_chain = unwrap_callback!(self, fetch_chain);
         let chain_table_items = fetch_uids(&chain_table_uids, fetch_chain, "fetchChains").await?;
 
@@ -69,7 +72,7 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
                 "EncryptedTable deserialization failed in fetch_chain_table: {e:?}"
             ))
         })?;
-
+        log::info!("fetch_entry_table: output: {encrypted_table}");
         Ok(encrypted_table)
     }
 
@@ -77,6 +80,8 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         &mut self,
         items: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexWasmError> {
+        log::info!("fetch_chain_table: items: {items}");
+
         let upsert_entry = unwrap_callback!(self, upsert_entry);
 
         // Convert input to JS format
@@ -112,6 +117,7 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
             ))
         })?;
 
+        log::info!("upsert_entry_table: output: {encrypted_table}");
         Ok(encrypted_table)
     }
 
@@ -119,6 +125,8 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         &mut self,
         items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexWasmError> {
+        log::info!("insert_chain_table: items: {items}");
+
         let insert_chain = unwrap_callback!(self, insert_chain);
         let input = encrypted_table_to_js_value(&items).map_err(|e| {
             FindexWasmError::Callback(format!(
@@ -127,12 +135,14 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         })?;
 
         callback!(insert_chain, input);
+
+        log::info!("insert_chain_table: exiting in success");
         Ok(())
     }
 
     fn update_lines(
         &mut self,
-        _chain_table_uids_to_remove: HashSet<Uid<UID_LENGTH>>,
+        _chain_table_uids_to_remove: Uids<UID_LENGTH>,
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexWasmError> {
@@ -161,26 +171,15 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
     }
 
     #[cfg(feature = "compact_live")]
-    async fn delete_chain(
-        &mut self,
-        _uids: HashSet<Uid<UID_LENGTH>>,
-    ) -> Result<(), FindexWasmError> {
+    async fn delete_chain(&mut self, _uids: Uids<UID_LENGTH>) -> Result<(), FindexWasmError> {
         Err(FindexWasmError::Callback(
             "delete chain not implemented in WASM".to_string(),
         ))
     }
 }
 
-impl
-    FetchChains<
-        UID_LENGTH,
-        BLOCK_LENGTH,
-        CHAIN_TABLE_WIDTH,
-        KWI_LENGTH,
-        DEM_KEY_LENGTH,
-        DemScheme,
-        FindexWasmError,
-    > for FindexUser
+impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, FindexWasmError>
+    for FindexUser
 {
 }
 
@@ -192,9 +191,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexWasmError,
     > for FindexUser
 {
@@ -208,9 +204,6 @@ impl
         MASTER_KEY_LENGTH,
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
-        DEM_KEY_LENGTH,
-        KmacKey,
-        DemScheme,
         FindexWasmError,
     > for FindexUser
 {

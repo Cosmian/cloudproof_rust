@@ -1,0 +1,31 @@
+[package]
+name = "cloudproof_aesgcm"
+version = "0.1.0"
+authors = ["Emmanuel Coste<emmanuel.coste@cosmian.com>"]
+edition = "2021"
+license-file = "../../LICENSE.md"
+repository = "https://github.com/cosmian/cloudproof_rust/"
+description = "Cosmian AES256GCM library"
+
+[lib]
+crate-type = ["cdylib", "rlib", "staticlib"]
+name = "cloudproof_aesgcm"
+
+[features]
+default = []
+ffi = ["cosmian_ffi_utils"]
+python = ["pyo3"]
+wasm_bindgen = ["js-sys", "wasm-bindgen"]
+
+[dependencies]
+cloudproof_cover_crypt = "12.0.0"
+# cloudproof_cover_crypt = { path = "../cover_crypt" }
+
+# Optional dependencies
+cosmian_ffi_utils = { workspace = true, optional = true }
+js-sys = { workspace = true, optional = true }
+pyo3 = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.34"

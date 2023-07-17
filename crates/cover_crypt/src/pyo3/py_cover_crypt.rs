@@ -1,14 +1,10 @@
 use cosmian_cover_crypt::{
-    abe_policy::AccessPolicy,
-    statics::{
-        CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey as MasterSecretKeyRust,
-        PublicKey as PublicKeyRust, UserSecretKey as UserSecretKeyRust, DEM,
-    },
-    CoverCrypt as CoverCryptRust,
+    abe_policy::AccessPolicy, Covercrypt, EncryptedHeader, MasterPublicKey as MasterPublicKeyRust,
+    MasterSecretKey as MasterSecretKeyRust, UserSecretKey as UserSecretKeyRust,
 };
 use cosmian_crypto_core::{
     bytes_ser_de::{Deserializer, Serializable, Serializer},
-    symmetric_crypto::{Dem, SymKey},
+    Aes256Gcm, FixedSizeCBytes, SymmetricKey as SymmetricKeyRust,
 };
 use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes};
 
@@ -23,9 +19,9 @@ pub struct MasterSecretKey(MasterSecretKeyRust);
 impl_key_byte!(MasterSecretKey, MasterSecretKeyRust);
 
 #[pyclass]
-pub struct PublicKey(PublicKeyRust);
+pub struct MasterPublicKey(MasterPublicKeyRust);
 
-impl_key_byte!(PublicKey, PublicKeyRust);
+impl_key_byte!(MasterPublicKey, MasterPublicKeyRust);
 
 #[pyclass]
 pub struct UserSecretKey(UserSecretKeyRust);
@@ -33,7 +29,7 @@ pub struct UserSecretKey(UserSecretKeyRust);
 impl_key_byte!(UserSecretKey, UserSecretKeyRust);
 
 #[pyclass]
-pub struct SymmetricKey(<DEM as Dem<{ DEM::KEY_LENGTH }>>::Key);
+pub struct SymmetricKey(SymmetricKeyRust<{ Aes256Gcm::KEY_LENGTH }>);
 
 #[pymethods]
 impl SymmetricKey {
@@ -44,21 +40,20 @@ impl SymmetricKey {
 
     /// Reads key from bytes
     #[staticmethod]
-    pub fn from_bytes(key_bytes: [u8; DEM::KEY_LENGTH]) -> Self {
-        Self(<DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::from_bytes(
-            key_bytes,
-        ))
+    pub fn from_bytes(key_bytes: [u8; Aes256Gcm::KEY_LENGTH]) -> Self {
+        let sk = SymmetricKeyRust::try_from_bytes(key_bytes);
+        Self(sk.unwrap())
     }
 }
 
 #[pyclass]
-pub struct CoverCrypt(CoverCryptX25519Aes256);
+pub struct CoverCrypt(Covercrypt);
 
 #[pymethods]
 impl CoverCrypt {
     #[new]
     fn new() -> Self {
-        Self(CoverCryptX25519Aes256::default())
+        Self(Covercrypt::default())
     }
 
     /// Generate the master authority keys for supplied Policy
@@ -68,12 +63,15 @@ impl CoverCrypt {
     /// Parameters:
     ///
     /// Returns: MasterSecretKey
-    pub fn generate_master_keys(&self, policy: &Policy) -> PyResult<(MasterSecretKey, PublicKey)> {
+    pub fn generate_master_keys(
+        &self,
+        policy: &Policy,
+    ) -> PyResult<(MasterSecretKey, MasterPublicKey)> {
         let (msk, pk) = pyo3_unwrap!(
             self.0.generate_master_keys(&policy.0),
             "error generating the master keys"
         );
-        Ok((MasterSecretKey(msk), PublicKey(pk)))
+        Ok((MasterSecretKey(msk), MasterPublicKey(pk)))
     }
 
     /// Update the master keys according to this new policy.
@@ -90,7 +88,7 @@ impl CoverCrypt {
         &self,
         policy: &Policy,
         msk: &mut MasterSecretKey,
-        pk: &mut PublicKey,
+        pk: &mut MasterPublicKey,
     ) -> PyResult<()> {
         pyo3_unwrap!(
             self.0.update_master_keys(&policy.0, &mut msk.0, &mut pk.0),
@@ -245,7 +243,7 @@ impl CoverCrypt {
         &self,
         policy: &Policy,
         access_policy_str: &str,
-        public_key: &PublicKey,
+        public_key: &MasterPublicKey,
         header_metadata: Option<Vec<u8>>,
         authentication_data: Option<Vec<u8>>,
         py: Python,
@@ -272,7 +270,7 @@ impl CoverCrypt {
             PyBytes::new(
                 py,
                 &pyo3_unwrap!(
-                    encrypted_header.try_to_bytes(),
+                    encrypted_header.serialize(),
                     "error serializing CoverCrypt header"
                 ),
             )
@@ -298,7 +296,7 @@ impl CoverCrypt {
         py: Python,
     ) -> PyResult<(SymmetricKey, Py<PyBytes>)> {
         let encrypted_header = pyo3_unwrap!(
-            EncryptedHeader::try_from_bytes(&encrypted_header_bytes),
+            EncryptedHeader::deserialize(&encrypted_header_bytes),
             "error deserializing encrypted header"
         );
 
@@ -309,7 +307,7 @@ impl CoverCrypt {
 
         Ok((
             SymmetricKey(cleartext_header.symmetric_key),
-            PyBytes::new(py, &cleartext_header.metadata).into(),
+            PyBytes::new(py, &cleartext_header.metadata.unwrap_or_default()).into(),
         ))
     }
 
@@ -333,7 +331,7 @@ impl CoverCrypt {
         &self,
         policy: &Policy,
         access_policy_str: &str,
-        pk: &PublicKey,
+        pk: &MasterPublicKey,
         plaintext: Vec<u8>,
         header_metadata: Option<Vec<u8>>,
         authentication_data: Option<Vec<u8>>,
@@ -413,7 +411,7 @@ impl CoverCrypt {
 
         Ok((
             PyBytes::new(py, &plaintext).into(),
-            PyBytes::new(py, &cleartext_header.metadata).into(),
+            PyBytes::new(py, &cleartext_header.metadata.unwrap_or_default()).into(),
         ))
     }
 }

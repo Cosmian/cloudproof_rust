@@ -8,11 +8,8 @@ mod traits;
 
 pub use self::callbacks::*;
 
-/// A pagination is performed in order to fetch the entire Entry Table. It is
-/// fetched by batches of size [`NUMBER_OF_ENTRY_TABLE_LINE_IN_BATCH`].
-pub const NUMBER_OF_ENTRY_TABLE_LINE_IN_BATCH: usize = 100;
-
 /// Implements Findex traits.
+#[derive(Debug)]
 pub struct FindexUser {
     pub(crate) entry_table_number: usize,
     pub(crate) progress: Option<ProgressCallback>,

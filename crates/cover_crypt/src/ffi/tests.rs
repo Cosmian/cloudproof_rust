@@ -5,14 +5,11 @@ use std::{
 
 use cosmian_cover_crypt::{
     abe_policy::{AccessPolicy, Policy},
-    statics::{
-        CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
-        UserSecretKey, DEM,
-    },
     test_utils::policy,
-    CoverCrypt, Error,
+    CleartextHeader, Covercrypt, EncryptedHeader, Error, MasterPublicKey, MasterSecretKey,
+    UserSecretKey,
 };
-use cosmian_crypto_core::{bytes_ser_de::Serializable, symmetric_crypto::Dem, KeyTrait};
+use cosmian_crypto_core::{bytes_ser_de::Serializable, Aes256Gcm, FixedSizeCBytes, SymmetricKey};
 use cosmian_ffi_utils::error::h_get_error;
 
 use crate::ffi::{
@@ -27,10 +24,10 @@ use crate::ffi::{
 unsafe fn encrypt_header(
     policy: &Policy,
     encryption_policy: &str,
-    public_key: &PublicKey,
+    public_key: &MasterPublicKey,
     header_metadata: &[u8],
     authentication_data: &[u8],
-) -> (<DEM as Dem<{ DEM::KEY_LENGTH }>>::Key, EncryptedHeader) {
+) -> (SymmetricKey<{ Aes256Gcm::KEY_LENGTH }>, EncryptedHeader) {
     let mut symmetric_key = vec![0u8; 32];
     let mut symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
     let mut symmetric_key_len = symmetric_key.len() as c_int;
@@ -43,7 +40,7 @@ unsafe fn encrypt_header(
     let policy_ptr = policy_bytes.as_ptr().cast();
     let policy_len = policy_bytes.len() as c_int;
 
-    let public_key_bytes = public_key.try_to_bytes().unwrap();
+    let public_key_bytes = public_key.serialize().unwrap();
     let public_key_ptr = public_key_bytes.as_ptr();
     let public_key_len = public_key_bytes.len() as i32;
 
@@ -88,17 +85,18 @@ unsafe fn encrypt_header(
         ));
     }
 
-    let symmetric_key_ = <DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::try_from_bytes(
-        std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize),
-    )
-    .unwrap();
+    let symmetric_key_fixed_length =
+        std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize)
+            .try_into()
+            .unwrap();
+    let symmetric_key = SymmetricKey::try_from_bytes(symmetric_key_fixed_length).unwrap();
 
     let encrypted_header_bytes_ =
         std::slice::from_raw_parts(encrypted_header_ptr.cast(), encrypted_header_len as usize)
             .to_vec();
     (
-        symmetric_key_,
-        EncryptedHeader::try_from_bytes(&encrypted_header_bytes_).unwrap(),
+        symmetric_key,
+        EncryptedHeader::deserialize(&encrypted_header_bytes_).unwrap(),
     )
 }
 
@@ -115,12 +113,12 @@ unsafe fn decrypt_header(
     let mut header_metadata_ptr = header_metadata.as_mut_ptr().cast();
     let mut header_metadata_len = header_metadata.len() as c_int;
 
-    let header_bytes = header.try_to_bytes().unwrap();
+    let header_bytes = header.serialize().unwrap();
 
     let authentication_data_ptr = authentication_data.as_ptr().cast();
     let authentication_data_len = authentication_data.len() as c_int;
 
-    let user_decryption_key_bytes = user_decryption_key.try_to_bytes().unwrap();
+    let user_decryption_key_bytes = user_decryption_key.serialize().unwrap();
     let user_decryption_key_ptr = user_decryption_key_bytes.as_ptr().cast();
     let user_decryption_key_len = user_decryption_key_bytes.len() as i32;
 
@@ -156,10 +154,11 @@ unsafe fn decrypt_header(
         ));
     }
 
-    let symmetric_key = <DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::try_from_bytes(
-        std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize),
-    )
-    .unwrap();
+    let symmetric_key_fixed_length =
+        std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize)
+            .try_into()
+            .unwrap();
+    let symmetric_key = SymmetricKey::try_from_bytes(symmetric_key_fixed_length).unwrap();
 
     let header_metadata =
         std::slice::from_raw_parts(header_metadata_ptr.cast(), header_metadata_len as usize)
@@ -167,7 +166,7 @@ unsafe fn decrypt_header(
 
     CleartextHeader {
         symmetric_key,
-        metadata: header_metadata,
+        metadata: Some(header_metadata),
     }
 }
 
@@ -195,7 +194,7 @@ fn test_ffi_hybrid_header() -> Result<(), Error> {
         //
         // CoverCrypt setup
         //
-        let cover_crypt = CoverCryptX25519Aes256::default();
+        let cover_crypt = Covercrypt::default();
         let (msk, mpk) = cover_crypt.generate_master_keys(&policy).unwrap();
         let user_access_policy =
             AccessPolicy::from_boolean_expression("Department::FIN && Security Level::Top Secret")
@@ -221,22 +220,22 @@ fn test_ffi_hybrid_header() -> Result<(), Error> {
         let decrypted_header = decrypt_header(&encrypted_header, &usk, &authentication_data);
 
         assert_eq!(sym_key, decrypted_header.symmetric_key);
-        assert_eq!(&header_metadata, &decrypted_header.metadata);
+        assert_eq!(&header_metadata, &decrypted_header.metadata.unwrap());
     }
     Ok(())
 }
 
 unsafe fn encrypt_header_using_cache(
-    public_key: &PublicKey,
+    public_key: &MasterPublicKey,
     policy: &Policy,
     header_metadata: &[u8],
     authentication_data: &[u8],
-) -> (<DEM as Dem<{ DEM::KEY_LENGTH }>>::Key, EncryptedHeader) {
+) -> (SymmetricKey<{ Aes256Gcm::KEY_LENGTH }>, EncryptedHeader) {
     let policy_bytes: Vec<u8> = policy.try_into().unwrap();
     let policy_ptr = policy_bytes.as_ptr().cast();
     let policy_len = policy_bytes.len() as c_int;
 
-    let public_key_bytes = public_key.try_to_bytes().unwrap();
+    let public_key_bytes = public_key.serialize().unwrap();
     let public_key_ptr = public_key_bytes.as_ptr().cast();
     let public_key_len = public_key_bytes.len() as i32;
 
@@ -275,10 +274,11 @@ unsafe fn encrypt_header_using_cache(
         authentication_data.len() as i32,
     ));
 
-    let symmetric_key_ = <DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::try_from_bytes(
-        std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize),
-    )
-    .unwrap();
+    let symmetric_key_fixed_length =
+        std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize)
+            .try_into()
+            .unwrap();
+    let symmetric_key = SymmetricKey::try_from_bytes(symmetric_key_fixed_length).unwrap();
 
     let encrypted_header_bytes_ =
         std::slice::from_raw_parts(encrypted_header_ptr.cast(), encrypted_header_len as usize)
@@ -287,8 +287,8 @@ unsafe fn encrypt_header_using_cache(
     unwrap_ffi_error(h_destroy_encryption_cache(cache_handle));
 
     (
-        symmetric_key_,
-        EncryptedHeader::try_from_bytes(&encrypted_header_bytes_).unwrap(),
+        symmetric_key,
+        EncryptedHeader::deserialize(&encrypted_header_bytes_).unwrap(),
     )
 }
 
@@ -297,7 +297,7 @@ unsafe fn decrypt_header_using_cache(
     header: &EncryptedHeader,
     authentication_data: &[u8],
 ) -> CleartextHeader {
-    let user_decryption_key_bytes = user_decryption_key.try_to_bytes().unwrap();
+    let user_decryption_key_bytes = user_decryption_key.serialize().unwrap();
     let user_decryption_key_ptr = user_decryption_key_bytes.as_ptr().cast();
     let user_decryption_key_len = user_decryption_key_bytes.len() as i32;
 
@@ -317,7 +317,7 @@ unsafe fn decrypt_header_using_cache(
     let header_metadata_ptr = header_metadata.as_mut_ptr().cast();
     let mut header_metadata_len = header_metadata.len() as c_int;
 
-    let header_bytes = header.try_to_bytes().unwrap();
+    let header_bytes = header.serialize().unwrap();
 
     unwrap_ffi_error(h_decrypt_header_using_cache(
         symmetric_key_ptr,
@@ -331,10 +331,11 @@ unsafe fn decrypt_header_using_cache(
         cache_handle,
     ));
 
-    let symmetric_key = <DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::try_from_bytes(
-        std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize),
-    )
-    .unwrap();
+    let symmetric_key_fixed_length =
+        std::slice::from_raw_parts(symmetric_key_ptr.cast(), symmetric_key_len as usize)
+            .try_into()
+            .unwrap();
+    let symmetric_key = SymmetricKey::try_from_bytes(symmetric_key_fixed_length).unwrap();
 
     let header_metadata =
         std::slice::from_raw_parts(header_metadata_ptr.cast(), header_metadata_len as usize)
@@ -344,7 +345,7 @@ unsafe fn decrypt_header_using_cache(
 
     CleartextHeader {
         symmetric_key,
-        metadata: header_metadata,
+        metadata: Some(header_metadata),
     }
 }
 
@@ -356,7 +357,7 @@ fn test_ffi_hybrid_header_using_cache() {
         //
         // CoverCrypt setup
         //
-        let cover_crypt = CoverCryptX25519Aes256::default();
+        let cover_crypt = Covercrypt::default();
         let (msk, mpk) = cover_crypt.generate_master_keys(&policy).unwrap();
         let access_policy = AccessPolicy::new("Department", "FIN")
             & AccessPolicy::new("Security Level", "Top Secret");
@@ -376,11 +377,11 @@ fn test_ffi_hybrid_header_using_cache() {
             decrypt_header_using_cache(&sk_u, &encrypted_header, &authentication_data);
 
         assert_eq!(symmetric_key, decrypted_header.symmetric_key);
-        assert_eq!(&header_metadata, &decrypted_header.metadata);
+        assert_eq!(&header_metadata, &decrypted_header.metadata.unwrap());
     }
 }
 
-unsafe fn generate_master_keys(policy: &Policy) -> (MasterSecretKey, PublicKey) {
+unsafe fn generate_master_keys(policy: &Policy) -> (MasterSecretKey, MasterPublicKey) {
     let policy_bytes: Vec<u8> = policy.try_into().unwrap();
     let policy_ptr = policy_bytes.as_ptr().cast();
     let policy_len = policy_bytes.len() as c_int;
@@ -407,8 +408,8 @@ unsafe fn generate_master_keys(policy: &Policy) -> (MasterSecretKey, PublicKey) 
     let msk_bytes = std::slice::from_raw_parts(msk_ptr.cast(), msk_len as usize);
     let mpk_bytes = std::slice::from_raw_parts(mpk_ptr.cast(), mpk_len as usize);
 
-    let msk = MasterSecretKey::try_from_bytes(msk_bytes).unwrap();
-    let mpk = PublicKey::try_from_bytes(mpk_bytes).unwrap();
+    let msk = MasterSecretKey::deserialize(msk_bytes).unwrap();
+    let mpk = MasterPublicKey::deserialize(mpk_bytes).unwrap();
 
     (msk, mpk)
 }
@@ -420,7 +421,7 @@ unsafe fn generate_user_secret_key(
 ) -> UserSecretKey {
     //
     // Prepare secret key
-    let msk_bytes = msk.try_to_bytes().unwrap();
+    let msk_bytes = msk.serialize().unwrap();
     let msk_ptr = msk_bytes.as_ptr().cast();
     let msk_len = msk_bytes.len() as i32;
 
@@ -452,7 +453,7 @@ unsafe fn generate_user_secret_key(
 
     let user_key_bytes = std::slice::from_raw_parts(usk_ptr.cast(), usk_len as usize).to_vec();
 
-    UserSecretKey::try_from_bytes(&user_key_bytes).unwrap()
+    UserSecretKey::deserialize(&user_key_bytes).unwrap()
 }
 
 #[test]
@@ -480,7 +481,7 @@ fn test_ffi_keygen() {
 
 unsafe fn encrypt(
     policy: &Policy,
-    public_key: &PublicKey,
+    public_key: &MasterPublicKey,
     encryption_policy: &str,
     plaintext: &[u8],
     header_metadata: &[u8],
@@ -494,7 +495,7 @@ unsafe fn encrypt(
     let policy_ptr = policy_bytes.as_ptr().cast();
     let policy_len = policy_bytes.len() as c_int;
 
-    let public_key_bytes = public_key.try_to_bytes().unwrap();
+    let public_key_bytes = public_key.serialize().unwrap();
     let public_key_ptr = public_key_bytes.as_ptr();
     let public_key_len = public_key_bytes.len() as i32;
 
@@ -543,7 +544,7 @@ unsafe fn decrypt(
     let authentication_data_ptr = authentication_data.as_ptr().cast();
     let authentication_data_len = authentication_data.len() as c_int;
 
-    let user_decryption_key_bytes = user_decryption_key.try_to_bytes().unwrap();
+    let user_decryption_key_bytes = user_decryption_key.serialize().unwrap();
     let user_decryption_key_ptr = user_decryption_key_bytes.as_ptr().cast();
     let user_decryption_key_len = user_decryption_key_bytes.len() as i32;
 
@@ -580,7 +581,7 @@ fn test_encrypt_decrypt() {
         //
         // CoverCrypt setup
         //
-        let cover_crypt = CoverCryptX25519Aes256::default();
+        let cover_crypt = Covercrypt::default();
         let (msk, mpk) = cover_crypt.generate_master_keys(&policy).unwrap();
         let user_access_policy =
             AccessPolicy::from_boolean_expression("Department::FIN && Security Level::Top Secret")

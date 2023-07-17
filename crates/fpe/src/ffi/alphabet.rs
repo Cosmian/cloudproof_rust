@@ -5,7 +5,7 @@ use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_b
 use crate::get_alphabet;
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) unsafe fn fpe(
+pub unsafe fn fpe(
     output_ptr: *mut c_uchar,
     output_len: *mut c_int,
     input_ptr: *const c_char,
@@ -54,11 +54,11 @@ pub(crate) unsafe fn fpe(
 ///
 /// # Arguments
 ///
-/// * `output_ptr` - a pointer to the buffer where the encrypted string will be
-///   written.
-/// * `output_len` - a pointer to the variable that stores the maximum size of
-///   the `output_ptr` buffer. After the function call, the variable will be
-///   updated with the actual size of the encrypted string.
+/// * `plaintext_ptr` - a pointer to the buffer where the encrypted string will
+///   be written.
+/// * `plaintext_len` - a pointer to the variable that stores the maximum size
+///   of the `plaintext_ptr` buffer. After the function call, the variable will
+///   be updated with the actual size of the encrypted string.
 /// * `alphabet_id_ptr` - a pointer to a C string that represents the ID of the
 ///   alphabet used for encryption.
 /// * `input_ptr` - a pointer to a C string that represents the plaintext to be
@@ -78,8 +78,8 @@ pub(crate) unsafe fn fpe(
 /// `0` means success, while a non-zero value represents an error code.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_encrypt_alphabet(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
+    plaintext_ptr: *mut c_uchar,
+    plaintext_len: *mut c_int,
     alphabet_id_ptr: *const c_char,
     input_ptr: *const c_char,
     key_ptr: *const c_char,
@@ -91,8 +91,8 @@ pub unsafe extern "C" fn h_fpe_encrypt_alphabet(
     // Calls the internal FPE encryption function with the specified alphabet and
     // sets the "encrypt" flag to true.
     fpe(
-        output_ptr,
-        output_len,
+        plaintext_ptr,
+        plaintext_len,
         input_ptr,
         alphabet_id_ptr,
         key_ptr,
@@ -114,11 +114,11 @@ pub unsafe extern "C" fn h_fpe_encrypt_alphabet(
 ///
 /// # Arguments
 ///
-/// * `output_ptr` - a pointer to the buffer where the encrypted string will be
-///   written.
-/// * `output_len` - a pointer to the variable that stores the maximum size of
-///   the `output_ptr` buffer. After the function call, the variable will be
-///   updated with the actual size of the encrypted string.
+/// * `ciphertext_ptr` - a pointer to the buffer where the encrypted string will
+///   be written.
+/// * `ciphertext_len` - a pointer to the variable that stores the maximum size
+///   of the `ciphertext_ptr` buffer. After the function call, the variable will
+///   be updated with the actual size of the encrypted string.
 /// * `alphabet_id_ptr` - a pointer to a C string that represents the ID of the
 ///   alphabet used for encryption.
 /// * `input_ptr` - a pointer to a C string that represents the plaintext to be
@@ -138,8 +138,8 @@ pub unsafe extern "C" fn h_fpe_encrypt_alphabet(
 /// `0` means success, while a non-zero value represents an error code.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_decrypt_alphabet(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
+    ciphertext_ptr: *mut c_uchar,
+    ciphertext_len: *mut c_int,
     alphabet_id_ptr: *const c_char,
     input_ptr: *const c_char,
     key_ptr: *const c_char,
@@ -149,8 +149,8 @@ pub unsafe extern "C" fn h_fpe_decrypt_alphabet(
     additional_characters_ptr: *const c_char,
 ) -> c_int {
     fpe(
-        output_ptr,
-        output_len,
+        ciphertext_ptr,
+        ciphertext_len,
         input_ptr,
         alphabet_id_ptr,
         key_ptr,

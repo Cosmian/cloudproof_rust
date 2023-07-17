@@ -7,12 +7,12 @@ jobs:
   cargo-nursery-base:
     uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@develop
     with:
-      toolchain: nightly-2023-03-20
+      toolchain: nightly-2023-06-27
 
   cargo-doc:
     uses: Cosmian/reusable_workflows/.github/workflows/cargo-doc.yml@develop
     with:
-      toolchain: nightly-2023-03-20
+      toolchain: nightly-2023-06-27
 
   test_and_dry_publish:
     runs-on: ubuntu-latest
@@ -33,7 +33,7 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2023-06-27
           override: true
 
       - name: Run python tests

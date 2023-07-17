@@ -4,12 +4,21 @@ language = "C"
 [parse]
 exclude = []
 extra_bindings = [
+  "cloudproof_aesgcm",
+  "cloudproof_ecies",
   "cloudproof_findex",
   "cloudproof_fpe",
   "cloudproof_cover_crypt",
   "cosmian_ffi_utils",
 ]
-include = ["cloudproof_findex", "cloudproof_fpe", "cloudproof_cover_crypt", "cosmian_ffi_utils"]
+include = [
+  "cloudproof_aesgcm",
+  "cloudproof_ecies",
+  "cloudproof_findex",
+  "cloudproof_fpe",
+  "cloudproof_cover_crypt",
+  "cosmian_ffi_utils",
+]
 parse_deps = true
 
 [defines]

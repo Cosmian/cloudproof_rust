@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2023-07-11
+
+### Features
+
+- Add ECIES and AES256GCM bindings and add logs on findex callbacks
+- Merge all new crates to cloudproof crate
+- Use crypto_core v9.0
+- Use cover_crypt v12.0
+
+### Ci
+
+- Freeze cloudproof github workflow
+- Bump kms to 4.4.2
+
 ## [2.0.2] - 2023-06-05
 
 ### Ci

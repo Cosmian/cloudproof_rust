@@ -1,9 +1,10 @@
 [package]
 name = "cloudproof_findex"
-version = "4.0.1"
+version = "4.0.2"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
-license = "MIT/Apache-2.0"
+license-file = "../../LICENSE.md"
+repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Findex Cloudproof library"
 
 [lib]
@@ -12,7 +13,18 @@ name = "cloudproof_findex"
 
 [features]
 cloud = ["reqwest", "base64"]
-ffi = ["cosmian_ffi_utils", "base64", "serde_json", "tokio/rt-multi-thread"]
+compact_live = ["cosmian_findex/live_compact"]
+default = []
+ffi = [
+  "cosmian_ffi_utils",
+  "base64",
+  "serde_json",
+  "tokio/rt-multi-thread",
+  "tracing",
+  "tracing-log",
+  "tracing-subscriber",
+  "tracing-tree",
+]
 python = ["cloud", "futures", "pyo3", "tokio/rt-multi-thread"]
 sqlite = ["base64", "faker_rand", "rand", "rusqlite", "serde", "serde_json"]
 wasm_bindgen = [
@@ -21,21 +33,21 @@ wasm_bindgen = [
   "hex",
   "wasm-bindgen",
   "wasm-bindgen-futures",
+  "log",
+  "wasm-logger",
 ]
-compact_live = ["cosmian_findex/live_compact"]
-default = []
 
 [dependencies]
-cosmian_crypto_core.workspace = true
-cosmian_findex = "4.0.1"
-
 # Optional dependencies
 base64 = { workspace = true, optional = true }
+cosmian_crypto_core = { workspace = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
+cosmian_findex = "4.0.3"
 faker_rand = { version = "0.1", optional = true }
 futures = { version = "0.3.26", optional = true }
 hex = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
+log = { version = "0.4.6", optional = true }
 pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 rand = { workspace = true, optional = true }
 reqwest = { version = "0.11.14", features = ["rustls-tls"], default-features = false, optional = true }
@@ -43,8 +55,13 @@ rusqlite = { version = "0.28", features = ["bundled"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0.93", optional = true }
 tokio = { version = "1.25.0", optional = true }
+tracing = { workspace = true, optional = true }
+tracing-log = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, optional = true }
+tracing-tree = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 wasm-bindgen-futures = { version = "0.4.34", optional = true }
+wasm-logger = { version = "0.2.0", optional = true }
 
 [dev-dependencies]
 actix-rt = "2.8"

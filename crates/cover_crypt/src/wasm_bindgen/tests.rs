@@ -1,11 +1,6 @@
 use cosmian_cover_crypt::{
-    abe_policy::Policy,
-    statics::{
-        CleartextHeader, CoverCryptX25519Aes256, EncryptedHeader, MasterSecretKey, PublicKey,
-        UserSecretKey,
-    },
-    test_utils::policy,
-    CoverCrypt,
+    abe_policy::Policy, core::SYM_KEY_LENGTH, test_utils::policy, CleartextHeader, EncryptedHeader,
+    MasterPublicKey, MasterSecretKey, UserSecretKey,
 };
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializable};
 use js_sys::{Array, JsString, Uint8Array};
@@ -24,7 +19,7 @@ use crate::wasm_bindgen::{
 fn encrypt_header(
     policy: &Policy,
     access_policy_string: String,
-    public_key: &PublicKey,
+    public_key: &MasterPublicKey,
     header_metadata: &[u8],
     authentication_data: &[u8],
 ) -> Result<EncryptedHeader, JsValue> {
@@ -32,7 +27,7 @@ fn encrypt_header(
     let authentication_data = Uint8Array::from(authentication_data);
     let policy_bytes = wasm_unwrap!(policy.try_into(), "Error serializing policy");
     let public_key_bytes = Uint8Array::from(
-        wasm_unwrap!(public_key.try_to_bytes(), "Error serializing public key").as_slice(),
+        wasm_unwrap!(public_key.serialize(), "Error serializing public key").as_slice(),
     );
     let encrypted_header = wasm_unwrap!(
         webassembly_encrypt_hybrid_header(
@@ -44,10 +39,8 @@ fn encrypt_header(
         ),
         "Error encrypting header"
     );
-    EncryptedHeader::try_from_bytes(
-        &encrypted_header.to_vec()[CoverCryptX25519Aes256::SYM_KEY_LENGTH..],
-    )
-    .map_err(|e| JsValue::from_str(&e.to_string()))
+    EncryptedHeader::deserialize(&encrypted_header.to_vec()[SYM_KEY_LENGTH..])
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 fn decrypt_header(
@@ -58,14 +51,14 @@ fn decrypt_header(
     let authentication_data = Uint8Array::from(authentication_data);
     let encrypted_header_bytes = Uint8Array::from(
         wasm_unwrap!(
-            encrypted_header.try_to_bytes(),
+            encrypted_header.serialize(),
             "Error serializing encrypted header"
         )
         .as_slice(),
     );
     let sk_u = Uint8Array::from(
         wasm_unwrap!(
-            user_decryption_key.try_to_bytes(),
+            user_decryption_key.serialize(),
             "Error serializing the user secret key"
         )
         .as_slice(),
@@ -74,7 +67,7 @@ fn decrypt_header(
         webassembly_decrypt_hybrid_header(sk_u, encrypted_header_bytes, authentication_data),
         "Error decrypting header"
     );
-    CleartextHeader::try_from_bytes(&decrypted_header_bytes.to_vec())
+    CleartextHeader::deserialize(&decrypted_header_bytes.to_vec())
         .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
@@ -154,8 +147,8 @@ fn test_generate_keys() {
 
     //
     // Check deserialization
-    MasterSecretKey::try_from_bytes(msk_bytes).unwrap();
-    PublicKey::try_from_bytes(&master_keys_vec[4 + msk_size..]).unwrap();
+    MasterSecretKey::deserialize(msk_bytes).unwrap();
+    MasterPublicKey::deserialize(&master_keys_vec[4 + msk_size..]).unwrap();
 
     //
     // Generate user secret key
@@ -166,7 +159,7 @@ fn test_generate_keys() {
     )
     .unwrap()
     .to_vec();
-    let usk = UserSecretKey::try_from_bytes(&usk_bytes).unwrap();
+    let usk = UserSecretKey::deserialize(&usk_bytes).unwrap();
 
     let access_policy_string = "Security Level::Low Secret".to_string();
     let attributes = Array::new();
@@ -183,9 +176,9 @@ fn test_generate_keys() {
     let master_keys_vec = master_keys.to_vec();
     let secret_key_size = u32::from_be_bytes(master_keys_vec[..4].try_into().unwrap()) as usize;
     let secret_key_bytes = &master_keys_vec[4..4 + secret_key_size];
-    MasterSecretKey::try_from_bytes(secret_key_bytes).unwrap();
+    MasterSecretKey::deserialize(secret_key_bytes).unwrap();
     let master_public_key =
-        PublicKey::try_from_bytes(&master_keys_vec[4 + secret_key_size..]).unwrap();
+        MasterPublicKey::deserialize(&master_keys_vec[4 + secret_key_size..]).unwrap();
 
     //
     // Encrypt / decrypt
@@ -217,7 +210,7 @@ fn test_generate_keys() {
     )
     .unwrap()
     .to_vec();
-    let usk = UserSecretKey::try_from_bytes(&usk_bytes).unwrap();
+    let usk = UserSecretKey::deserialize(&usk_bytes).unwrap();
 
     //
     // Decrypt with the refreshed secret key (it now works)

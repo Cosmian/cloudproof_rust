@@ -23,7 +23,7 @@ macro_rules! impl_key_byte {
                     py,
                     &self
                         .0
-                        .try_to_bytes()
+                        .serialize()
                         .map_err(|e| PyTypeError::new_err(e.to_string()))?,
                 )
                 .into())
@@ -32,7 +32,7 @@ macro_rules! impl_key_byte {
             /// Reads key from bytes
             #[staticmethod]
             pub fn from_bytes(key_bytes: &[u8]) -> PyResult<Self> {
-                match <$rust_type>::try_from_bytes(key_bytes) {
+                match <$rust_type>::deserialize(key_bytes) {
                     Ok(key) => Ok(Self(key)),
                     Err(e) => Err(PyTypeError::new_err(e.to_string())),
                 }
@@ -51,7 +51,7 @@ mod py_abe_policy;
 mod py_cover_crypt;
 
 use py_abe_policy::{Attribute, Policy, PolicyAxis};
-use py_cover_crypt::{CoverCrypt, MasterSecretKey, PublicKey, SymmetricKey, UserSecretKey};
+use py_cover_crypt::{CoverCrypt, MasterPublicKey, MasterSecretKey, SymmetricKey, UserSecretKey};
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -62,7 +62,7 @@ fn cloudproof_cover_crypt(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<CoverCrypt>()?;
     m.add_class::<SymmetricKey>()?;
     m.add_class::<MasterSecretKey>()?;
-    m.add_class::<PublicKey>()?;
+    m.add_class::<MasterPublicKey>()?;
     m.add_class::<UserSecretKey>()?;
     Ok(())
 }
