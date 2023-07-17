@@ -3,7 +3,8 @@ name = "cloudproof_cover_crypt"
 version = "12.0.0"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
-license = "MIT/Apache-2.0"
+license-file = "../../LICENSE.md"
+repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian CoverCrypt Cloudproof library"
 
 [lib]
@@ -11,14 +12,14 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 name = "cloudproof_cover_crypt"
 
 [features]
+default = []
 ffi = ["cosmian_ffi_utils", "lazy_static"]
 python = ["pyo3"]
 wasm_bindgen = ["js-sys", "wasm-bindgen"]
-default = []
 
 [dependencies]
-cosmian_cover_crypt = { version = "11.0.1", features = ["serialization"] }
-cosmian_crypto_core = "7.0"
+cosmian_cover_crypt = { version = "12.0.0", features = ["serialization"] }
+cosmian_crypto_core = { workspace = true }
 serde_json = "1.0.93"
 
 # Optional dependencies
@@ -29,4 +30,5 @@ pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
+cosmian_cover_crypt = { version = "12.0.0", features = ["test_utils"] }
 wasm-bindgen-test = "0.3.34"

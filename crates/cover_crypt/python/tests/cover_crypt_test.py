@@ -7,7 +7,7 @@ from cloudproof_cover_crypt import (
     MasterSecretKey,
     Policy,
     PolicyAxis,
-    PublicKey,
+    MasterPublicKey,
     SymmetricKey,
     UserSecretKey,
 )
@@ -124,7 +124,7 @@ class TestKeyGeneration(unittest.TestCase):
         self.assertIsInstance(copy_msk, MasterSecretKey)
 
         copy_pk = self.pk.deep_copy()
-        self.assertIsInstance(copy_pk, PublicKey)
+        self.assertIsInstance(copy_pk, MasterPublicKey)
 
         # test serialization
         msk_bytes = self.msk.to_bytes()
@@ -133,9 +133,9 @@ class TestKeyGeneration(unittest.TestCase):
             MasterSecretKey.from_bytes(b'wrong data')
 
         pk_bytes = self.pk.to_bytes()
-        self.assertIsInstance(PublicKey.from_bytes(pk_bytes), PublicKey)
+        self.assertIsInstance(MasterPublicKey.from_bytes(pk_bytes), MasterPublicKey)
         with self.assertRaises(Exception):
-            PublicKey.from_bytes(b'wrong data')
+            MasterPublicKey.from_bytes(b'wrong data')
 
     def test_user_key_serialization(self) -> None:
         usk = self.cc.generate_user_secret_key(

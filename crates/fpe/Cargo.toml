@@ -3,7 +3,8 @@ name = "cloudproof_fpe"
 version = "0.2.0"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
-license = "MIT/Apache-2.0"
+license-file = "../../LICENSE.md"
+repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Cloudproof FPE library"
 
 [lib]
@@ -15,10 +16,10 @@ harness = false
 name = "benches"
 
 [features]
+default = []
 ffi = ["cosmian_ffi_utils"]
 python = ["pyo3"]
 wasm_bindgen = ["js-sys", "wasm-bindgen"]
-default = []
 
 [dependencies]
 aes = { version = "0.8" }
@@ -29,7 +30,7 @@ num-integer = { version = "0.1", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 
 # Optional dependencies
-cosmian_ffi_utils = { path = "../ffi_utils", optional = true }
+cosmian_ffi_utils = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
 pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 wasm-bindgen = { workspace = true, optional = true }

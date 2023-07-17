@@ -2,14 +2,11 @@
 #![allow(non_upper_case_globals)]
 
 use cosmian_cover_crypt::{
-    abe_policy::AccessPolicy,
-    statics::{CoverCryptX25519Aes256, EncryptedHeader, PublicKey, UserSecretKey, DEM},
-    CoverCrypt,
+    abe_policy::AccessPolicy, Covercrypt, EncryptedHeader, MasterPublicKey, UserSecretKey,
 };
 use cosmian_crypto_core::{
     bytes_ser_de::{Deserializer, Serializable, Serializer},
-    symmetric_crypto::{Dem, SymKey},
-    KeyTrait,
+    Aes256Gcm, FixedSizeCBytes, SymmetricKey,
 };
 use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
@@ -31,7 +28,7 @@ pub fn webassembly_encrypt_hybrid_header(
         "Error reading access policy"
     );
     let public_key = wasm_unwrap!(
-        PublicKey::try_from_bytes(&public_key_bytes.to_vec()),
+        MasterPublicKey::deserialize(&public_key_bytes.to_vec()),
         "Error deserializing public key"
     );
     let header_metadata = if header_metadata.is_null() {
@@ -47,7 +44,7 @@ pub fn webassembly_encrypt_hybrid_header(
 
     let (symmetric_key, encrypted_header) = wasm_unwrap!(
         EncryptedHeader::generate(
-            &CoverCryptX25519Aes256::default(),
+            &Covercrypt::default(),
             &policy,
             &public_key,
             &access_policy,
@@ -56,9 +53,9 @@ pub fn webassembly_encrypt_hybrid_header(
         ),
         "Error encrypting header"
     );
-    let symmetric_key_bytes = symmetric_key.into_bytes();
+    let symmetric_key_bytes = symmetric_key.to_bytes();
     let encrypted_header_bytes = wasm_unwrap!(
-        encrypted_header.try_to_bytes(),
+        encrypted_header.serialize(),
         "Error serializing encrypted header"
     );
     let mut res = Vec::with_capacity(symmetric_key_bytes.len() + encrypted_header_bytes.len());
@@ -82,7 +79,7 @@ pub fn webassembly_decrypt_hybrid_header(
     //
     // Parse user decryption key
     let usk = wasm_unwrap!(
-        UserSecretKey::try_from_bytes(usk_bytes.to_vec().as_slice()),
+        UserSecretKey::deserialize(usk_bytes.to_vec().as_slice()),
         "Error deserializing user decryption key"
     );
     let authentication_data = if authentication_data.is_null() {
@@ -94,24 +91,20 @@ pub fn webassembly_decrypt_hybrid_header(
     //
     // Parse encrypted header
     let encrypted_header = wasm_unwrap!(
-        EncryptedHeader::try_from_bytes(encrypted_header_bytes.to_vec().as_slice(),),
+        EncryptedHeader::deserialize(encrypted_header_bytes.to_vec().as_slice(),),
         "Error deserializing encrypted header"
     );
 
     //
     // Finally decrypt symmetric key using given user decryption key
     let cleartext_header = wasm_unwrap!(
-        encrypted_header.decrypt(
-            &CoverCryptX25519Aes256::default(),
-            &usk,
-            authentication_data.as_deref(),
-        ),
+        encrypted_header.decrypt(&Covercrypt::default(), &usk, authentication_data.as_deref(),),
         "Error decrypting header"
     );
 
     Ok(Uint8Array::from(
         wasm_unwrap!(
-            cleartext_header.try_to_bytes(),
+            cleartext_header.serialize(),
             "Error serializing decrypted header"
         )
         .as_slice(),
@@ -133,8 +126,12 @@ pub fn webassembly_encrypt_symmetric_block(
 
     //
     // Parse symmetric key
+    let symmetric_key_fixed: [u8; Aes256Gcm::KEY_LENGTH] = wasm_unwrap!(
+        symmetric_key_bytes.to_vec().try_into(),
+        "Error converting symmetric key"
+    );
     let symmetric_key = wasm_unwrap!(
-        <DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::try_from_bytes(&symmetric_key_bytes.to_vec()),
+        SymmetricKey::try_from_bytes(symmetric_key_fixed),
         "Error parsing symmetric key"
     );
 
@@ -146,7 +143,7 @@ pub fn webassembly_encrypt_symmetric_block(
         Some(authentication_data.to_vec())
     };
     let ciphertext = wasm_unwrap!(
-        CoverCryptX25519Aes256::default().encrypt(
+        Covercrypt::default().encrypt(
             &symmetric_key,
             &plaintext_bytes.to_vec(),
             authentication_data.as_deref(),
@@ -166,8 +163,12 @@ pub fn webassembly_decrypt_symmetric_block(
 ) -> Result<Uint8Array, JsValue> {
     //
     // Parse symmetric key
+    let symmetric_key_fixed: [u8; Aes256Gcm::KEY_LENGTH] = wasm_unwrap!(
+        symmetric_key_bytes.to_vec().try_into(),
+        "Error converting symmetric key"
+    );
     let symmetric_key = wasm_unwrap!(
-        <DEM as Dem<{ DEM::KEY_LENGTH }>>::Key::try_from_bytes(&symmetric_key_bytes.to_vec()),
+        SymmetricKey::try_from_bytes(symmetric_key_fixed),
         "Error parsing symmetric key"
     );
 
@@ -180,7 +181,7 @@ pub fn webassembly_decrypt_symmetric_block(
     };
 
     let cleartext = wasm_unwrap!(
-        CoverCryptX25519Aes256::default().decrypt(
+        Covercrypt::default().decrypt(
             &symmetric_key,
             &encrypted_bytes.to_vec(),
             authentication_data.as_deref(),
@@ -220,7 +221,7 @@ pub fn webassembly_hybrid_encrypt(
         "Error reading access policy"
     );
     let pk = wasm_unwrap!(
-        PublicKey::try_from_bytes(&pk.to_vec()),
+        MasterPublicKey::deserialize(&pk.to_vec()),
         "Error parsing public key"
     );
     let header_metadata = if header_metadata.is_null() {
@@ -236,7 +237,7 @@ pub fn webassembly_hybrid_encrypt(
     };
 
     // instantiate CoverCrypt
-    let cover_crypt = CoverCryptX25519Aes256::default();
+    let cover_crypt = Covercrypt::default();
     let (symmetric_key, encrypted_header) = wasm_unwrap!(
         EncryptedHeader::generate(
             &cover_crypt,
@@ -300,7 +301,7 @@ pub fn webassembly_hybrid_decrypt(
     let ciphertext = de.finalize();
 
     let usk = wasm_unwrap!(
-        UserSecretKey::try_from_bytes(usk_bytes.to_vec().as_slice()),
+        UserSecretKey::deserialize(usk_bytes.to_vec().as_slice()),
         "Error deserializing user secret key"
     );
 
@@ -311,7 +312,7 @@ pub fn webassembly_hybrid_decrypt(
     };
 
     // Instantiate CoverCrypt
-    let cover_crypt = CoverCryptX25519Aes256::default();
+    let cover_crypt = Covercrypt::default();
 
     // Decrypt header
     let cleartext_header = wasm_unwrap!(
@@ -330,7 +331,7 @@ pub fn webassembly_hybrid_decrypt(
 
     let mut ser = Serializer::new();
     wasm_unwrap!(
-        ser.write_vec(cleartext_header.metadata.as_slice()),
+        ser.write_vec(cleartext_header.metadata.unwrap_or_default().as_slice()),
         "Cannot serialize the decrypted header metadata into response"
     );
     wasm_unwrap!(

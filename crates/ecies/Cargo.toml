@@ -3,7 +3,8 @@ name = "cloudproof_ecies"
 version = "0.1.0"
 authors = ["Emmanuel Coste<emmanuel.coste@cosmian.com>"]
 edition = "2021"
-license = "MIT/Apache-2.0"
+license-file = "../../LICENSE.md"
+repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian ECIES scheme"
 
 [lib]
@@ -11,13 +12,12 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 name = "cloudproof_ecies"
 
 [features]
+default = []
 ffi = ["cosmian_ffi_utils"]
 python = ["pyo3"]
 wasm_bindgen = ["js-sys", "wasm-bindgen"]
-default = []
 
 [dependencies]
-aes-gcm = "0.10.1"
 # cloudproof_cover_crypt = "11.1.0"
 cloudproof_cover_crypt = { path = "../cover_crypt" }
 

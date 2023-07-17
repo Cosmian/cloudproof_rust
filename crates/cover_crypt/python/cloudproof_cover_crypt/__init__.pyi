@@ -188,28 +188,28 @@ class MasterSecretKey:
             MasterSecretKey
         """
 
-class PublicKey:
+class MasterPublicKey:
     def to_bytes(self) -> bytes:
         """Converts key to bytes.
 
         Returns:
             bytes
         """
-    def deep_copy(self) -> PublicKey:
+    def deep_copy(self) -> MasterPublicKey:
         """Clones the key.
 
         Returns:
-            PublicKey
+            MasterPublicKey
         """
     @staticmethod
-    def from_bytes(key_bytes: bytes) -> PublicKey:
+    def from_bytes(key_bytes: bytes) -> MasterPublicKey:
         """Reads key from bytes.
 
         Args:
             key_bytes (bytes)
 
         Returns:
-            PublicKey
+            MasterPublicKey
         """
 
 class UserSecretKey:
@@ -258,24 +258,26 @@ class CoverCrypt:
     """The engine is the main entry point for the core functionalities."""
 
     def __init__(self): ...
-    def generate_master_keys(self, policy: Policy) -> Tuple[MasterSecretKey, PublicKey]:
+    def generate_master_keys(
+        self, policy: Policy
+    ) -> Tuple[MasterSecretKey, MasterPublicKey]:
         """Generate the master authority keys for supplied Policy.
 
         Args:
             policy (Policy): policy used to generate the keys
 
         Returns:
-            Tuple[MasterSecretKey, PublicKey]
+            Tuple[MasterSecretKey, MasterPublicKey]
         """
     def update_master_keys(
-        self, policy: Policy, msk: MasterSecretKey, pk: PublicKey
+        self, policy: Policy, msk: MasterSecretKey, pk: MasterPublicKey
     ) -> None:
         """Update the master keys according to this new policy.
 
         Args:
             policy (Policy): policy used to generate the keys
             msk (MasterSecretKey): master secret key
-            pk (PublicKey): master public key
+            pk (MasterPublicKey): master public key
         """
     def generate_user_secret_key(
         self, msk: MasterSecretKey, access_policy_str: str, policy: Policy
@@ -346,7 +348,7 @@ class CoverCrypt:
         self,
         policy: Policy,
         access_policy_str: str,
-        public_key: PublicKey,
+        public_key: MasterPublicKey,
         header_metadata: Optional[bytes] = ...,
         authentication_data: Optional[bytes] = ...,
     ) -> Tuple[SymmetricKey, bytes]:
@@ -358,7 +360,7 @@ class CoverCrypt:
         Args:
             policy (Policy): global policy
             access_policy_str (str): access policy
-            public_key (PublicKey): CoverCrypt public key
+            public_key (MasterPublicKey): CoverCrypt public key
             header_metadata (Optional[bytes]): additional data to encrypt with the header
             authentication_data (Optional[bytes]): authentication data to use in symmetric encryption
 
@@ -385,7 +387,7 @@ class CoverCrypt:
         self,
         policy: Policy,
         access_policy_str: str,
-        pk: PublicKey,
+        pk: MasterPublicKey,
         plaintext: bytes,
         header_metadata: Optional[bytes] = ...,
         authentication_data: Optional[bytes] = ...,
@@ -396,7 +398,7 @@ class CoverCrypt:
         Args:
             policy (Policy): global policy
             access_policy_str (str): access policy
-            pk (PublicKey): CoverCrypt public key
+            pk (MasterPublicKey): CoverCrypt public key
             plaintext (bytes): plaintext to encrypt using the DEM
             header_metadata (Optional[bytes]): additional data to symmetrically encrypt in the header
             authentication_data (Optional[bytes]): authentication data to use in symmetric encryptions

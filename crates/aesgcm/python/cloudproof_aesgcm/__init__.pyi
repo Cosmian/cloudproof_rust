@@ -1,27 +1,30 @@
-class AesGcm:
-    """Use aes256gcm standard rust implementation
+class Aes256Gcm:
+    """Use aes256gcm standard rust implementation"""
 
-    Args:
-        key (bytes): symmetric key - 32 bytes
-        nonce (bytes): AESGCM nonce - 12 bytes
-    """
-
-    def __init__(self, key: bytes, nonce: bytes):
-        """
-        Initialize the AESGCM cipher
+    @staticmethod
+    def encrypt(
+        key: bytes, nonce: bytes, plaintext: bytes, authenticated_data: bytes
+    ) -> bytes:
+        """AES256GCM encryption
 
         Args:
             key (bytes): symmetric key - 32 bytes
-            nonce (bytes): AESGCM nonce - 12 bytes
-        """
-    def encrypt(self, plaintext: bytes) -> bytes:
-        """AES256GCM encryption
+            plaintext (bytes): data to encrypt
+            authenticated_data (bytes): authenticated data
 
         Returns:
             bytes
         """
-    def decrypt(self, ciphertext: bytes) -> bytes:
+    @staticmethod
+    def decrypt(
+        key: bytes, nonce: bytes, ciphertext: bytes, authenticated_data: bytes
+    ) -> bytes:
         """AES256GCM decryption
+
+        Args:
+            key (bytes): symmetric key - 32 bytes
+            ciphertext (bytes): data to encrypt
+            authenticated_data (bytes): authenticated data
 
         Returns:
             bytes

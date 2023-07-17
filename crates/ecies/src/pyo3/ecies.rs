@@ -1,58 +1,73 @@
-use aes_gcm::aead::rand_core::SeedableRng;
 use cloudproof_cover_crypt::reexport::crypto_core::{
-    asymmetric_crypto::{
-        curve25519::{X25519KeyPair, X25519PrivateKey, X25519PublicKey},
-        ecies::{ecies_decrypt, ecies_encrypt},
-        DhKeyPair,
-    },
-    CsRng, KeyTrait,
+    reexport::rand_core::SeedableRng, CsRng, Ecies as EciesRust,
+    EciesSalsaSealBox as EciesSalsaSealBoxRust, FixedSizeCBytes, RandomFixedSizeCBytes,
+    X25519PrivateKey, X25519PublicKey,
 };
 use pyo3::{exceptions::PyException, pyclass, pymethods, PyResult};
 
 #[pyclass]
-pub struct Ecies;
+pub struct EciesSalsaSealBox;
 
 #[pymethods]
-impl Ecies {
+impl EciesSalsaSealBox {
     #[staticmethod]
     fn generate_key_pair() -> PyResult<(Vec<u8>, Vec<u8>)> {
         let mut rng = CsRng::from_entropy();
-        let key_pair: X25519KeyPair = X25519KeyPair::new(&mut rng);
+        let private_key = X25519PrivateKey::new(&mut rng);
+        let public_key = X25519PublicKey::from(&private_key);
         Ok((
-            key_pair.public_key().to_bytes().to_vec(),
-            key_pair.private_key().to_bytes().to_vec(),
+            public_key.to_bytes().to_vec(),
+            private_key.to_bytes().to_vec(),
         ))
     }
 
     #[staticmethod]
-    fn encrypt(plaintext: Vec<u8>, public_key_bytes: Vec<u8>) -> PyResult<Vec<u8>> {
+    fn encrypt(
+        plaintext: Vec<u8>,
+        public_key: Vec<u8>,
+        authenticated_data: Vec<u8>,
+    ) -> PyResult<Vec<u8>> {
         let mut rng = CsRng::from_entropy();
-        let public_key = X25519PublicKey::try_from_bytes(&public_key_bytes)
-            .map_err(|e| PyException::new_err(format!("ECIES deserializing public key: {e:?}")))?;
+        let public_key: [u8; X25519PublicKey::LENGTH] = public_key.try_into().map_err(|_e| {
+            PyException::new_err(format!(
+                "ECIES error: public key length incorrect: expected {}",
+                X25519PublicKey::LENGTH
+            ))
+        })?;
+        let public_key = X25519PublicKey::try_from_bytes(public_key).map_err(|e| {
+            PyException::new_err(format!("ECIES error: public key deserializing: {e:?}"))
+        })?;
 
         // Encrypt the message
-        let output = ecies_encrypt::<
-            CsRng,
-            X25519KeyPair,
-            { X25519KeyPair::PUBLIC_KEY_LENGTH },
-            { X25519KeyPair::PRIVATE_KEY_LENGTH },
-        >(&mut rng, &public_key, &plaintext, None, None)
-        .map_err(|e| PyException::new_err(format!("ECIES encryption: {e}")))?;
-        Ok(output)
+        let ciphertext = EciesSalsaSealBoxRust::encrypt(
+            &mut rng,
+            &public_key,
+            &plaintext,
+            Some(&authenticated_data),
+        )
+        .map_err(|e| PyException::new_err(format!("ECIES error: encryption: {e:?}")))?;
+        Ok(ciphertext)
     }
 
     #[staticmethod]
-    fn decrypt(ciphertext: Vec<u8>, private_key_bytes: Vec<u8>) -> PyResult<Vec<u8>> {
-        let private_key = X25519PrivateKey::try_from_bytes(&private_key_bytes)
-            .map_err(|e| PyException::new_err(format!("ECIES deserializing private key: {e:?}")))?;
+    fn decrypt(
+        ciphertext: Vec<u8>,
+        private_key: Vec<u8>,
+        authenticated_data: Vec<u8>,
+    ) -> PyResult<Vec<u8>> {
+        let private_key: [u8; X25519PrivateKey::LENGTH] = private_key.try_into().map_err(|_e| {
+            PyException::new_err(format!(
+                "ECIES error: private key length incorrect: expected {}",
+                X25519PrivateKey::LENGTH
+            ))
+        })?;
+        let private_key = X25519PrivateKey::try_from_bytes(private_key).map_err(|e| {
+            PyException::new_err(format!("ECIES error: private key deserializing: {e:?}"))
+        })?;
 
-        // decrypt the message
-        let output = ecies_decrypt::<
-            X25519KeyPair,
-            { X25519KeyPair::PUBLIC_KEY_LENGTH },
-            { X25519KeyPair::PRIVATE_KEY_LENGTH },
-        >(&private_key, &ciphertext, None, None)
-        .map_err(|e| PyException::new_err(format!("ECIES encryption: {e}")))?;
-        Ok(output)
+        let plaintext =
+            EciesSalsaSealBoxRust::decrypt(&private_key, &ciphertext, Some(&authenticated_data))
+                .map_err(|e| PyException::new_err(format!("ECIES error: decryption: {e:?}")))?;
+        Ok(plaintext)
     }
 }

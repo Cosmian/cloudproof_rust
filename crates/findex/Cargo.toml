@@ -3,7 +3,8 @@ name = "cloudproof_findex"
 version = "4.0.1"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
-license = "MIT/Apache-2.0"
+license-file = "../../LICENSE.md"
+repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Findex Cloudproof library"
 
 [lib]
@@ -12,6 +13,8 @@ name = "cloudproof_findex"
 
 [features]
 cloud = ["reqwest", "base64"]
+compact_live = ["cosmian_findex/live_compact"]
+default = []
 ffi = [
   "cosmian_ffi_utils",
   "base64",
@@ -33,15 +36,13 @@ wasm_bindgen = [
   "log",
   "wasm-logger",
 ]
-compact_live = ["cosmian_findex/live_compact"]
-default = []
 
 [dependencies]
 # Optional dependencies
 base64 = { workspace = true, optional = true }
-cosmian_crypto_core = { version = "8.0.0", features = ["aes", "sha3", "ser"], default-features = false }
+cosmian_crypto_core = { workspace = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
-cosmian_findex = "4.0.2"
+cosmian_findex = "4.0.3"
 faker_rand = { version = "0.1", optional = true }
 futures = { version = "0.3.26", optional = true }
 hex = { workspace = true, optional = true }

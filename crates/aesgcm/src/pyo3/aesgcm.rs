@@ -1,38 +1,29 @@
-use pyo3::{exceptions::PyException, pyclass, pymethods, PyResult};
+use pyo3::{pyclass, pymethods, PyResult};
 
-use crate::{ReExposedAesGcm, KEY_LENGTH, NONCE_LENGTH};
+use crate::{decrypt, encrypt};
 
 #[pyclass]
-pub struct AesGcm(ReExposedAesGcm);
+pub struct Aes256Gcm;
 
 #[pymethods]
-impl AesGcm {
-    #[new]
-    fn new(key: Vec<u8>, nonce: Vec<u8>) -> PyResult<Self> {
-        // Copy the key bytes into a 32-byte array
-        let k: [u8; KEY_LENGTH] = key.try_into().map_err(|_e| {
-            PyException::new_err(format!(
-                "AESGCM error: key length incorrect: expected {KEY_LENGTH}"
-            ))
-        })?;
-        // Copy the nonce bytes into a 12-byte array
-        let n: [u8; NONCE_LENGTH] = nonce.try_into().map_err(|_e| {
-            PyException::new_err(format!(
-                "AESGCM error: nonce length incorrect: expected {NONCE_LENGTH}"
-            ))
-        })?;
-
-        let aesgcm = ReExposedAesGcm::instantiate(&k, &n).map_err(|e| {
-            PyException::new_err(format!("AESGCM error: cipher instantiation failed: {e}"))
-        })?;
-        Ok(Self(aesgcm))
+impl Aes256Gcm {
+    #[staticmethod]
+    fn encrypt(
+        key: Vec<u8>,
+        nonce: Vec<u8>,
+        plaintext: Vec<u8>,
+        authenticated_data: Vec<u8>,
+    ) -> PyResult<Vec<u8>> {
+        Ok(encrypt(&key, &nonce, &plaintext, &authenticated_data)?)
     }
 
-    fn encrypt(&self, plaintext: Vec<u8>) -> PyResult<Vec<u8>> {
-        Ok(self.0.encrypt(&plaintext)?)
-    }
-
-    fn decrypt(&self, ciphertext: Vec<u8>) -> PyResult<Vec<u8>> {
-        Ok(self.0.decrypt(&ciphertext)?)
+    #[staticmethod]
+    fn decrypt(
+        key: Vec<u8>,
+        nonce: Vec<u8>,
+        ciphertext: Vec<u8>,
+        authenticated_data: Vec<u8>,
+    ) -> PyResult<Vec<u8>> {
+        Ok(decrypt(&key, &nonce, &ciphertext, &authenticated_data)?)
     }
 }
