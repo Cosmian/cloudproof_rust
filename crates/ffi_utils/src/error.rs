@@ -96,7 +96,7 @@ mod tests {
         let error_msg = "Emergency!!!";
 
         // Set the error message.
-        let res = unsafe { h_set_error(error_msg.as_ptr().cast()) };
+        let res = unsafe { h_set_error(error_msg.as_ptr().cast::<i8>()) };
         assert_eq!(res, 0);
 
         // Reads the error message.
