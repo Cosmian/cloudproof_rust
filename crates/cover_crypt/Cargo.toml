@@ -5,7 +5,7 @@ authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
 repository = "https://github.com/cosmian/cloudproof_rust/"
-description = "Cosmian CoverCrypt Cloudproof library"
+description = "Cosmian Covercrypt Cloudproof library"
 
 [lib]
 crate-type = ["cdylib", "rlib", "staticlib"]
