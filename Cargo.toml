@@ -9,9 +9,8 @@ members = [
   "crates/findex",
   "crates/fpe",
 ]
-# The code below resolves the following cargo warning:
-# some crates are on edition 2021 which defaults to `resolver = "2"`, but virtual workspaces default to `resolver = "1"`
-resolver = "2"
+# some crates are on edition 2021 which defaults to `resolver = "2"`, but virtual workspaces default to `resolver = "1"`. Fix the resolver value to avoid surprises.
+resolver = "1"
 
 [workspace.dependencies]
 base64 = "0.21.0"
