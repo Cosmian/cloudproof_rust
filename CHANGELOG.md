@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2023-07-18
+
+### Bug Fixes
+
+- Only use native types u8, i8, u32, i32, etc.
+
+### Features
+
+- Add cpp_compat to cbindgen.toml
+
 ## [2.1.0] - 2023-07-11
 
 ### Features

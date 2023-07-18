@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_anonymization"
-version = "0.3.0"
+version = "0.2.0"
 authors = ["Hugo Rosenkranz-costa<hugo.rosenkranz@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
