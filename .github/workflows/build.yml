@@ -17,6 +17,6 @@ jobs:
       findex-cloud-version: 0.1.0
       branch-java: v6.0.0
       branch-js: develop
-      branch-flutter: develop
+      branch-flutter: fix/cloudproof_header
       branch-python: v4.0.2
     secrets: inherit

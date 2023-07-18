@@ -1,5 +1,3 @@
-#![feature(c_size_t)]
-
 #[cfg(feature = "ffi")]
 pub mod ffi;
 
