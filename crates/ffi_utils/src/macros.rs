@@ -176,7 +176,7 @@ macro_rules! ffi_read_string {
     ($name:literal, $ptr:ident) => {{
         $crate::ffi_not_null!($name, $ptr);
 
-        match $crate::macros::CStr::from_ptr($ptr).to_str() {
+        match $crate::macros::CStr::from_ptr($ptr.cast::<std::ffi::c_char>()).to_str() {
             Ok(msg) => msg.to_owned(),
             Err(e) => {
                 $crate::ffi_bail!(format!("{} invalid C string: {}", $name, e));
