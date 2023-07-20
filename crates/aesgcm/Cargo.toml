@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_aesgcm"
-version = "0.2.0"
+version = "0.1.1"
 authors = ["Emmanuel Coste<emmanuel.coste@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"

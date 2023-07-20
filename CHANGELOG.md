@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Bug Fixes
 
 - Only use native types u8, i8, u32, i32, etc.
+- clean github artifacts
 
 ### Features
 
