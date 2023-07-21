@@ -7,7 +7,7 @@ macro_rules! pyo3_unwrap {
 }
 
 mod py_hash;
-use py_hash::Hasher;
+use py_hash::DataHasher;
 
 mod py_noise;
 use py_noise::NoiseGenerator;
@@ -21,7 +21,7 @@ use py_number::{DateAggregator, NumberAggregator, NumberScaler};
 /// A Python module implemented in Rust.
 #[pymodule]
 fn cloudproof_anonymization(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<Hasher>()?;
+    m.add_class::<DataHasher>()?;
     m.add_class::<NoiseGenerator>()?;
     m.add_class::<WordMasker>()?;
     m.add_class::<WordPatternMasker>()?;

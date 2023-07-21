@@ -3,10 +3,10 @@ use pyo3::{prelude::*, types::PyBytes};
 use crate::core::{HashMethod, Hasher as HasherRust};
 
 #[pyclass]
-pub struct Hasher(HasherRust);
+pub struct DataHasher(HasherRust);
 
 #[pymethods]
-impl Hasher {
+impl DataHasher {
     #[new]
     fn new(hasher_method: &str, salt_opt: Option<Vec<u8>>) -> PyResult<Self> {
         let method = pyo3_unwrap!(

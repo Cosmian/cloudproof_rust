@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-class Hasher:
+class DataHasher:
     """
     A class to apply different hash methods such as `SHA2`, `SHA3`, or `Argon2`
     """
