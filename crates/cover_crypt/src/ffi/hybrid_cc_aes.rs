@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    os::raw::{c_char, c_int},
     sync::{
         atomic::{AtomicI32, Ordering},
         RwLock,
@@ -46,11 +45,11 @@ pub struct EncryptionCache {
 ///
 /// # Safety
 pub unsafe extern "C" fn h_create_encryption_cache(
-    cache_handle: *mut c_int,
-    policy_ptr: *const c_char,
-    policy_len: c_int,
-    mpk_ptr: *const c_char,
-    mpk_len: c_int,
+    cache_handle: *mut i32,
+    policy_ptr: *const i8,
+    policy_len: i32,
+    mpk_ptr: *const i8,
+    mpk_len: i32,
 ) -> i32 {
     let policy = ffi_read_bytes!("policy", policy_ptr, policy_len);
     let policy = ffi_unwrap!(Policy::try_from(policy), "error deserializing policy");
@@ -77,7 +76,7 @@ pub unsafe extern "C" fn h_create_encryption_cache(
 /// Cf [`h_create_encrypt_cache()`](h_create_encryption_cache).
 ///
 /// # Safety
-pub unsafe extern "C" fn h_destroy_encryption_cache(cache_handle: c_int) -> c_int {
+pub unsafe extern "C" fn h_destroy_encryption_cache(cache_handle: i32) -> i32 {
     let mut map = ENCRYPTION_CACHE_MAP
         .write()
         .expect("A write mutex on encryption cache failed");
@@ -90,17 +89,17 @@ pub unsafe extern "C" fn h_destroy_encryption_cache(cache_handle: c_int) -> c_in
 ///
 /// # Safety
 pub unsafe extern "C" fn h_encrypt_header_using_cache(
-    symmetric_key_ptr: *mut c_char,
-    symmetric_key_len: *mut c_int,
-    header_bytes_ptr: *mut c_char,
-    header_bytes_len: *mut c_int,
-    cache_handle: c_int,
-    encryption_policy_ptr: *const c_char,
-    header_metadata_ptr: *const c_char,
-    header_metadata_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-) -> c_int {
+    symmetric_key_ptr: *mut i8,
+    symmetric_key_len: *mut i32,
+    header_bytes_ptr: *mut i8,
+    header_bytes_len: *mut i32,
+    cache_handle: i32,
+    encryption_policy_ptr: *const i8,
+    header_metadata_ptr: *const i8,
+    header_metadata_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+) -> i32 {
     let encryption_policy_bytes = ffi_read_string!("encryption policy", encryption_policy_ptr);
     let encryption_policy = ffi_unwrap!(
         AccessPolicy::from_boolean_expression(&encryption_policy_bytes),
@@ -176,20 +175,20 @@ pub unsafe extern "C" fn h_encrypt_header_using_cache(
 /// The symmetric key and header bytes are returned in the first OUT parameters
 /// # Safety
 pub unsafe extern "C" fn h_encrypt_header(
-    symmetric_key_ptr: *mut c_char,
-    symmetric_key_len: *mut c_int,
-    header_bytes_ptr: *mut c_char,
-    header_bytes_len: *mut c_int,
-    policy_ptr: *const c_char,
-    policy_len: c_int,
-    mpk_ptr: *const c_char,
-    mpk_len: c_int,
-    encryption_policy_ptr: *const c_char,
-    header_metadata_ptr: *const c_char,
-    header_metadata_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-) -> c_int {
+    symmetric_key_ptr: *mut i8,
+    symmetric_key_len: *mut i32,
+    header_bytes_ptr: *mut i8,
+    header_bytes_len: *mut i32,
+    policy_ptr: *const i8,
+    policy_len: i32,
+    mpk_ptr: *const i8,
+    mpk_len: i32,
+    encryption_policy_ptr: *const i8,
+    header_metadata_ptr: *const i8,
+    header_metadata_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+) -> i32 {
     let policy = ffi_read_bytes!("policy", policy_ptr, policy_len);
     let policy = ffi_unwrap!(Policy::try_from(policy), "error deserializing policy");
     let mpk = ffi_read_bytes!("public key", mpk_ptr, mpk_len);
@@ -280,9 +279,9 @@ pub struct DecryptionCache {
 ///
 /// # Safety
 pub unsafe extern "C" fn h_create_decryption_cache(
-    cache_handle: *mut c_int,
-    usk_ptr: *const c_char,
-    usk_len: c_int,
+    cache_handle: *mut i32,
+    usk_ptr: *const i8,
+    usk_len: i32,
 ) -> i32 {
     let usk_bytes = ffi_read_bytes!("user secret key", usk_ptr, usk_len);
     let usk = ffi_unwrap!(
@@ -305,7 +304,7 @@ pub unsafe extern "C" fn h_create_decryption_cache(
 /// Reclaims decryption cache memory.
 ///
 /// # Safety
-pub unsafe extern "C" fn h_destroy_decryption_cache(cache_handle: c_int) -> c_int {
+pub unsafe extern "C" fn h_destroy_decryption_cache(cache_handle: i32) -> i32 {
     let mut map = DECRYPTION_CACHE_MAP
         .write()
         .expect("A write mutex on decryption cache failed");
@@ -321,16 +320,16 @@ pub unsafe extern "C" fn h_destroy_decryption_cache(cache_handle: c_int) -> c_in
 ///
 /// # Safety
 pub unsafe extern "C" fn h_decrypt_header_using_cache(
-    symmetric_key_ptr: *mut c_char,
-    symmetric_key_len: *mut c_int,
-    header_metadata_ptr: *mut c_char,
-    header_metadata_len: *mut c_int,
-    encrypted_header_ptr: *const c_char,
-    encrypted_header_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-    cache_handle: c_int,
-) -> c_int {
+    symmetric_key_ptr: *mut i8,
+    symmetric_key_len: *mut i32,
+    header_metadata_ptr: *mut i8,
+    header_metadata_len: *mut i32,
+    encrypted_header_ptr: *const i8,
+    encrypted_header_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+    cache_handle: i32,
+) -> i32 {
     let encrypted_header_bytes = ffi_read_bytes!(
         "encrypted header",
         encrypted_header_ptr,
@@ -399,17 +398,17 @@ pub unsafe extern "C" fn h_decrypt_header_using_cache(
 ///
 /// # Safety
 pub unsafe extern "C" fn h_decrypt_header(
-    symmetric_key_ptr: *mut c_char,
-    symmetric_key_len: *mut c_int,
-    header_metadata_ptr: *mut c_char,
-    header_metadata_len: *mut c_int,
-    encrypted_header_ptr: *const c_char,
-    encrypted_header_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-    usk_ptr: *const c_char,
-    usk_len: c_int,
-) -> c_int {
+    symmetric_key_ptr: *mut i8,
+    symmetric_key_len: *mut i32,
+    header_metadata_ptr: *mut i8,
+    header_metadata_len: *mut i32,
+    encrypted_header_ptr: *const i8,
+    encrypted_header_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+    usk_ptr: *const i8,
+    usk_len: i32,
+) -> i32 {
     let usk_bytes = ffi_read_bytes!("user secret key", usk_ptr, usk_len);
     let usk = ffi_unwrap!(
         UserSecretKey::deserialize(usk_bytes),
@@ -468,23 +467,23 @@ pub unsafe extern "C" fn h_decrypt_header(
 #[no_mangle]
 ///
 /// # Safety
-pub unsafe extern "C" fn h_symmetric_encryption_overhead() -> c_int {
-    (Aes256Gcm::NONCE_LENGTH + Aes256Gcm::MAC_LENGTH) as c_int
+pub unsafe extern "C" fn h_symmetric_encryption_overhead() -> i32 {
+    (Aes256Gcm::NONCE_LENGTH + Aes256Gcm::MAC_LENGTH) as i32
 }
 
 #[no_mangle]
 ///
 /// # Safety
 pub unsafe extern "C" fn h_dem_encrypt(
-    ciphertext_ptr: *mut c_char,
-    ciphertext_len: *mut c_int,
-    symmetric_key_ptr: *const c_char,
-    symmetric_key_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-    plaintext_ptr: *const c_char,
-    plaintext_len: c_int,
-) -> c_int {
+    ciphertext_ptr: *mut i8,
+    ciphertext_len: *mut i32,
+    symmetric_key_ptr: *const i8,
+    symmetric_key_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+    plaintext_ptr: *const i8,
+    plaintext_len: i32,
+) -> i32 {
     let plaintext = ffi_read_bytes!("plaintext", plaintext_ptr, plaintext_len);
     let symmetric_key_bytes =
         ffi_read_bytes!("symmetric key", symmetric_key_ptr, symmetric_key_len);
@@ -520,15 +519,15 @@ pub unsafe extern "C" fn h_dem_encrypt(
 ///
 /// # Safety
 pub unsafe extern "C" fn h_dem_decrypt(
-    plaintext_ptr: *mut c_char,
-    plaintext_len: *mut c_int,
-    symmetric_key_ptr: *const c_char,
-    symmetric_key_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-    ciphertext_ptr: *const c_char,
-    ciphertext_len: c_int,
-) -> c_int {
+    plaintext_ptr: *mut i8,
+    plaintext_len: *mut i32,
+    symmetric_key_ptr: *const i8,
+    symmetric_key_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+    ciphertext_ptr: *const i8,
+    ciphertext_len: i32,
+) -> i32 {
     let ciphertext = ffi_read_bytes!("ciphertext", ciphertext_ptr, ciphertext_len);
     let symmetric_key_bytes =
         ffi_read_bytes!("symmetric key", symmetric_key_ptr, symmetric_key_len);
@@ -565,20 +564,20 @@ pub unsafe extern "C" fn h_dem_decrypt(
 ///
 /// # Safety
 pub unsafe extern "C" fn h_hybrid_encrypt(
-    ciphertext_ptr: *mut c_char,
-    ciphertext_len: *mut c_int,
-    policy_ptr: *const c_char,
-    policy_len: c_int,
-    mpk_ptr: *const c_char,
-    mpk_len: c_int,
-    encryption_policy_ptr: *const c_char,
-    plaintext_ptr: *const c_char,
-    plaintext_len: c_int,
-    header_metadata_ptr: *const c_char,
-    header_metadata_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-) -> c_int {
+    ciphertext_ptr: *mut i8,
+    ciphertext_len: *mut i32,
+    policy_ptr: *const i8,
+    policy_len: i32,
+    mpk_ptr: *const i8,
+    mpk_len: i32,
+    encryption_policy_ptr: *const i8,
+    plaintext_ptr: *const i8,
+    plaintext_len: i32,
+    header_metadata_ptr: *const i8,
+    header_metadata_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+) -> i32 {
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
     let policy = ffi_unwrap!(
         Policy::parse_and_convert(policy_bytes),
@@ -655,17 +654,17 @@ pub unsafe extern "C" fn h_hybrid_encrypt(
 ///
 /// # Safety
 pub unsafe extern "C" fn h_hybrid_decrypt(
-    plaintext_ptr: *mut c_char,
-    plaintext_len: *mut c_int,
-    header_metadata_ptr: *mut c_char,
-    header_metadata_len: *mut c_int,
-    ciphertext_ptr: *const c_char,
-    ciphertext_len: c_int,
-    authentication_data_ptr: *const c_char,
-    authentication_data_len: c_int,
-    usk_ptr: *const c_char,
-    usk_len: c_int,
-) -> c_int {
+    plaintext_ptr: *mut i8,
+    plaintext_len: *mut i32,
+    header_metadata_ptr: *mut i8,
+    header_metadata_len: *mut i32,
+    ciphertext_ptr: *const i8,
+    ciphertext_len: i32,
+    authentication_data_ptr: *const i8,
+    authentication_data_len: i32,
+    usk_ptr: *const i8,
+    usk_len: i32,
+) -> i32 {
     let usk_bytes = ffi_read_bytes!("user secret key", usk_ptr, usk_len);
     let usk = ffi_unwrap!(
         UserSecretKey::deserialize(usk_bytes),

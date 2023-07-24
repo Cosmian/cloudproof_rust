@@ -1,10 +1,10 @@
-use std::{ffi::c_uint, sync::Once};
+use std::sync::Once;
 
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter};
 
 static LOG_INIT: Once = Once::new();
 
-pub fn log_init(paths: &str, force_logging: c_uint) {
+pub fn log_init(paths: &str, force_logging: u32) {
     // We want to log:
     //  - if the environment variable RUST_LOG is defined
     //  - if force_logging is gt 0

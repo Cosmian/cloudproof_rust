@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_int, c_uchar, c_uint, CString};
+use std::ffi::CString;
 
 use cosmian_ffi_utils::error::get_last_error;
 use rand::{RngCore, SeedableRng};
@@ -64,17 +64,17 @@ pub fn random_key() -> [u8; 32] {
 unsafe fn fpe_alphabet(
     input_str: &str,
     alphabet_id: &str,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-    additional_characters_ptr: *const c_char,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+    additional_characters_ptr: *const i8,
     encrypt_flag: bool,
 ) -> String {
     // FFI output
     let mut output_bytes = vec![0u8; input_str.len()];
     let output_ptr = output_bytes.as_mut_ptr().cast();
-    let mut output_len = output_bytes.len() as c_int;
+    let mut output_len = output_bytes.len() as i32;
 
     // FFI input
     let input_cs = CString::new(input_str).unwrap();
@@ -137,10 +137,10 @@ unsafe fn alphabet_check(
     // FFI inputs
     let key = random_key();
     let key_ptr = key.as_ptr().cast();
-    let key_len = key.len() as c_int;
+    let key_len = key.len() as i32;
     let tweak = random_key();
     let tweak_ptr = tweak.as_ptr().cast();
-    let tweak_len = tweak.len() as c_int;
+    let tweak_len = tweak.len() as i32;
     let additional_characters_cs =
         CString::new(additional_characters_str).expect("CString::new failed");
     let additional_characters_ptr = additional_characters_cs.as_ptr();
@@ -233,10 +233,10 @@ fn ffi_fpe_integer() {
     // FFI inputs
     let key = random_key();
     let key_ptr = key.as_ptr().cast();
-    let key_len = key.len() as c_int;
+    let key_len = key.len() as i32;
     let tweak = random_key();
     let tweak_ptr = tweak.as_ptr().cast();
-    let tweak_len = tweak.len() as c_int;
+    let tweak_len = tweak.len() as i32;
 
     let plaintext = 123_456_u64;
     let mut ciphertext = 0_u64;
@@ -283,25 +283,25 @@ fn ffi_fpe_integer() {
 }
 
 type FpeBigIntegerFunction = unsafe extern "C" fn(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    input_ptr: *const c_char,
-    radix: c_uint,
-    digits: c_uint,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-) -> c_int;
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    input_ptr: *const i8,
+    radix: u32,
+    digits: u32,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+) -> i32;
 
 fn fpe_float(plaintext: f64) {
     // FFI inputs
     let key = random_key();
     let key_ptr = key.as_ptr().cast();
-    let key_len = key.len() as c_int;
+    let key_len = key.len() as i32;
     let tweak = random_key();
     let tweak_ptr = tweak.as_ptr().cast();
-    let tweak_len = tweak.len() as c_int;
+    let tweak_len = tweak.len() as i32;
 
     let mut ciphertext = 0_f64;
     unsafe {
@@ -354,16 +354,16 @@ unsafe fn fpe_big_integer(
     input_str: &str,
     radix: u32,
     digits: u32,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
     fct: FpeBigIntegerFunction,
 ) -> String {
     // FFI output
     let mut output_bytes = vec![0u8; input_str.len()];
     let output_ptr = output_bytes.as_mut_ptr().cast();
-    let mut output_len = output_bytes.len() as c_int;
+    let mut output_len = output_bytes.len() as i32;
 
     // FFI input
     let input_cs = CString::new(input_str).unwrap();
@@ -417,10 +417,10 @@ fn big_integer(plaintext: &str, radix: u32, digits: u32) {
     // FFI inputs
     let key = random_key();
     let key_ptr = key.as_ptr().cast();
-    let key_len = key.len() as c_int;
+    let key_len = key.len() as i32;
     let tweak = random_key();
     let tweak_ptr = tweak.as_ptr().cast();
-    let tweak_len = tweak.len() as c_int;
+    let tweak_len = tweak.len() as i32;
 
     unsafe {
         let ciphertext = fpe_big_integer(

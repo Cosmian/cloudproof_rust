@@ -1,7 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
     convert::TryFrom,
-    ffi::c_uchar,
     fmt::Display,
 };
 
@@ -102,7 +101,7 @@ pub(crate) fn fetch_callback(
     // DB request with correct allocation size
     //
     let mut output_bytes = vec![0_u8; allocation_size];
-    let mut output_ptr = output_bytes.as_mut_ptr().cast::<c_uchar>();
+    let mut output_ptr = output_bytes.as_mut_ptr().cast::<u8>();
     let mut output_len = u32::try_from(allocation_size)?;
 
     let mut error_code = callback(
@@ -114,7 +113,7 @@ pub(crate) fn fetch_callback(
 
     if error_code == ErrorCode::BufferTooSmall.code() {
         output_bytes = vec![0_u8; output_len as usize];
-        output_ptr = output_bytes.as_mut_ptr().cast::<c_uchar>();
+        output_ptr = output_bytes.as_mut_ptr().cast::<u8>();
 
         error_code = callback(
             output_ptr,

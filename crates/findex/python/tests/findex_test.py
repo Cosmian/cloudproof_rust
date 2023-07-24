@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
-from typing import Dict, List, Set, Tuple, Sequence
+from typing import Dict, List, Sequence, Set, Tuple
 
 from cloudproof_findex import (
     IndexedValuesAndKeywords,
@@ -28,11 +28,11 @@ class TestStructures(unittest.TestCase):
 
         # from int
         input_int = 2**51 - 1
-        loc_int = Location.from_int(input_int)
-        self.assertEqual(int(loc_int), input_int)
+        loi32 = Location.from_int(input_int)
+        self.assertEqual(int(loi32), input_int)
         # comparison
-        self.assertEqual(loc_int, input_int)
-        self.assertNotEqual(loc_int, 2**51 - 2)
+        self.assertEqual(loi32, input_int)
+        self.assertNotEqual(loi32, 2**51 - 2)
         # hash not working for int
 
         # from bytes
@@ -47,7 +47,7 @@ class TestStructures(unittest.TestCase):
 
         # comparison between keywords
         self.assertEqual(loc_str, loc_bytes)
-        self.assertNotEqual(loc_str, loc_int)
+        self.assertNotEqual(loc_str, loi32)
 
     def test_keyword(self) -> None:
         # from string

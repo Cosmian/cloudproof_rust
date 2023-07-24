@@ -1,7 +1,4 @@
-use std::{
-    ffi::{CStr, CString},
-    os::raw::c_int,
-};
+use std::ffi::{CStr, CString};
 
 use cosmian_cover_crypt::{
     abe_policy::{AccessPolicy, Policy},
@@ -30,15 +27,15 @@ unsafe fn encrypt_header(
 ) -> (SymmetricKey<{ Aes256Gcm::KEY_LENGTH }>, EncryptedHeader) {
     let mut symmetric_key = vec![0u8; 32];
     let mut symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
-    let mut symmetric_key_len = symmetric_key.len() as c_int;
+    let mut symmetric_key_len = symmetric_key.len() as i32;
 
     let mut encrypted_header_bytes = vec![0u8; 8128];
     let mut encrypted_header_ptr = encrypted_header_bytes.as_mut_ptr().cast();
-    let mut encrypted_header_len = encrypted_header_bytes.len() as c_int;
+    let mut encrypted_header_len = encrypted_header_bytes.len() as i32;
 
     let policy_bytes: Vec<u8> = policy.try_into().unwrap();
     let policy_ptr = policy_bytes.as_ptr().cast();
-    let policy_len = policy_bytes.len() as c_int;
+    let policy_len = policy_bytes.len() as i32;
 
     let public_key_bytes = public_key.serialize().unwrap();
     let public_key_ptr = public_key_bytes.as_ptr();
@@ -107,16 +104,16 @@ unsafe fn decrypt_header(
 ) -> CleartextHeader {
     let mut symmetric_key = vec![0u8; 32];
     let mut symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
-    let mut symmetric_key_len = symmetric_key.len() as c_int;
+    let mut symmetric_key_len = symmetric_key.len() as i32;
 
     let mut header_metadata = vec![0u8; 32];
     let mut header_metadata_ptr = header_metadata.as_mut_ptr().cast();
-    let mut header_metadata_len = header_metadata.len() as c_int;
+    let mut header_metadata_len = header_metadata.len() as i32;
 
     let header_bytes = header.serialize().unwrap();
 
     let authentication_data_ptr = authentication_data.as_ptr().cast();
-    let authentication_data_len = authentication_data.len() as c_int;
+    let authentication_data_len = authentication_data.len() as i32;
 
     let user_decryption_key_bytes = user_decryption_key.serialize().unwrap();
     let user_decryption_key_ptr = user_decryption_key_bytes.as_ptr().cast();
@@ -128,7 +125,7 @@ unsafe fn decrypt_header(
         header_metadata_ptr,
         &mut header_metadata_len,
         header_bytes.as_ptr().cast(),
-        header_bytes.len() as c_int,
+        header_bytes.len() as i32,
         authentication_data_ptr,
         authentication_data_len,
         user_decryption_key_ptr,
@@ -146,7 +143,7 @@ unsafe fn decrypt_header(
             header_metadata_ptr,
             &mut header_metadata_len,
             header_bytes.as_ptr().cast(),
-            header_bytes.len() as c_int,
+            header_bytes.len() as i32,
             authentication_data_ptr,
             authentication_data_len,
             user_decryption_key_ptr,
@@ -174,7 +171,7 @@ unsafe fn unwrap_ffi_error(val: i32) {
     if val != 0 {
         let mut message_bytes_key = vec![0u8; 8128];
         let message_bytes_ptr = message_bytes_key.as_mut_ptr().cast();
-        let mut message_bytes_len = message_bytes_key.len() as c_int;
+        let mut message_bytes_len = message_bytes_key.len() as i32;
         h_get_error(message_bytes_ptr, &mut message_bytes_len);
         let cstr = CStr::from_ptr(message_bytes_ptr);
         let msg = cstr.to_str().unwrap();
@@ -233,7 +230,7 @@ unsafe fn encrypt_header_using_cache(
 ) -> (SymmetricKey<{ Aes256Gcm::KEY_LENGTH }>, EncryptedHeader) {
     let policy_bytes: Vec<u8> = policy.try_into().unwrap();
     let policy_ptr = policy_bytes.as_ptr().cast();
-    let policy_len = policy_bytes.len() as c_int;
+    let policy_len = policy_bytes.len() as i32;
 
     let public_key_bytes = public_key.serialize().unwrap();
     let public_key_ptr = public_key_bytes.as_ptr().cast();
@@ -253,11 +250,11 @@ unsafe fn encrypt_header_using_cache(
 
     let mut symmetric_key = vec![0u8; 32];
     let symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
-    let mut symmetric_key_len = symmetric_key.len() as c_int;
+    let mut symmetric_key_len = symmetric_key.len() as i32;
 
     let mut encrypted_header_bytes = vec![0u8; 8128];
     let encrypted_header_ptr = encrypted_header_bytes.as_mut_ptr().cast();
-    let mut encrypted_header_len = encrypted_header_bytes.len() as c_int;
+    let mut encrypted_header_len = encrypted_header_bytes.len() as i32;
 
     let encryption_policy_cs = CString::new(encryption_policy).unwrap();
 
@@ -311,11 +308,11 @@ unsafe fn decrypt_header_using_cache(
 
     let mut symmetric_key = vec![0u8; 32];
     let symmetric_key_ptr = symmetric_key.as_mut_ptr().cast();
-    let mut symmetric_key_len = symmetric_key.len() as c_int;
+    let mut symmetric_key_len = symmetric_key.len() as i32;
 
     let mut header_metadata = vec![0u8; 8128];
     let header_metadata_ptr = header_metadata.as_mut_ptr().cast();
-    let mut header_metadata_len = header_metadata.len() as c_int;
+    let mut header_metadata_len = header_metadata.len() as i32;
 
     let header_bytes = header.serialize().unwrap();
 
@@ -325,9 +322,9 @@ unsafe fn decrypt_header_using_cache(
         header_metadata_ptr,
         &mut header_metadata_len,
         header_bytes.as_ptr().cast(),
-        header_bytes.len() as c_int,
+        header_bytes.len() as i32,
         authentication_data.as_ptr().cast(),
-        authentication_data.len() as c_int,
+        authentication_data.len() as i32,
         cache_handle,
     ));
 
@@ -384,17 +381,17 @@ fn test_ffi_hybrid_header_using_cache() {
 unsafe fn generate_master_keys(policy: &Policy) -> (MasterSecretKey, MasterPublicKey) {
     let policy_bytes: Vec<u8> = policy.try_into().unwrap();
     let policy_ptr = policy_bytes.as_ptr().cast();
-    let policy_len = policy_bytes.len() as c_int;
+    let policy_len = policy_bytes.len() as i32;
 
     // use a large enough buffer size
     let mut msk_bytes = vec![0u8; 8 * 1024];
     let msk_ptr = msk_bytes.as_mut_ptr().cast();
-    let mut msk_len = msk_bytes.len() as c_int;
+    let mut msk_len = msk_bytes.len() as i32;
 
     // use a large enough buffer size
     let mut mpk_bytes = vec![0u8; 8 * 1024];
     let mpk_ptr = mpk_bytes.as_mut_ptr().cast();
-    let mut mpk_len = mpk_bytes.len() as c_int;
+    let mut mpk_len = mpk_bytes.len() as i32;
 
     unwrap_ffi_error(h_generate_master_keys(
         msk_ptr,
@@ -433,13 +430,13 @@ unsafe fn generate_user_secret_key(
     // Get pointer from policy
     let policy_bytes: Vec<u8> = policy.try_into().unwrap();
     let policy_ptr = policy_bytes.as_ptr().cast();
-    let policy_len = policy_bytes.len() as c_int;
+    let policy_len = policy_bytes.len() as i32;
 
     // Prepare OUT buffer
     // use a large enough buffer size
     let mut usk_bytes = vec![0u8; 37696];
     let usk_ptr = usk_bytes.as_mut_ptr().cast();
-    let mut usk_len = usk_bytes.len() as c_int;
+    let mut usk_len = usk_bytes.len() as i32;
 
     unwrap_ffi_error(h_generate_user_secret_key(
         usk_ptr,
@@ -489,11 +486,11 @@ unsafe fn encrypt(
 ) -> Vec<u8> {
     let mut ciphertext_bytes = vec![0u8; 8128];
     let ciphertext_ptr = ciphertext_bytes.as_mut_ptr().cast();
-    let mut ciphertext_len = ciphertext_bytes.len() as c_int;
+    let mut ciphertext_len = ciphertext_bytes.len() as i32;
 
     let policy_bytes: Vec<u8> = policy.try_into().unwrap();
     let policy_ptr = policy_bytes.as_ptr().cast();
-    let policy_len = policy_bytes.len() as c_int;
+    let policy_len = policy_bytes.len() as i32;
 
     let public_key_bytes = public_key.serialize().unwrap();
     let public_key_ptr = public_key_bytes.as_ptr();
@@ -531,18 +528,18 @@ unsafe fn decrypt(
     // use a large enough buffer size
     let mut plaintext = vec![0u8; 8192];
     let plaintext_ptr = plaintext.as_mut_ptr().cast();
-    let mut plaintext_len = plaintext.len() as c_int;
+    let mut plaintext_len = plaintext.len() as i32;
 
     // use a large enough buffer size
     let mut metadata = vec![0u8; 8192];
     let metadata_ptr = metadata.as_mut_ptr().cast();
-    let mut metadata_len = metadata.len() as c_int;
+    let mut metadata_len = metadata.len() as i32;
 
     let ciphertext_ptr = ciphertext.as_ptr().cast();
-    let ciphertext_len = ciphertext.len() as c_int;
+    let ciphertext_len = ciphertext.len() as i32;
 
     let authentication_data_ptr = authentication_data.as_ptr().cast();
-    let authentication_data_len = authentication_data.len() as c_int;
+    let authentication_data_len = authentication_data.len() as i32;
 
     let user_decryption_key_bytes = user_decryption_key.serialize().unwrap();
     let user_decryption_key_ptr = user_decryption_key_bytes.as_ptr().cast();

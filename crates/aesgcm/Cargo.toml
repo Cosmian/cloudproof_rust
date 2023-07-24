@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_aesgcm"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Emmanuel Coste<emmanuel.coste@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -18,8 +18,7 @@ python = ["pyo3"]
 wasm_bindgen = ["js-sys", "wasm-bindgen"]
 
 [dependencies]
-cloudproof_cover_crypt = "12.0.0"
-# cloudproof_cover_crypt = { path = "../cover_crypt" }
+cloudproof_cover_crypt = { workspace = true }
 
 # Optional dependencies
 cosmian_ffi_utils = { workspace = true, optional = true }
