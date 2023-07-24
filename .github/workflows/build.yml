@@ -18,5 +18,5 @@ jobs:
       branch-java: v6.0.0
       branch-js: develop
       branch-flutter: develop
-      branch-python: v4.0.2
+      branch-python: fix/ano_hash_python
     secrets: inherit
