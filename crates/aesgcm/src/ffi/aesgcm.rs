@@ -1,22 +1,20 @@
-use std::ffi::{c_char, c_int, c_uchar};
-
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes};
 
 use crate::{decrypt, encrypt};
 
 unsafe extern "C" fn aesgcm(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    input_data_ptr: *const c_char,
-    input_data_len: c_int,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    nonce_ptr: *const c_char,
-    nonce_len: c_int,
-    authenticated_data_ptr: *const c_char,
-    authenticated_data_len: c_int,
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    input_data_ptr: *const i8,
+    input_data_len: i32,
+    key_ptr: *const i8,
+    key_len: i32,
+    nonce_ptr: *const i8,
+    nonce_len: i32,
+    authenticated_data_ptr: *const i8,
+    authenticated_data_len: i32,
     encrypt_flag: bool,
-) -> c_int {
+) -> i32 {
     let input_data_bytes = ffi_read_bytes!("input_data", input_data_ptr, input_data_len);
     let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
     let nonce_bytes = ffi_read_bytes!("nonce", nonce_ptr, nonce_len);
@@ -44,17 +42,17 @@ unsafe extern "C" fn aesgcm(
 
 #[no_mangle]
 pub unsafe extern "C" fn h_aes256gcm_encrypt(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    plaintext_ptr: *const c_char,
-    plaintext_len: c_int,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    nonce_ptr: *const c_char,
-    nonce_len: c_int,
-    authenticated_data_ptr: *const c_char,
-    authenticated_data_len: c_int,
-) -> c_int {
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    plaintext_ptr: *const i8,
+    plaintext_len: i32,
+    key_ptr: *const i8,
+    key_len: i32,
+    nonce_ptr: *const i8,
+    nonce_len: i32,
+    authenticated_data_ptr: *const i8,
+    authenticated_data_len: i32,
+) -> i32 {
     aesgcm(
         output_ptr,
         output_len,
@@ -72,17 +70,17 @@ pub unsafe extern "C" fn h_aes256gcm_encrypt(
 
 #[no_mangle]
 pub unsafe extern "C" fn h_aes256gcm_decrypt(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    ciphertext_ptr: *const c_char,
-    ciphertext_len: c_int,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    nonce_ptr: *const c_char,
-    nonce_len: c_int,
-    authenticated_data_ptr: *const c_char,
-    authenticated_data_len: c_int,
-) -> c_int {
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    ciphertext_ptr: *const i8,
+    ciphertext_len: i32,
+    key_ptr: *const i8,
+    key_len: i32,
+    nonce_ptr: *const i8,
+    nonce_len: i32,
+    authenticated_data_ptr: *const i8,
+    authenticated_data_len: i32,
+) -> i32 {
     aesgcm(
         output_ptr,
         output_len,

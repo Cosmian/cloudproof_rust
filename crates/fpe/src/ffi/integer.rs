@@ -1,5 +1,3 @@
-use std::ffi::{c_char, c_int, c_uchar, c_uint, c_ulonglong};
-
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
 use num_bigint::BigUint;
 use num_traits::Num;
@@ -7,16 +5,16 @@ use num_traits::Num;
 use crate::core::{Integer, KEY_LENGTH};
 
 unsafe extern "C" fn fpe(
-    output: *mut c_ulonglong,
-    input: c_ulonglong,
-    radix: c_uint,
-    digits: c_uint,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
+    output: *mut u64,
+    input: u64,
+    radix: u32,
+    digits: u32,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
     encrypt_flag: bool,
-) -> c_int {
+) -> i32 {
     let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
     let tweak_bytes = ffi_read_bytes!("tweak", tweak_ptr, tweak_len);
 
@@ -69,15 +67,15 @@ unsafe extern "C" fn fpe(
 /// error.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_encrypt_integer(
-    output: *mut c_ulonglong,
-    input: c_ulonglong,
-    radix: c_uint,
-    digits: c_uint,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-) -> c_int {
+    output: *mut u64,
+    input: u64,
+    radix: u32,
+    digits: u32,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+) -> i32 {
     fpe(
         output, input, radix, digits, key_ptr, key_len, tweak_ptr, tweak_len, true,
     )
@@ -109,32 +107,32 @@ pub unsafe extern "C" fn h_fpe_encrypt_integer(
 /// error.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_decrypt_integer(
-    output: *mut c_ulonglong,
-    input: c_ulonglong,
-    radix: c_uint,
-    digits: c_uint,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-) -> c_int {
+    output: *mut u64,
+    input: u64,
+    radix: u32,
+    digits: u32,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+) -> i32 {
     fpe(
         output, input, radix, digits, key_ptr, key_len, tweak_ptr, tweak_len, false,
     )
 }
 
 unsafe extern "C" fn fpe_big_integer(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    input_ptr: *const c_char,
-    radix: c_uint,
-    digits: c_uint,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    input_ptr: *const i8,
+    radix: u32,
+    digits: u32,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
     encrypt_flag: bool,
-) -> c_int {
+) -> i32 {
     let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
     let tweak_bytes = ffi_read_bytes!("tweak", tweak_ptr, tweak_len);
     let input_str = ffi_read_string!("input", input_ptr);
@@ -200,16 +198,16 @@ input to BigUint"
 /// Returns 0 on success, -1 on error.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_encrypt_big_integer(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    input_ptr: *const c_char,
-    radix: c_uint,
-    digits: c_uint,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-) -> c_int {
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    input_ptr: *const i8,
+    radix: u32,
+    digits: u32,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+) -> i32 {
     fpe_big_integer(
         output_ptr, output_len, input_ptr, radix, digits, key_ptr, key_len, tweak_ptr, tweak_len,
         true,
@@ -245,16 +243,16 @@ pub unsafe extern "C" fn h_fpe_encrypt_big_integer(
 /// Returns 0 on success, -1 on error.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_decrypt_big_integer(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    input_ptr: *const c_char,
-    radix: c_uint,
-    digits: c_uint,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-) -> c_int {
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    input_ptr: *const i8,
+    radix: u32,
+    digits: u32,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+) -> i32 {
     fpe_big_integer(
         output_ptr, output_len, input_ptr, radix, digits, key_ptr, key_len, tweak_ptr, tweak_len,
         false,

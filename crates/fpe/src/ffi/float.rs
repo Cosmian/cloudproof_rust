@@ -1,18 +1,16 @@
-use std::ffi::{c_char, c_double, c_int};
-
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap};
 
 use crate::core::{Float, KEY_LENGTH};
 
 unsafe extern "C" fn fpe(
-    output: *mut c_double,
-    input: c_double,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
+    output: *mut f64,
+    input: f64,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
     encrypt_flag: bool,
-) -> c_int {
+) -> i32 {
     let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
     let tweak_bytes = ffi_read_bytes!("tweak", tweak_ptr, tweak_len);
 
@@ -31,10 +29,10 @@ unsafe extern "C" fn fpe(
     0
 }
 
-/// Encrypts the input `c_double` using the FPE algorithm with the given key and
+/// Encrypts the input `f64` using the FPE algorithm with the given key and
 /// tweak, and stores the result in the `output` pointer. The length of the key
 /// and tweak must be specified in `key_len` and `tweak_len` respectively. The
-/// function returns an `c_int` indicating success (0) or failure (-1).
+/// function returns an `i32` indicating success (0) or failure (-1).
 ///
 /// # Safety
 ///
@@ -42,20 +40,20 @@ unsafe extern "C" fn fpe(
 /// memory.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_encrypt_float(
-    output: *mut c_double,
-    input: c_double,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-) -> c_int {
+    output: *mut f64,
+    input: f64,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+) -> i32 {
     fpe(output, input, key_ptr, key_len, tweak_ptr, tweak_len, true)
 }
 
-/// Decrypts the input `c_double` using the FPE algorithm with the given key and
+/// Decrypts the input `f64` using the FPE algorithm with the given key and
 /// tweak, and stores the result in the `output` pointer. The length of the key
 /// and tweak must be specified in `key_len` and `tweak_len` respectively. The
-/// function returns an `c_int` indicating success (0) or failure (-1).
+/// function returns an `i32` indicating success (0) or failure (-1).
 ///
 /// # Safety
 ///
@@ -63,12 +61,12 @@ pub unsafe extern "C" fn h_fpe_encrypt_float(
 /// memory.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_decrypt_float(
-    output: *mut c_double,
-    input: c_double,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-) -> c_int {
+    output: *mut f64,
+    input: f64,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+) -> i32 {
     fpe(output, input, key_ptr, key_len, tweak_ptr, tweak_len, false)
 }

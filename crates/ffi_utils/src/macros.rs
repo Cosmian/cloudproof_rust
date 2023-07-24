@@ -104,7 +104,7 @@ macro_rules! ffi_write_bytes {
                 error_code += 1;
             } else {
                 let allocated = *$len;
-                *$len = $bytes.len() as c_int;
+                *$len = $bytes.len() as i32;
                 if allocated < *$len {
                     $crate::error::set_last_error($crate::error::FfiError::Generic(format!(
                         "The pre-allocated {} buffer is too small; need {} bytes, allocated {allocated}",
@@ -176,7 +176,7 @@ macro_rules! ffi_read_string {
     ($name:literal, $ptr:ident) => {{
         $crate::ffi_not_null!($name, $ptr);
 
-        match $crate::macros::CStr::from_ptr($ptr).to_str() {
+        match $crate::macros::CStr::from_ptr($ptr.cast::<std::ffi::c_char>()).to_str() {
             Ok(msg) => msg.to_owned(),
             Err(e) => {
                 $crate::ffi_bail!(format!("{} invalid C string: {}", $name, e));

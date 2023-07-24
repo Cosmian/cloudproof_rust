@@ -1,22 +1,20 @@
-use std::ffi::{c_char, c_int, c_uchar};
-
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
 
 use crate::get_alphabet;
 
 #[allow(clippy::too_many_arguments)]
 pub unsafe fn fpe(
-    output_ptr: *mut c_uchar,
-    output_len: *mut c_int,
-    input_ptr: *const c_char,
-    alphabet_id_ptr: *const c_char,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-    additional_characters_ptr: *const c_char,
+    output_ptr: *mut u8,
+    output_len: *mut i32,
+    input_ptr: *const i8,
+    alphabet_id_ptr: *const i8,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+    additional_characters_ptr: *const i8,
     encrypt_flag: bool,
-) -> c_int {
+) -> i32 {
     let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
     let tweak_bytes = ffi_read_bytes!("tweak", tweak_ptr, tweak_len);
     let input_str = ffi_read_string!("input", input_ptr);
@@ -78,16 +76,16 @@ pub unsafe fn fpe(
 /// `0` means success, while a non-zero value represents an error code.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_encrypt_alphabet(
-    plaintext_ptr: *mut c_uchar,
-    plaintext_len: *mut c_int,
-    alphabet_id_ptr: *const c_char,
-    input_ptr: *const c_char,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-    additional_characters_ptr: *const c_char,
-) -> c_int {
+    plaintext_ptr: *mut u8,
+    plaintext_len: *mut i32,
+    alphabet_id_ptr: *const i8,
+    input_ptr: *const i8,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+    additional_characters_ptr: *const i8,
+) -> i32 {
     // Calls the internal FPE encryption function with the specified alphabet and
     // sets the "encrypt" flag to true.
     fpe(
@@ -138,16 +136,16 @@ pub unsafe extern "C" fn h_fpe_encrypt_alphabet(
 /// `0` means success, while a non-zero value represents an error code.
 #[no_mangle]
 pub unsafe extern "C" fn h_fpe_decrypt_alphabet(
-    ciphertext_ptr: *mut c_uchar,
-    ciphertext_len: *mut c_int,
-    alphabet_id_ptr: *const c_char,
-    input_ptr: *const c_char,
-    key_ptr: *const c_char,
-    key_len: c_int,
-    tweak_ptr: *const c_char,
-    tweak_len: c_int,
-    additional_characters_ptr: *const c_char,
-) -> c_int {
+    ciphertext_ptr: *mut u8,
+    ciphertext_len: *mut i32,
+    alphabet_id_ptr: *const i8,
+    input_ptr: *const i8,
+    key_ptr: *const i8,
+    key_len: i32,
+    tweak_ptr: *const i8,
+    tweak_len: i32,
+    additional_characters_ptr: *const i8,
+) -> i32 {
     fpe(
         ciphertext_ptr,
         ciphertext_len,

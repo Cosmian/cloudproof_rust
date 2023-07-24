@@ -1,11 +1,5 @@
 //! Defines the Findex FFI API.
-use std::{
-    collections::HashSet,
-    convert::TryFrom,
-    ffi::c_uint,
-    num::NonZeroU32,
-    os::raw::{c_char, c_int},
-};
+use std::{collections::HashSet, convert::TryFrom, num::NonZeroU32};
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
@@ -49,7 +43,7 @@ use crate::{
 ///
 /// It's unsafe.
 #[no_mangle]
-pub unsafe extern "C" fn get_last_error(error_ptr: *mut c_char, error_len: *mut c_int) -> c_int {
+pub unsafe extern "C" fn get_last_error(error_ptr: *mut i8, error_len: *mut i32) -> i32 {
     h_get_error(error_ptr, error_len)
 }
 
@@ -81,18 +75,18 @@ pub unsafe extern "C" fn get_last_error(error_ptr: *mut c_char, error_len: *mut 
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_search(
-    search_results_ptr: *mut c_char,
-    search_results_len: *mut c_int,
-    master_key_ptr: *const c_char,
-    master_key_len: c_int,
+    search_results_ptr: *mut i8,
+    search_results_len: *mut i32,
+    master_key_ptr: *const i8,
+    master_key_len: i32,
     label_ptr: *const u8,
-    label_len: c_int,
-    keywords_ptr: *const c_char,
-    entry_table_number: c_uint,
+    label_len: i32,
+    keywords_ptr: *const i8,
+    entry_table_number: u32,
     progress_callback: ProgressCallback,
     fetch_entry_callback: FetchEntryTableCallback,
     fetch_chain_callback: FetchChainTableCallback,
-) -> c_int {
+) -> i32 {
     #[cfg(debug_assertions)]
     log_init("info", 1);
 
@@ -171,16 +165,16 @@ pub unsafe extern "C" fn h_search(
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert(
     master_key_ptr: *const u8,
-    master_key_len: c_int,
+    master_key_len: i32,
     label_ptr: *const u8,
-    label_len: c_int,
-    additions_ptr: *const c_char,
-    deletions_ptr: *const c_char,
-    entry_table_number: c_uint,
+    label_len: i32,
+    additions_ptr: *const i8,
+    deletions_ptr: *const i8,
+    entry_table_number: u32,
     fetch_entry: FetchEntryTableCallback,
     upsert_entry: UpsertEntryTableCallback,
     insert_chain: InsertChainTableCallback,
-) -> c_int {
+) -> i32 {
     #[cfg(debug_assertions)]
     log_init("info", 1);
 
@@ -252,15 +246,15 @@ pub unsafe extern "C" fn h_upsert(
 #[cfg(feature = "compact_live")]
 pub unsafe extern "C" fn h_live_compact(
     master_key_ptr: *const u8,
-    master_key_len: c_int,
-    num_reindexing_before_full_set: c_int,
-    entry_table_number: c_uint,
+    master_key_len: i32,
+    num_reindexing_before_full_set: i32,
+    entry_table_number: u32,
     fetch_all_entry_table_uids: FetchAllEntryTableUidsCallback,
     fetch_entry: FetchEntryTableCallback,
     fetch_chain: FetchChainTableCallback,
     delete_chain: DeleteChainCallback,
     filter_removed_locations: ListRemovedLocationsCallback,
-) -> c_int {
+) -> i32 {
     #[cfg(debug_assertions)]
     log_init("info", 1);
 
@@ -343,19 +337,19 @@ pub unsafe extern "C" fn h_live_compact(
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_compact(
     old_master_key_ptr: *const u8,
-    old_master_key_len: c_int,
+    old_master_key_len: i32,
     new_master_key_ptr: *const u8,
-    new_master_key_len: c_int,
+    new_master_key_len: i32,
     new_label_ptr: *const u8,
-    new_label_len: c_int,
-    num_reindexing_before_full_set: c_int,
-    entry_table_number: c_uint,
+    new_label_len: i32,
+    num_reindexing_before_full_set: i32,
+    entry_table_number: u32,
     fetch_all_entry_table_uids: FetchAllEntryTableUidsCallback,
     fetch_entry: FetchEntryTableCallback,
     fetch_chain: FetchChainTableCallback,
     update_lines: UpdateLinesCallback,
     list_removed_locations: ListRemovedLocationsCallback,
-) -> c_int {
+) -> i32 {
     #[cfg(debug_assertions)]
     log_init("info", 1);
 
@@ -450,14 +444,14 @@ pub unsafe extern "C" fn h_compact(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_search_cloud(
-    search_results_ptr: *mut c_char,
-    search_results_len: *mut c_int,
-    token_ptr: *const c_char,
+    search_results_ptr: *mut i8,
+    search_results_len: *mut i32,
+    token_ptr: *const i8,
     label_ptr: *const u8,
-    label_len: c_int,
-    keywords_ptr: *const c_char,
-    base_url_ptr: *const c_char,
-) -> c_int {
+    label_len: i32,
+    keywords_ptr: *const i8,
+    base_url_ptr: *const i8,
+) -> i32 {
     #[cfg(debug_assertions)]
     log_init("info", 1);
 
@@ -522,13 +516,13 @@ pub unsafe extern "C" fn h_search_cloud(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert_cloud(
-    token_ptr: *const c_char,
+    token_ptr: *const i8,
     label_ptr: *const u8,
-    label_len: c_int,
-    additions_ptr: *const c_char,
-    deletions_ptr: *const c_char,
-    base_url_ptr: *const c_char,
-) -> c_int {
+    label_len: i32,
+    additions_ptr: *const i8,
+    deletions_ptr: *const i8,
+    base_url_ptr: *const i8,
+) -> i32 {
     #[cfg(debug_assertions)]
     log_init("info", 1);
 
@@ -571,17 +565,17 @@ pub unsafe extern "C" fn h_upsert_cloud(
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_generate_new_token(
     token_ptr: *mut u8,
-    token_len: *mut c_int,
-    index_id_ptr: *const c_char,
+    token_len: *mut i32,
+    index_id_ptr: *const i8,
     fetch_entries_seed_ptr: *const u8,
-    fetch_entries_seed_len: c_int,
+    fetch_entries_seed_len: i32,
     fetch_chains_seed_ptr: *const u8,
-    fetch_chains_seed_len: c_int,
+    fetch_chains_seed_len: i32,
     upsert_entries_seed_ptr: *const u8,
-    upsert_entries_seed_len: c_int,
+    upsert_entries_seed_len: i32,
     insert_chains_seed_ptr: *const u8,
-    insert_chains_seed_len: c_int,
-) -> c_int {
+    insert_chains_seed_len: i32,
+) -> i32 {
     #[cfg(debug_assertions)]
     log_init("info", 1);
 
@@ -661,12 +655,12 @@ unsafe fn ffi_search<
 >(
     mut findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
-    search_results_ptr: *mut c_char,
-    search_results_len: *mut c_int,
+    search_results_ptr: *mut i8,
+    search_results_len: *mut i32,
     label_ptr: *const u8,
-    label_len: c_int,
-    keywords_ptr: *const c_char,
-) -> c_int {
+    label_len: i32,
+    keywords_ptr: *const i8,
+) -> i32 {
     let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
     let label = Label::from(label_bytes);
 
@@ -760,10 +754,10 @@ unsafe extern "C" fn ffi_upsert<
     mut findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
     label_ptr: *const u8,
-    label_len: c_int,
-    additions_ptr: *const c_char,
-    deletions_ptr: *const c_char,
-) -> c_int {
+    label_len: i32,
+    additions_ptr: *const i8,
+    deletions_ptr: *const i8,
+) -> i32 {
     let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
     let label = Label::from(label_bytes);
 

@@ -1,15 +1,13 @@
-use std::ffi::{c_char, c_int};
-
 use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, Policy};
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
 
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn h_policy(
-    policy_ptr: *mut c_char,
-    policy_len: *mut c_int,
-    max_attribute_creations: c_int,
-) -> c_int {
+    policy_ptr: *mut i8,
+    policy_len: *mut i32,
+    max_attribute_creations: i32,
+) -> i32 {
     let policy = Policy::new(max_attribute_creations as u32);
     let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error deserializing policy");
     ffi_write_bytes!("policy", &policy_bytes, policy_ptr, policy_len);
@@ -19,12 +17,12 @@ pub unsafe extern "C" fn h_policy(
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn h_add_policy_axis(
-    updated_policy_ptr: *mut c_char,
-    updated_policy_len: *mut c_int,
-    current_policy_ptr: *const c_char,
-    current_policy_len: c_int,
-    axis_ptr: *const c_char,
-) -> c_int {
+    updated_policy_ptr: *mut i8,
+    updated_policy_len: *mut i32,
+    current_policy_ptr: *const i8,
+    current_policy_len: i32,
+    axis_ptr: *const i8,
+) -> i32 {
     let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
     let mut policy = ffi_unwrap!(
         Policy::parse_and_convert(policy_bytes),
@@ -52,12 +50,12 @@ pub unsafe extern "C" fn h_add_policy_axis(
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn h_rotate_attribute(
-    updated_policy_ptr: *mut c_char,
-    updated_policy_len: *mut c_int,
-    current_policy_ptr: *const c_char,
-    current_policy_len: c_int,
-    attribute: *const c_char,
-) -> c_int {
+    updated_policy_ptr: *mut i8,
+    updated_policy_len: *mut i32,
+    current_policy_ptr: *const i8,
+    current_policy_len: i32,
+    attribute: *const i8,
+) -> i32 {
     let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
     let mut policy = ffi_unwrap!(
         Policy::parse_and_convert(policy_bytes),
@@ -84,9 +82,7 @@ pub unsafe extern "C" fn h_rotate_attribute(
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn h_validate_boolean_expression(
-    boolean_expression_ptr: *const c_char,
-) -> c_int {
+pub unsafe extern "C" fn h_validate_boolean_expression(boolean_expression_ptr: *const i8) -> i32 {
     let boolean_expression = ffi_read_string!("boolean expression", boolean_expression_ptr);
     ffi_unwrap!(
         AccessPolicy::from_boolean_expression(&boolean_expression),
@@ -97,7 +93,7 @@ pub unsafe extern "C" fn h_validate_boolean_expression(
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn h_validate_attribute(attribute_ptr: *const c_char) -> c_int {
+pub unsafe extern "C" fn h_validate_attribute(attribute_ptr: *const i8) -> i32 {
     let attribute_str = ffi_read_string!("attribute", attribute_ptr);
     ffi_unwrap!(
         AccessPolicy::from_boolean_expression(&attribute_str),
@@ -126,10 +122,10 @@ mod tests {
 
         policy_bytes = unsafe {
             let current_policy_ptr = policy_bytes.as_ptr().cast();
-            let current_policy_len = policy_bytes.len() as c_int;
+            let current_policy_len = policy_bytes.len() as i32;
             let mut updated_policy_bytes = vec![0u8; 8192];
             let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
-            let mut updated_policy_len = updated_policy_bytes.len() as c_int;
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
 
             let res = h_rotate_attribute(
                 updated_policy_ptr,
@@ -142,7 +138,7 @@ mod tests {
             if res != 0 {
                 let mut error = vec![0u8; 8192];
                 let error_ptr = error.as_mut_ptr().cast();
-                let mut error_len = error.len() as c_int;
+                let mut error_len = error.len() as i32;
                 h_get_error(error_ptr, &mut error_len);
                 panic!("{}", CStr::from_ptr(error_ptr).to_str().unwrap());
             }
@@ -154,10 +150,10 @@ mod tests {
 
         policy_bytes = unsafe {
             let current_policy_ptr = policy_bytes.as_ptr().cast();
-            let current_policy_len = policy_bytes.len() as c_int;
+            let current_policy_len = policy_bytes.len() as i32;
             let mut updated_policy_bytes = vec![0u8; 8192];
             let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
-            let mut updated_policy_len = updated_policy_bytes.len() as c_int;
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
 
             let res = h_rotate_attribute(
                 updated_policy_ptr,
@@ -169,7 +165,7 @@ mod tests {
             if res != 0 {
                 let mut error = vec![0u8; 8192];
                 let error_ptr = error.as_mut_ptr().cast();
-                let mut error_len = error.len() as c_int;
+                let mut error_len = error.len() as i32;
                 h_get_error(error_ptr, &mut error_len);
                 panic!("{}", CStr::from_ptr(error_ptr).to_str().unwrap());
             }

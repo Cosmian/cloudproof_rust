@@ -1,5 +1,3 @@
-use std::os::raw::{c_char, c_int};
-
 use cosmian_cover_crypt::{
     abe_policy::{AccessPolicy, Policy},
     Covercrypt, MasterPublicKey, MasterSecretKey, UserSecretKey,
@@ -19,13 +17,13 @@ use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_b
 ///
 /// # Safety
 pub unsafe extern "C" fn h_generate_master_keys(
-    msk_ptr: *mut c_char,
-    msk_len: *mut c_int,
-    mpk_ptr: *mut c_char,
-    mpk_len: *mut c_int,
-    policy_ptr: *const c_char,
-    policy_len: c_int,
-) -> c_int {
+    msk_ptr: *mut i8,
+    msk_len: *mut i32,
+    mpk_ptr: *mut i8,
+    mpk_len: *mut i32,
+    policy_ptr: *const i8,
+    policy_len: i32,
+) -> i32 {
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
     let policy: Policy = ffi_unwrap!(Policy::try_from(policy_bytes), "error deserializing policy");
 
@@ -62,14 +60,14 @@ pub unsafe extern "C" fn h_generate_master_keys(
 /// - `policy_len`          : length of the policy (in bytes)
 /// # Safety
 pub unsafe extern "C" fn h_generate_user_secret_key(
-    usk_ptr: *mut c_char,
-    usk_len: *mut c_int,
-    msk_ptr: *const c_char,
-    msk_len: c_int,
-    user_policy_ptr: *const c_char,
-    policy_ptr: *const c_char,
-    policy_len: c_int,
-) -> c_int {
+    usk_ptr: *mut i8,
+    usk_len: *mut i32,
+    msk_ptr: *const i8,
+    msk_len: i32,
+    user_policy_ptr: *const i8,
+    policy_ptr: *const i8,
+    policy_len: i32,
+) -> i32 {
     let msk_bytes = ffi_read_bytes!("master secret key", msk_ptr, msk_len);
     let msk = ffi_unwrap!(
         MasterSecretKey::deserialize(msk_bytes),
@@ -113,17 +111,17 @@ pub unsafe extern "C" fn h_generate_user_secret_key(
 /// - `policy_ptr`      : Policy to use to update the master keys (JSON)
 /// # Safety
 pub unsafe extern "C" fn h_update_master_keys(
-    updated_msk_ptr: *mut c_char,
-    updated_msk_len: *mut c_int,
-    updated_mpk_ptr: *mut c_char,
-    updated_mpk_len: *mut c_int,
-    current_msk_ptr: *const c_char,
-    current_msk_len: c_int,
-    current_mpk_ptr: *const c_char,
-    current_mpk_len: c_int,
-    policy_ptr: *const c_char,
-    policy_len: c_int,
-) -> c_int {
+    updated_msk_ptr: *mut i8,
+    updated_msk_len: *mut i32,
+    updated_mpk_ptr: *mut i8,
+    updated_mpk_len: *mut i32,
+    current_msk_ptr: *const i8,
+    current_msk_len: i32,
+    current_mpk_ptr: *const i8,
+    current_mpk_len: i32,
+    policy_ptr: *const i8,
+    policy_len: i32,
+) -> i32 {
     let msk_bytes = ffi_read_bytes!(
         "current master secret key",
         current_msk_ptr,
@@ -187,17 +185,17 @@ pub unsafe extern "C" fn h_update_master_keys(
 ///   to the rotated partitions
 /// # Safety
 pub unsafe extern "C" fn h_refresh_user_secret_key(
-    updated_usk_ptr: *mut c_char,
-    updated_usk_len: *mut c_int,
-    msk_ptr: *const c_char,
-    msk_len: c_int,
-    current_usk_ptr: *const c_char,
-    current_usk_len: c_int,
-    user_policy_ptr: *const c_char,
-    policy_ptr: *const c_char,
-    policy_len: c_int,
-    preserve_old_partitions_access: c_int,
-) -> c_int {
+    updated_usk_ptr: *mut i8,
+    updated_usk_len: *mut i32,
+    msk_ptr: *const i8,
+    msk_len: i32,
+    current_usk_ptr: *const i8,
+    current_usk_len: i32,
+    user_policy_ptr: *const i8,
+    policy_ptr: *const i8,
+    policy_len: i32,
+    preserve_old_partitions_access: i32,
+) -> i32 {
     let msk_bytes = ffi_read_bytes!("master secret key", msk_ptr, msk_len);
     let msk = ffi_unwrap!(
         MasterSecretKey::deserialize(msk_bytes),

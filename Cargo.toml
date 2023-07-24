@@ -15,7 +15,10 @@ resolver = "1"
 [workspace.dependencies]
 base64 = "0.21.0"
 cosmian_crypto_core = "9.0.0"
-cosmian_ffi_utils = "0.1.1"
+# cloudproof_cover_crypt = "12.0.0"
+cloudproof_cover_crypt = { path = "crates/cover_crypt" }
+# cosmian_ffi_utils = "0.1.1"
+cosmian_ffi_utils = { path = "crates/ffi_utils" }
 hex = "0.4.3"
 js-sys = "0.3"
 pyo3 = { version = "0.18", features = ["extension-module", "abi3", "abi3-py37", "generate-import-lib"] }

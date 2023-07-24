@@ -1,5 +1,3 @@
-use std::ffi::{c_char, c_int};
-
 use cloudproof_cover_crypt::reexport::crypto_core::Aes256Gcm;
 use cosmian_ffi_utils::error::get_last_error;
 
@@ -13,24 +11,24 @@ fn test_aes256gcm_encrypt_decrypt() {
     let plaintext = b"plaintext";
 
     let key_ptr = key.as_ptr().cast();
-    let key_len = key.len() as c_int;
+    let key_len = key.len() as i32;
     let nonce_ptr = nonce.as_ptr().cast();
-    let nonce_len = nonce.len() as c_int;
+    let nonce_len = nonce.len() as i32;
     let authenticated_data_ptr = authenticated_data.as_ptr().cast();
-    let authenticated_data_len = authenticated_data.len() as c_int;
+    let authenticated_data_len = authenticated_data.len() as i32;
     let plaintext_ptr = plaintext.as_ptr().cast();
-    let plaintext_len = plaintext.len() as c_int;
+    let plaintext_len = plaintext.len() as i32;
 
     // FFI encrypt output
     let mut ciphertext_bytes =
         vec![0u8; plaintext.len() + Aes256Gcm::NONCE_LENGTH + Aes256Gcm::MAC_LENGTH];
     let ciphertext_ptr = ciphertext_bytes.as_mut_ptr().cast();
-    let mut ciphertext_len = ciphertext_bytes.len() as c_int;
+    let mut ciphertext_len = ciphertext_bytes.len() as i32;
 
     // FFI decrypt output
     let mut cleartext_bytes = vec![0u8; ciphertext_len as usize];
     let cleartext_ptr = cleartext_bytes.as_mut_ptr().cast();
-    let mut cleartext_len = cleartext_bytes.len() as c_int;
+    let mut cleartext_len = cleartext_bytes.len() as i32;
 
     unsafe {
         //
@@ -60,7 +58,7 @@ fn test_aes256gcm_encrypt_decrypt() {
         let ret = h_aes256gcm_decrypt(
             cleartext_ptr,
             &mut cleartext_len,
-            ciphertext_ptr as *const c_char,
+            ciphertext_ptr as *const i8,
             ciphertext_len,
             key_ptr,
             key_len,
