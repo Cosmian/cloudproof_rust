@@ -148,7 +148,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
     }
 
     async fn upsert_entry_table(
-        &mut self,
+        &self,
         items: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexPyo3Error> {
         let empty_vec = &vec![];
@@ -183,7 +183,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
     }
 
     async fn insert_chain_table(
-        &mut self,
+        &self,
         items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexPyo3Error> {
         Python::with_gil(|py| {
@@ -200,8 +200,8 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
         })
     }
 
-    fn update_lines(
-        &mut self,
+    async fn update_lines(
+        &self,
         chain_table_uids_to_remove: Uids<UID_LENGTH>,
         new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
@@ -242,7 +242,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
         })
     }
 
-    fn list_removed_locations(
+    async fn list_removed_locations(
         &self,
         locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexPyo3Error> {

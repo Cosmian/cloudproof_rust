@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, RwLock},
+};
 
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
@@ -18,11 +21,17 @@ use crate::{
     },
 };
 
-pub struct RusqliteFindex<'a> {
-    pub connection: &'a mut Connection,
+pub struct RusqliteFindex {
+    connection: Arc<RwLock<Connection>>,
 }
 
-impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
+impl RusqliteFindex {
+    pub fn new(connection: Arc<RwLock<Connection>>) -> Self {
+        RusqliteFindex { connection }
+    }
+}
+
+impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex {
     async fn progress(
         &self,
         _results: &HashMap<Keyword, HashSet<IndexedValue>>,
@@ -40,8 +49,12 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         &self,
         entry_table_uids: Uids<UID_LENGTH>,
     ) -> Result<EncryptedMultiTable<UID_LENGTH>, Error> {
+        let cnx = self
+            .connection
+            .read()
+            .expect("Rusqlite connection lock poisoned");
         let serialized_res =
-            sqlite_fetch_entry_table_items(self.connection, &serialize_set(&entry_table_uids.0)?)?;
+            sqlite_fetch_entry_table_items(&cnx, &serialize_set(&entry_table_uids.0)?)?;
         Ok(EncryptedMultiTable(
             deserialize_fetch_entry_table_results(&serialized_res).map_err(Error::from)?,
         ))
@@ -51,11 +64,12 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         &self,
         chain_table_uids: Uids<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, Error> {
-        let mut stmt = prepare_statement(
-            self.connection,
-            &serialize_set(&chain_table_uids.0)?,
-            "chain_table",
-        )?;
+        let cnx = self
+            .connection
+            .read()
+            .expect("Rusqlite connection lock poisoned");
+        let mut stmt =
+            prepare_statement(&cnx, &serialize_set(&chain_table_uids.0)?, "chain_table")?;
 
         let mut rows = stmt.raw_query();
         let mut chain_table_items = EncryptedTable::default();
@@ -67,11 +81,15 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
     }
 
     async fn upsert_entry_table(
-        &mut self,
+        &self,
         items: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, Error> {
         let mut rejected_items = EncryptedTable::default();
-        let tx = self.connection.transaction()?;
+        let mut cnx = self
+            .connection
+            .write()
+            .expect("Rusqlite connection lock poisoned");
+        let tx = cnx.transaction()?;
         for (uid, (old_value, new_value)) in items {
             let actual_value = tx
                 .query_row(
@@ -98,8 +116,12 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         Ok(rejected_items)
     }
 
-    async fn insert_chain_table(&mut self, items: EncryptedTable<UID_LENGTH>) -> Result<(), Error> {
-        let tx = self.connection.transaction()?;
+    async fn insert_chain_table(&self, items: EncryptedTable<UID_LENGTH>) -> Result<(), Error> {
+        let mut cnx = self
+            .connection
+            .write()
+            .expect("Rusqlite connection lock poisoned");
+        let tx = cnx.transaction()?;
         for (uid, value) in items.iter() {
             tx.execute(
                 "INSERT INTO chain_table (uid, value) VALUES (?1, ?2)",
@@ -110,8 +132,8 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         Ok(())
     }
 
-    fn update_lines(
-        &mut self,
+    async fn update_lines(
+        &self,
         _chain_table_uids_to_remove: Uids<UID_LENGTH>,
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
@@ -122,7 +144,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
         ))
     }
 
-    fn list_removed_locations(
+    async fn list_removed_locations(
         &self,
         _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, Error> {
@@ -131,25 +153,10 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex<'_> {
             "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
         ))
     }
-
-    fn filter_removed_locations(
-        &self,
-        _locations: HashSet<Location>,
-    ) -> std::result::Result<HashSet<Location>, Error> {
-        Err(Error::Other(
-            "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
-        ))
-    }
-
-    async fn delete_chain(&mut self, _uids: Uids<UID_LENGTH>) -> std::result::Result<(), Error> {
-        Err(Error::Other(
-            "`FindexCompact` is not implemented for `RusqliteFindex`".to_string(),
-        ))
-    }
 }
 
 impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, Error>
-    for RusqliteFindex<'_>
+    for RusqliteFindex
 {
 }
 
@@ -162,7 +169,7 @@ impl
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
         Error,
-    > for RusqliteFindex<'_>
+    > for RusqliteFindex
 {
 }
 
@@ -175,6 +182,6 @@ impl
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
         Error,
-    > for RusqliteFindex<'_>
+    > for RusqliteFindex
 {
 }

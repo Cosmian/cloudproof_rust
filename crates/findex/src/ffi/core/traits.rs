@@ -152,7 +152,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
 
     #[tracing::instrument(fields(modifications = %modifications), ret(Display), err)]
     async fn upsert_entry_table(
-        &mut self,
+        &self,
         modifications: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexFfiError> {
         let upsert_entry = unwrap_callback!("upsert_entry", self, upsert_entry);
@@ -202,7 +202,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
 
     #[tracing::instrument(fields(items = %items), ret, err)]
     async fn insert_chain_table(
-        &mut self,
+        &self,
         items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexFfiError> {
         info!("items: {items}");
@@ -236,8 +236,8 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         ret,
         err
     )]
-    fn update_lines(
-        &mut self,
+    async fn update_lines(
+        &self,
         chain_table_uids_to_remove: Uids<UID_LENGTH>,
         new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
@@ -277,7 +277,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     }
 
     #[tracing::instrument(ret, err)]
-    fn list_removed_locations(
+    async fn list_removed_locations(
         &self,
         locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexFfiError> {

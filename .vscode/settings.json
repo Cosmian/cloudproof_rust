@@ -7,6 +7,17 @@
     "cosmian",
     "Cosmian",
     "Feistel",
+    "Findex",
+    "Rusqlite",
+    "sqlite",
+    "Sqlite",
     "thiserror"
+  ],
+  "rust-analyzer.cargo.features": [
+    "cloud",
+    "ffi",
+    "python",
+    "sqlite",
+    "wasm_bindgen"
   ]
 }

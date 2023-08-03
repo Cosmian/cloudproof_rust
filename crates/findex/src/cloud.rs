@@ -497,7 +497,7 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
     }
 
     async fn upsert_entry_table(
-        &mut self,
+        &self,
         items: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexCloudError> {
         let serialized_upsert = items.serialize()?;
@@ -510,7 +510,7 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
     }
 
     async fn insert_chain_table(
-        &mut self,
+        &self,
         items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexCloudError> {
         let serialized_insert = items.serialize()?;
@@ -521,8 +521,8 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
         Ok(())
     }
 
-    fn update_lines(
-        &mut self,
+    async fn update_lines(
+        &self,
         _chain_table_uids_to_remove: Uids<UID_LENGTH>,
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
@@ -532,7 +532,7 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
         })
     }
 
-    fn list_removed_locations(
+    async fn list_removed_locations(
         &self,
         _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexCloudError> {

@@ -237,7 +237,9 @@ impl FindexCloud {
         deletions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
         base_url: Option<String>,
     ) -> PyResult<()> {
-        let mut findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
+        let findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
+        // we need to allow the clone or pyo3_unwrap will fail
+        #[allow(clippy::redundant_clone)]
         let master_key = findex.token.findex_master_key.clone();
 
         let future = findex.upsert(
@@ -279,7 +281,9 @@ impl FindexCloud {
         keywords: Vec<ToKeyword>,
         base_url: Option<String>,
     ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
-        let mut findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
+        let findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
+        // we need to allow the clone or pyo3_unwrap will fail
+        #[allow(clippy::redundant_clone)]
         let master_key = findex.token.findex_master_key.clone();
 
         let keywords_set: HashSet<Keyword> =

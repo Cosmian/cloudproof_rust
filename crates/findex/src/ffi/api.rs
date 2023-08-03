@@ -384,7 +384,7 @@ pub unsafe extern "C" fn h_compact(
     let new_label_bytes = ffi_read_bytes!("new label", new_label_ptr, new_label_len);
     let new_label = Label::from(new_label_bytes);
 
-    let mut findex = FindexUser {
+    let findex = FindexUser {
         entry_table_number: entry_table_number as usize,
         progress: None,
         fetch_all_entry_table_uids: Some(fetch_all_entry_table_uids),
@@ -653,7 +653,7 @@ unsafe fn ffi_search<
             Error,
         >,
 >(
-    mut findex: T,
+    findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
     search_results_ptr: *mut i8,
     search_results_len: *mut i32,
@@ -751,7 +751,7 @@ unsafe extern "C" fn ffi_upsert<
             Error,
         >,
 >(
-    mut findex: T,
+    findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
     label_ptr: *const u8,
     label_len: i32,
