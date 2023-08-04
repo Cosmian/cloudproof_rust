@@ -7,8 +7,6 @@ use cosmian_ffi_utils::{
     error::{h_get_error, set_last_error, FfiError},
     ffi_bail, ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes,
 };
-#[cfg(feature = "compact_live")]
-use cosmian_findex::FindexLiveCompact;
 use cosmian_findex::{
     parameters::{
         BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
@@ -22,8 +20,6 @@ use super::error::ToErrorCode;
 use super::logger::log_init;
 #[cfg(feature = "cloud")]
 use crate::cloud::{FindexCloud, Token};
-#[cfg(feature = "compact_live")]
-use crate::ffi::core::DeleteChainCallback;
 use crate::{
     ffi::core::{
         utils::parse_indexed_values, FetchAllEntryTableUidsCallback, FetchChainTableCallback,
@@ -107,12 +103,8 @@ pub unsafe extern "C" fn h_search(
         fetch_chain: Some(fetch_chain_callback),
         upsert_entry: None,
         insert_chain: None,
-        #[cfg(feature = "compact_live")]
-        delete_chain: None,
         update_lines: None,
         list_removed_locations: None,
-        #[cfg(feature = "compact_live")]
-        filter_removed_locations: None,
     };
 
     ffi_search(
@@ -195,12 +187,8 @@ pub unsafe extern "C" fn h_upsert(
         fetch_chain: None,
         upsert_entry: Some(upsert_entry),
         insert_chain: Some(insert_chain),
-        #[cfg(feature = "compact_live")]
-        delete_chain: None,
         update_lines: None,
         list_removed_locations: None,
-        #[cfg(feature = "compact_live")]
-        filter_removed_locations: None,
     };
 
     ffi_upsert(
@@ -243,69 +231,7 @@ pub unsafe extern "C" fn h_upsert(
 /// # Safety
 ///
 /// Cannot be safe since using FFI.
-#[cfg(feature = "compact_live")]
-pub unsafe extern "C" fn h_live_compact(
-    master_key_ptr: *const u8,
-    master_key_len: i32,
-    num_reindexing_before_full_set: i32,
-    entry_table_number: u32,
-    fetch_all_entry_table_uids: FetchAllEntryTableUidsCallback,
-    fetch_entry: FetchEntryTableCallback,
-    fetch_chain: FetchChainTableCallback,
-    delete_chain: DeleteChainCallback,
-    filter_removed_locations: ListRemovedLocationsCallback,
-) -> i32 {
-    #[cfg(debug_assertions)]
-    log_init("info", 1);
 
-    let num_reindexing_before_full_set = ffi_unwrap!(
-        u32::try_from(num_reindexing_before_full_set)
-            .ok()
-            .and_then(NonZeroU32::new)
-            .ok_or_else(|| format!(
-                "num_reindexing_before_full_set ({num_reindexing_before_full_set}) should be a \
-                 non-zero positive integer."
-            )),
-        "error converting num_reindexing_before_full_set"
-    );
-    if entry_table_number == 0 {
-        ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
-    }
-
-    let master_key_bytes = ffi_read_bytes!("master key", master_key_ptr, master_key_len);
-    let master_key = ffi_unwrap!(
-        KeyingMaterial::deserialize(master_key_bytes),
-        "error deserializing master secret key"
-    );
-
-    let mut findex = FindexUser {
-        entry_table_number: entry_table_number as usize,
-        progress: None,
-        fetch_all_entry_table_uids: Some(fetch_all_entry_table_uids),
-        fetch_entry: Some(fetch_entry),
-        fetch_chain: Some(fetch_chain),
-        upsert_entry: None,
-        insert_chain: None,
-        delete_chain: Some(delete_chain),
-        update_lines: None,
-        list_removed_locations: None,
-        filter_removed_locations: Some(filter_removed_locations),
-    };
-
-    let rt = ffi_unwrap!(
-        tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
-    );
-
-    ffi_unwrap!(
-        rt.block_on(findex.live_compact(&master_key, num_reindexing_before_full_set.into(),)),
-        "error waiting for the compact operation to return"
-    );
-
-    0
-}
-
-#[no_mangle]
 /// Replaces all the Index Entry Table UIDs and values. New UIDs are derived
 /// using the given label and the KMAC key derived from the new master key. The
 /// values are decrypted using the DEM key derived from the master key and
@@ -392,12 +318,8 @@ pub unsafe extern "C" fn h_compact(
         fetch_chain: Some(fetch_chain),
         upsert_entry: None,
         insert_chain: None,
-        #[cfg(feature = "compact_live")]
-        delete_chain: None,
         update_lines: Some(update_lines),
         list_removed_locations: Some(list_removed_locations),
-        #[cfg(feature = "compact_live")]
-        filter_removed_locations: None,
     };
 
     let rt = ffi_unwrap!(

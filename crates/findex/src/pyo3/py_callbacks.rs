@@ -262,23 +262,6 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
             Ok(py_result.iter().map(|l| l.0.clone()).collect())
         })
     }
-
-    #[cfg(feature = "compact_live")]
-    fn filter_removed_locations(
-        &self,
-        _locations: HashSet<Location>,
-    ) -> Result<HashSet<Location>, FindexPyo3Error> {
-        Err(FindexPyo3Error::Callback(
-            "filter_removed_locations not implemented".to_string(),
-        ))
-    }
-
-    #[cfg(feature = "compact_live")]
-    async fn delete_chain(&mut self, _uids: Uids<UID_LENGTH>) -> Result<(), FindexPyo3Error> {
-        Err(FindexPyo3Error::Callback(
-            "delete_chain not implemented".to_string(),
-        ))
-    }
 }
 
 impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, FindexPyo3Error>

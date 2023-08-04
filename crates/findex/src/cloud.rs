@@ -540,23 +540,6 @@ impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
             error: "list removed locations not implemented in WASM".to_string(),
         })
     }
-
-    #[cfg(feature = "compact_live")]
-    fn filter_removed_locations(
-        &self,
-        _locations: HashSet<Location>,
-    ) -> Result<HashSet<Location>, FindexCloudError> {
-        Err(FindexCloudError::Callback {
-            error: "filter removed locations not implemented in WASM".to_string(),
-        })
-    }
-
-    #[cfg(feature = "compact_live")]
-    async fn delete_chain(&mut self, _uids: Uids<UID_LENGTH>) -> Result<(), FindexCloudError> {
-        Err(FindexCloudError::Callback {
-            error: "delete chains not implemented in WASM".to_string(),
-        })
-    }
 }
 
 impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, FindexCloudError>
