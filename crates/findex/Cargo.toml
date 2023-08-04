@@ -90,7 +90,8 @@ name = "test_sqlite"
 path = "tests/sqlite/test_sqlite.rs"
 required-features = ["findex-sqlite"]
 
-[[test]]
-name = "test_redis"
-path = "tests/redis/test_redis.rs"
-required-features = ["findex-redis"]
+# WARNING: temporarily disabled because redis needs to run in the CI
+# [[test]]
+# name = "test_redis"
+# path = "tests/redis/test_redis.rs"
+# required-features = ["findex-redis"]

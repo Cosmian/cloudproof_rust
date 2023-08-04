@@ -5,7 +5,7 @@ on: push
 
 jobs:
   cargo-nursery-base:
-    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@cloudproof_2_2_0
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@develop
     with:
       toolchain: nightly-2023-06-27
 
@@ -15,16 +15,6 @@ jobs:
       toolchain: nightly-2023-06-27
 
   test_and_dry_publish:
-    services:
-      redis:
-        image: redis
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
