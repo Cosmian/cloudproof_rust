@@ -25,6 +25,7 @@ ffi = [
     "tracing-tree",
 ]
 python = ["cloud", "futures", "pyo3", "tokio/rt-multi-thread"]
+findex-redis = ["async-trait", "redis", "serde", "serde_json", "thiserror"]
 findex-sqlite = [
     "base64",
     "faker_rand",
@@ -42,7 +43,6 @@ wasm_bindgen = [
     "log",
     "wasm-logger",
 ]
-findex-redis = ["async-trait", "redis", "serde", "serde_json", "thiserror"]
 
 [dependencies]
 # Optional dependencies

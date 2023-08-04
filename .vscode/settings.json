@@ -4,9 +4,11 @@
     "chinese",
     "ciphertext",
     "cleartext",
+    "cloudproof",
     "cosmian",
     "Cosmian",
     "Feistel",
+    "findex",
     "Findex",
     "Rusqlite",
     "sqlite",
@@ -17,7 +19,8 @@
     "cloud",
     "ffi",
     "python",
-    "sqlite",
+    "findex-redis",
+    "findex-sqlite",
     "wasm_bindgen"
   ]
 }
