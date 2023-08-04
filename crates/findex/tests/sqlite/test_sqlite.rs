@@ -112,7 +112,7 @@ async fn test_findex_sqlite_no_regression() -> Result<(), Error> {
     //
     // Prepare database and create Findex structs
     //
-    let db = PathBuf::from("tests/datasets/sqlite.db");
+    let db = PathBuf::from("tests/sqlite/datasets/sqlite.db");
 
     //
     // Search
@@ -144,7 +144,7 @@ async fn test_findex_sqlite_generate() -> Result<(), Error> {
     //
     // Create new database
     //
-    upsert(&db, "tests/datasets/data.json").await?;
+    upsert(&db, "tests/sqlite/datasets/data.json").await?;
 
     //
     // Search - simple check
