@@ -18,17 +18,17 @@ use super::{
     Error,
 };
 use crate::ser_de::{deserialize_fetch_entry_table_results, serialize_set};
-pub struct RusqliteFindex {
+pub struct SqliteFindex {
     connection: Arc<RwLock<Connection>>,
 }
 
-impl RusqliteFindex {
+impl SqliteFindex {
     pub fn new(connection: Arc<RwLock<Connection>>) -> Self {
-        RusqliteFindex { connection }
+        SqliteFindex { connection }
     }
 }
 
-impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex {
+impl FindexCallbacks<Error, UID_LENGTH> for SqliteFindex {
     async fn progress(
         &self,
         _results: &HashMap<Keyword, HashSet<IndexedValue>>,
@@ -152,10 +152,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for RusqliteFindex {
     }
 }
 
-impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, Error>
-    for RusqliteFindex
-{
-}
+impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, Error> for SqliteFindex {}
 
 impl
     FindexUpsert<
@@ -166,7 +163,7 @@ impl
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
         Error,
-    > for RusqliteFindex
+    > for SqliteFindex
 {
 }
 
@@ -179,6 +176,6 @@ impl
         KWI_LENGTH,
         KMAC_KEY_LENGTH,
         Error,
-    > for RusqliteFindex
+    > for SqliteFindex
 {
 }

@@ -5,6 +5,7 @@
 #![cfg_attr(any(feature = "wasm_bindgen", feature = "ffi"), feature(const_option))]
 #![cfg_attr(feature = "cloud", feature(iter_next_chunk))]
 
+pub mod implementations;
 pub mod ser_de;
 
 #[cfg(feature = "cloud")]
@@ -15,8 +16,6 @@ pub mod ffi;
 
 #[cfg(feature = "python")]
 pub mod pyo3;
-
-pub mod implementations;
 
 #[cfg(feature = "wasm_bindgen")]
 pub mod wasm_bindgen;

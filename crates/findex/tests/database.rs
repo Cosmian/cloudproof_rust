@@ -1,5 +1,10 @@
+//! This file contains the implementation of the Sqlite database used for the
+//! tests.
+#![allow(dead_code)]
+
 use std::sync::{Arc, RwLock};
 
+use cloudproof_findex::implementations::sqlite::Error;
 use faker_rand::{
     en_us::addresses::PostalCode,
     fr_fr::{
@@ -11,8 +16,6 @@ use faker_rand::{
 };
 use rusqlite::{Connection, Result};
 use serde::{Deserialize, Serialize};
-
-use super::Error;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize)]
