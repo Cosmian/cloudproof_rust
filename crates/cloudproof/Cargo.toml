@@ -1,7 +1,13 @@
 [package]
 name = "cloudproof"
-version = "2.1.1"
-authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
+version = "2.2.0"
+authors = [
+    "Théophile Brézot<theophile.brezot@cosmian.com>",
+    "Emmanuel Coste<emmanuel.coste@cosmian.com>",
+    "Thibaud Dauce<thibaud.dauce@cosmian.com>",
+    "Bruno Grieder<bruno.grieder@cosmian.com>",
+    "Hugo Rosenkranz-costa<hugo.rosenkranz@cosmian.com>",
+]
 edition = "2021"
 license-file = "../../LICENSE.md"
 repository = "https://github.com/cosmian/cloudproof_rust/"
