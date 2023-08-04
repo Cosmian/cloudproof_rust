@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use cloudproof_findex::sqlite::{search, upsert, utils::delete_db, Error, User};
+use cloudproof_findex::implementations::sqlite::{search, upsert, utils::delete_db, Error, User};
 use cosmian_findex::Keyword;
 
 fn generate_new_dataset(nb_user: usize, dataset_filename: &str) {

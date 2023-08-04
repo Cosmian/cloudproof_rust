@@ -53,9 +53,9 @@ pub async fn upsert(sqlite_db_path: &PathBuf, dataset_path: &str) -> Result<(), 
     // Create upsert instance
     //
     let rusqlite_upsert = RusqliteFindex::new(connection.clone());
-    let label = Label::from(include_bytes!("../../datasets/label").to_vec());
+    let label = Label::from(include_bytes!("../../../datasets/label").to_vec());
     let master_key_bytes = general_purpose::STANDARD
-        .decode(include_str!("../../datasets/key.json"))
+        .decode(include_str!("../../../datasets/key.json"))
         .map_err(|e| Error::Other(e.to_string()))?;
     let master_key = KeyingMaterial::deserialize(&master_key_bytes)?;
 
@@ -73,11 +73,11 @@ pub async fn search(
     let connection = Arc::new(RwLock::new(Connection::open(sqlite_path)?));
     let rusqlite_search = RusqliteFindex::new(connection.clone());
     let master_key_bytes = general_purpose::STANDARD
-        .decode(include_str!("../../datasets/key.json"))
+        .decode(include_str!("../../../datasets/key.json"))
         .map_err(|e| Error::Other(e.to_string()))?;
     let master_key = KeyingMaterial::deserialize(&master_key_bytes)?;
 
-    let label = Label::from(include_bytes!("../../datasets/label").to_vec());
+    let label = Label::from(include_bytes!("../../../datasets/label").to_vec());
     let results = rusqlite_search
         .search(&master_key, &label, bulk_words)
         .await?;
@@ -95,7 +95,7 @@ pub async fn search(
     if check {
         db_uids.sort_unstable();
         let mut search_results: Vec<i64> =
-            serde_json::from_str(include_str!("../../datasets/expected_db_uids.json"))?;
+            serde_json::from_str(include_str!("../../../datasets/expected_db_uids.json"))?;
         search_results.sort_unstable();
         assert_eq!(db_uids, search_results);
     }

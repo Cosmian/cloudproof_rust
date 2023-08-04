@@ -13,14 +13,11 @@ use cosmian_findex::{
 };
 use rusqlite::{Connection, OptionalExtension, Result};
 
-use crate::{
-    ser_de::{deserialize_fetch_entry_table_results, serialize_set},
-    sqlite::{
-        utils::{prepare_statement, sqlite_fetch_entry_table_items},
-        Error,
-    },
+use super::{
+    utils::{prepare_statement, sqlite_fetch_entry_table_items},
+    Error,
 };
-
+use crate::ser_de::{deserialize_fetch_entry_table_results, serialize_set};
 pub struct RusqliteFindex {
     connection: Arc<RwLock<Connection>>,
 }

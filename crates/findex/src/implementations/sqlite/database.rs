@@ -12,7 +12,7 @@ use faker_rand::{
 use rusqlite::{Connection, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::sqlite::Error;
+use super::Error;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize)]

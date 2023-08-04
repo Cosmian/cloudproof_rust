@@ -16,8 +16,7 @@ pub mod ffi;
 #[cfg(feature = "python")]
 pub mod pyo3;
 
-#[cfg(feature = "sqlite")]
-pub mod sqlite;
+pub mod implementations;
 
 #[cfg(feature = "wasm_bindgen")]
 pub mod wasm_bindgen;
