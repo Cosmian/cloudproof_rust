@@ -78,6 +78,9 @@ pub async fn webassembly_logger_init() {
 /// - `fetch_entries`               : the callback to fetch from the entry table
 /// - `upsert_entries`              : the callback to upsert in the entry table
 /// - `insert_chains`               : the callback to insert in the chain table
+///
+/// # Returns
+/// The list of new keywords added to the entry table.
 #[wasm_bindgen]
 pub async fn webassembly_upsert(
     master_key: Uint8Array,
