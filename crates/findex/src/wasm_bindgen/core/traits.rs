@@ -159,7 +159,6 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
             "list removed locations not implemented in WASM".to_string(),
         ))
     }
-
 }
 
 impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, FindexWasmError>

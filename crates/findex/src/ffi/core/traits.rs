@@ -369,4 +369,3 @@ impl
     > for FindexUser
 {
 }
-
