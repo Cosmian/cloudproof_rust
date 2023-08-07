@@ -21,7 +21,7 @@ use crate::{log_utils::log_init, Dataset};
 // starting redis server
 // docker run --name redis -p 6379:6379 -d redis
 
-const REDIS_URL: &str = "redis://localhost:6379";
+const REDIS_URL: &str = "redis://0.0.0.0:6379";
 const FRANCE_LOCATIONS: [u16; 30] = [
     4, 5, 7, 8, 14, 17, 19, 20, 23, 34, 37, 43, 46, 48, 55, 56, 60, 61, 63, 65, 68, 70, 71, 77, 80,
     82, 83, 85, 86, 96,
