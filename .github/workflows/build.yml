@@ -4,12 +4,12 @@ name: Cloudproof build
 on:
   push:
     tags:
-      - '*'
+      - "*"
   pull_request:
 
 jobs:
   cloudproof_rust:
-    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@feature/add_redis_service
+    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
     with:
       project-name: cloudproof_rust
       toolchain: nightly-2023-06-27

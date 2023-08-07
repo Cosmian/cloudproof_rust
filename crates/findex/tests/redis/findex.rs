@@ -30,7 +30,7 @@ fn get_redis_url() -> String {
     if let Ok(var_env) = std::env::var("REDIS_HOST") {
         format!("redis://{var_env}:6379")
     } else {
-        format!("redis://localhost:6379")
+        "redis://localhost:6379".to_string()
     }
 }
 

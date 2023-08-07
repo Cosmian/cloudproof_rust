@@ -5,7 +5,7 @@ on: push
 
 jobs:
   cargo-nursery-base:
-    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@feature/add_redis_service
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@develop
     with:
       toolchain: nightly-2023-06-27
 
