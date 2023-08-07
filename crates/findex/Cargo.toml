@@ -83,16 +83,14 @@ wasm-logger = { version = "0.2.0", optional = true }
 
 [dev-dependencies]
 actix-rt = "2.8"
-# Disabled until redis tests are re-enabled - see below
-# serial_test = "2.0.0"
+serial_test = "2.0.0"
 
 [[test]]
 name = "test_sqlite"
 path = "tests/sqlite/test_sqlite.rs"
 required-features = ["findex-sqlite"]
 
-# WARNING: temporarily disabled because redis needs to run in the CI
-# [[test]]
-# name = "test_redis"
-# path = "tests/redis/test_redis.rs"
-# required-features = ["findex-redis"]
+[[test]]
+name = "test_redis"
+path = "tests/redis/test_redis.rs"
+required-features = ["findex-redis"]
