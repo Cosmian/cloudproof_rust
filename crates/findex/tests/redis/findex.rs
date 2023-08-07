@@ -21,11 +21,18 @@ use crate::{log_utils::log_init, Dataset};
 // starting redis server
 // docker run --name redis -p 6379:6379 -d redis
 
-const REDIS_URL: &str = "redis://0.0.0.0:6379";
 const FRANCE_LOCATIONS: [u16; 30] = [
     4, 5, 7, 8, 14, 17, 19, 20, 23, 34, 37, 43, 46, 48, 55, 56, 60, 61, 63, 65, 68, 70, 71, 77, 80,
     82, 83, 85, 86, 96,
 ];
+
+fn get_redis_url() -> String {
+    if let Ok(var_env) = std::env::var("REDIS_HOST") {
+        format!("redis://{var_env}:6379")
+    } else {
+        format!("redis://localhost:6379")
+    }
+}
 
 #[actix_rt::test]
 #[serial]
@@ -39,7 +46,7 @@ pub async fn test_compact() -> Result<(), FindexRedisError> {
 
     // let f: FindRemovedLocations = Box::new(|s|
     // Box::pin(dataset.find_removed_locations(s)));
-    let mut findex = FindexRedis::connect(REDIS_URL, dataset.clone()).await?;
+    let mut findex = FindexRedis::connect(&get_redis_url(), dataset.clone()).await?;
     findex.clear_indexes().await?;
 
     let mut rng = CsRng::from_entropy();
@@ -178,7 +185,7 @@ pub async fn test_upsert_conflict() -> Result<(), FindexRedisError> {
 
     // let f: FindRemovedLocations = Box::new(|s|
     // Box::pin(dataset.find_removed_locations(s)));
-    let findex = FindexRedis::connect(REDIS_URL, dummy.clone()).await?;
+    let findex = FindexRedis::connect(&get_redis_url(), dummy.clone()).await?;
     findex.clear_indexes().await?;
 
     // generate 333 random Uids
