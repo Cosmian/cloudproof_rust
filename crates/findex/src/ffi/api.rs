@@ -140,8 +140,16 @@ pub unsafe extern "C" fn h_search(
 ///
 /// `LEB128(keyword_bytes.len()) || base64(keyword_bytes)`
 ///
+/// The results are serialized as follows:
+///
+/// `LEB128(n_values) || serialized_value_1 || ... || serialized_value_n`
+///
+/// and `serialized_value_i` is serialized as follows:
+/// `LEB128(keyword_bytes.len()) || keyword_bytes`
+///
 /// # Parameters
 ///
+/// - `upsert_results`  : Returns the list of new keywords added to the index
 /// - `master_key`      : Findex master key
 /// - `label`           : additional information used to derive Entry Table UIDs
 /// TODO (TBZ): explain the serialization in the doc
@@ -156,6 +164,8 @@ pub unsafe extern "C" fn h_search(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert(
+    upsert_results_ptr: *mut i8,
+    upsert_results_len: *mut i32,
     master_key_ptr: *const u8,
     master_key_len: i32,
     label_ptr: *const u8,
@@ -194,6 +204,8 @@ pub unsafe extern "C" fn h_upsert(
     ffi_upsert(
         findex,
         &master_key,
+        upsert_results_ptr,
+        upsert_results_len,
         label_ptr,
         label_len,
         additions_ptr,
@@ -425,19 +437,29 @@ pub unsafe extern "C" fn h_search_cloud(
 ///
 /// `LEB128(keyword_bytes.len()) || base64(keyword_bytes)`
 ///
+/// The results are serialized as follows:
+///
+/// `LEB128(n_values) || serialized_value_1 || ... || serialized_value_n`
+///
+/// and `serialized_value_i` is serialized as follows:
+/// `LEB128(keyword_bytes.len()) || keyword_bytes`
+///
 /// # Parameters
 ///
-/// - `token`       : Findex Cloud token
-/// - `label`       : additional information used to derive Entry Table UIDs
-/// - `additions`   : serialized list of new indexed values
-/// - `deletions`   : serialized list of removed indexed values
-/// - `base_url`    : base URL for Findex Cloud (with http prefix and port if
+/// - `upsert_results` : Returns the list of new keywords added to the index
+/// - `token`          : Findex Cloud token
+/// - `label`          : additional information used to derive Entry Table UIDs
+/// - `additions`      : serialized list of new indexed values
+/// - `deletions`      : serialized list of removed indexed values
+/// - `base_url`       : base URL for Findex Cloud (with http prefix and port if
 ///   required). If null, use the default Findex Cloud server.
 ///
 /// # Safety
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert_cloud(
+    upsert_results_ptr: *mut i8,
+    upsert_results_len: *mut i32,
     token_ptr: *const i8,
     label_ptr: *const u8,
     label_len: i32,
@@ -466,6 +488,8 @@ pub unsafe extern "C" fn h_upsert_cloud(
     ffi_upsert(
         findex,
         &master_key,
+        upsert_results_ptr,
+        upsert_results_len,
         label_ptr,
         label_len,
         additions_ptr,
@@ -675,6 +699,8 @@ unsafe extern "C" fn ffi_upsert<
 >(
     findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
+    upsert_results_ptr: *mut i8,
+    upsert_results_len: *mut i32,
     label_ptr: *const u8,
     label_len: i32,
     additions_ptr: *const i8,
@@ -706,15 +732,35 @@ unsafe extern "C" fn ffi_upsert<
 
     // We want to forward error code returned by callbacks to the parent caller to
     // do error management client side.
-    match rt.block_on(findex.upsert(master_key, &label, additions, deletions)) {
-        Ok(_) => 0,
+    let new_keywords = match rt.block_on(findex.upsert(master_key, &label, additions, deletions)) {
+        Ok(new_keywords) => new_keywords,
         Err(FindexError::Callback(e)) => {
             set_last_error(FfiError::Generic(e.to_string()));
-            e.to_error_code()
+            return e.to_error_code();
         }
         Err(e) => {
             set_last_error(FfiError::Generic(e.to_string()));
-            1
+            return 1;
         }
+    };
+
+    // Serialize the results.
+    let mut serializer = Serializer::new();
+    ffi_unwrap!(
+        serializer.write_leb128_u64(new_keywords.len() as u64),
+        "error serializing length"
+    );
+    for keyword in new_keywords {
+        ffi_unwrap!(serializer.write_vec(&keyword), "error serializing keyword");
     }
+    let serialized_keywords = serializer.finalize();
+
+    ffi_write_bytes!(
+        "upsert results",
+        &serialized_keywords,
+        upsert_results_ptr,
+        upsert_results_len
+    );
+
+    0
 }
