@@ -13,7 +13,9 @@
     "Rusqlite",
     "sqlite",
     "Sqlite",
-    "thiserror"
+    "thiserror",
+    "upserting",
+    "Upserts"
   ],
   "rust-analyzer.cargo.features": [
     "cloud",
