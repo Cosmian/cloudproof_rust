@@ -226,9 +226,10 @@ class TestFindex(unittest.TestCase):
             self.findex_backend.insert_chain,
         )
 
-        self.findex_interface.upsert_wrapper(
+        inserted_kw = self.findex_interface.upsert_wrapper(
             self.msk, self.label, indexed_values_and_keywords, {}
         )
+        self.assertEqual(len(inserted_kw), 5)
         self.assertEqual(len(self.findex_backend.entry_table), 5)
         self.assertEqual(len(self.findex_backend.chain_table), 5)
 
