@@ -18,5 +18,5 @@ jobs:
       branch-java: v6.0.0
       branch-js: cloudproof_2_2_0
       branch-flutter: feature/findex_5
-      branch-python: v4.0.2
+      branch-python: feature/findex_5_0_0
     secrets: inherit
