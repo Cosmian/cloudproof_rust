@@ -4,7 +4,7 @@ name: Cloudproof build
 on:
   push:
     tags:
-      - "*"
+      - '*'
   pull_request:
 
 jobs:
@@ -17,6 +17,6 @@ jobs:
       findex-cloud-version: 0.1.0
       branch-java: v6.0.0
       branch-js: cloudproof_2_2_0
-      branch-flutter: fix/cloudproof_header
+      branch-flutter: feature/findex_5
       branch-python: v4.0.2
     secrets: inherit
