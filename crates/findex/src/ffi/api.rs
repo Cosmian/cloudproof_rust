@@ -747,12 +747,16 @@ unsafe extern "C" fn ffi_upsert<
     // Serialize the results.
     let serialized_keywords = ffi_unwrap!(serialize_set(&new_keywords), "serialize new keywords");
 
-    ffi_write_bytes!(
-        "upsert results",
-        &serialized_keywords,
-        upsert_results_ptr,
-        upsert_results_len
-    );
-
-    0
+    if serialized_keywords.len() > upsert_results_len as i32 as usize {
+        set_last_error(FfiError::Generic(format!(
+            "The pre-allocated upsert_result buffer is too small; need {} bytes, allocated {}",
+            serialized_keywords.len(),
+            upsert_results_len as i32
+        )));
+        1
+    } else {
+        std::slice::from_raw_parts_mut(upsert_results_ptr.cast(), serialized_keywords.len())
+            .copy_from_slice(&serialized_keywords);
+        0
+    }
 }
