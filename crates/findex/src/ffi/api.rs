@@ -1,4 +1,5 @@
 //! Defines the Findex FFI API.
+
 use std::{collections::HashSet, convert::TryFrom, num::NonZeroU32};
 
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -32,8 +33,8 @@ use crate::{
 
 /// Re-export the `cosmian_ffi` `h_get_error` function to clients with the old
 /// `get_last_error` name The `h_get_error` is available inside the final lib
-/// (but tools like ffigen seems to not parse it…) Maybe we can find a solution
-/// by changing the function name inside the clients.
+/// (but tools like `ffigen` seems to not parse it…) Maybe we can find a
+/// solution by changing the function name inside the clients.
 ///
 /// # Safety
 ///
@@ -368,7 +369,7 @@ pub unsafe extern "C" fn h_compact(
 /// # Parameters
 ///
 /// - `search_results`          : (output) search result
-/// - `token`                   : findex cloud token
+/// - `token`                   : Findex cloud token
 /// - `label`                   : public information used to derive UIDs
 /// - `keywords`                : `serde` serialized list of base64 keywords
 /// - `base_url`                : base URL for Findex Cloud (with http prefix
@@ -649,10 +650,9 @@ unsafe fn ffi_search<
     };
 
     // Serialize the results.
-    // We should be able to use the output buffer as the Serializer sink to avoid to
-    // copy the buffer (right now the crypto_core serializer doesn't provide à
-    // constructor from an existing slice)
-    // <https://github.com/Cosmian/findex/issues/20>
+    // We should be able to use the output buffer as the `Serializer` sink to avoid
+    // to copy the buffer (right now the `crypto_core` serializer doesn't provide a
+    // constructor from an existing slice) <https://github.com/Cosmian/findex/issues/20>
     let mut serializer = Serializer::new();
     ffi_unwrap!(
         serializer.write_leb128_u64(results.len() as u64),
@@ -745,15 +745,7 @@ unsafe extern "C" fn ffi_upsert<
     };
 
     // Serialize the results.
-    let mut serializer = Serializer::new();
-    ffi_unwrap!(
-        serializer.write_leb128_u64(new_keywords.len() as u64),
-        "error serializing length"
-    );
-    for keyword in new_keywords {
-        ffi_unwrap!(serializer.write_vec(&keyword), "error serializing keyword");
-    }
-    let serialized_keywords = serializer.finalize();
+    let serialized_keywords = ffi_unwrap!(serialize_set(&new_keywords), "serialize new keywords");
 
     ffi_write_bytes!(
         "upsert results",
