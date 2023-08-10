@@ -46,11 +46,11 @@ impl FindexRedis {
     /// When the value does not match, the previous value is returned
     const CONDITIONAL_UPSERT_SCRIPT: &str = r#"
         local value=redis.call('GET',ARGV[1])
-        if((value==false) or (not(value == false) and (ARGV[2] == value))) then 
+        if((value==false) or (not(value == false) and (ARGV[2] == value))) then
             redis.call('SET', ARGV[1], ARGV[3])
-            return  
-        else 
-            return value 
+            return
+        else
+            return value
         end;
     "#;
 
@@ -74,7 +74,7 @@ impl FindexRedis {
         })
     }
 
-    /// Connect to a Redis server with a ConnectionManager
+    /// Connect to a Redis server with a `ConnectionManager`
     ///
     /// # Arguments
     ///  * `redis_url` - The Redis URL e.g.

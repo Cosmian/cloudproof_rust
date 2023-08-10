@@ -58,7 +58,7 @@ pub async fn test_compact() -> Result<(), FindexRedisError> {
     let label = Label::random(&mut rng);
 
     let mut additions: HashMap<IndexedValue, HashSet<Keyword>> = HashMap::new();
-    for (index, employee) in dataset.all_values().await.iter() {
+    for (index, employee) in &dataset.all_values().await {
         // for the Location, we use the index of the employee in the dataset
         let iv = IndexedValue::from(Location::from(index.to_be_bytes().as_slice()));
         // for the keywords, we use the employee's attributes
