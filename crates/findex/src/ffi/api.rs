@@ -169,7 +169,7 @@ pub unsafe extern "C" fn h_search(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert(
-    upsert_results_ptr: *mut i8,
+    upsert_results_ptr: *mut *const i8,
     upsert_results_len: *mut i32,
     master_key_ptr: *const u8,
     master_key_len: i32,
@@ -463,7 +463,7 @@ pub unsafe extern "C" fn h_search_cloud(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert_cloud(
-    upsert_results_ptr: *mut i8,
+    upsert_results_ptr: *mut *const i8,
     upsert_results_len: *mut i32,
     token_ptr: *const i8,
     label_ptr: *const u8,
@@ -724,7 +724,7 @@ unsafe extern "C" fn ffi_upsert<
 >(
     findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
-    upsert_results_ptr: *mut i8,
+    upsert_results_ptr: *mut *const i8,
     upsert_results_len: *mut i32,
     label_ptr: *const u8,
     label_len: i32,
@@ -782,12 +782,8 @@ unsafe extern "C" fn ffi_upsert<
     // Serialize the results.
     let serialized_keywords = ffi_unwrap!(serialize_set(&new_keywords), "serialize new keywords");
 
-    ffi_write_bytes!(
-        "upsert results",
-        &serialized_keywords,
-        upsert_results_ptr,
-        upsert_results_len
-    );
-
+    *upsert_results_len = serialized_keywords.len() as i32;
+    *upsert_results_ptr = serialized_keywords.as_ptr().cast::<i8>();
+    std::mem::forget(serialized_keywords);
     0
 }
