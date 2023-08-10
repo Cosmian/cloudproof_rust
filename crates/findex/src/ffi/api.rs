@@ -1,10 +1,6 @@
 //! Defines the Findex FFI API.
 
-use std::{
-    collections::{HashMap, HashSet},
-    convert::TryFrom,
-    num::NonZeroU32,
-};
+use std::{collections::HashSet, convert::TryFrom, num::NonZeroU32};
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
@@ -16,8 +12,8 @@ use cosmian_findex::{
     parameters::{
         BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
-    CallbackError, Error as FindexError, FindexCompact, FindexSearch, FindexUpsert, IndexedValue,
-    KeyingMaterial, Keyword, Label,
+    CallbackError, Error as FindexError, FindexCompact, FindexSearch, FindexUpsert, KeyingMaterial,
+    Keyword, Label,
 };
 
 use super::error::ToErrorCode;
@@ -684,27 +680,6 @@ unsafe fn ffi_search<
     0
 }
 
-fn get_upsert_output_size(
-    additions: &HashMap<IndexedValue, HashSet<Keyword>>,
-    deletions: &HashMap<IndexedValue, HashSet<Keyword>>,
-) -> usize {
-    // Since `h_upsert` returns the set of keywords that have been inserted (and
-    // deleted), caller MUST know in advance how much memory is needed before
-    // calling `h_upsert`. In order to centralize into Rust the computation of the
-    // allocation size, 2 calls to `h_upsert` are required:
-    // - the first call is made with `upsert_results_len` with a 0 value. No
-    //   indexation at all is done. It simply returns an upper bound estimation of
-    //   the allocation size considering the maps `additions` and `deletions`.
-    // - the second call takes this returned value for `upsert_results_len`
-    additions
-        .values()
-        .flat_map(|set| set.iter().map(|e| e.len() + 8))
-        .sum::<usize>()
-        + deletions
-            .values()
-            .flat_map(|set| set.iter().map(|e| e.len() + 8))
-            .sum::<usize>()
-}
 /// Helper to merge the cloud and non-cloud implementations
 ///
 /// # Safety
@@ -749,16 +724,6 @@ unsafe extern "C" fn ffi_upsert<
         ),),
         "failed parsing deleted indexed values"
     );
-
-    let output_size = get_upsert_output_size(&additions, &deletions);
-    if *upsert_results_len < output_size as i32 {
-        set_last_error(FfiError::Generic(format!(
-            "The pre-allocated upsert_result buffer is too small; need {} bytes, allocated {}",
-            output_size, upsert_results_len as i32
-        )));
-        *upsert_results_len = output_size as i32;
-        return 1;
-    }
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
