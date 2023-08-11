@@ -6,7 +6,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
 use cosmian_ffi_utils::{
     error::{h_get_error, set_last_error, FfiError},
-    ffi_bail, ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes,
+    ffi_bail, ffi_read_bytes, ffi_read_string, ffi_return_bytes, ffi_unwrap,
 };
 use cosmian_findex::{
     parameters::{
@@ -72,13 +72,13 @@ pub unsafe extern "C" fn get_last_error(error_ptr: *mut i8, error_len: *mut i32)
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_search(
-    search_results_ptr: *mut i8,
+    search_results_ptr: *mut *const u8,
     search_results_len: *mut i32,
-    master_key_ptr: *const i8,
+    master_key_ptr: *const u8,
     master_key_len: i32,
     label_ptr: *const u8,
     label_len: i32,
-    keywords_ptr: *const i8,
+    keywords_ptr: *const u8,
     entry_table_number: u32,
     progress_callback: ProgressCallback,
     fetch_entry_callback: FetchEntryTableCallback,
@@ -165,7 +165,7 @@ pub unsafe extern "C" fn h_search(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert(
-    upsert_results_ptr: *mut *const i8,
+    upsert_results_ptr: *mut *const u8,
     upsert_results_len: *mut i32,
     master_key_ptr: *const u8,
     master_key_len: i32,
@@ -379,12 +379,12 @@ pub unsafe extern "C" fn h_compact(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_search_cloud(
-    search_results_ptr: *mut i8,
+    search_results_ptr: *mut *const u8,
     search_results_len: *mut i32,
     token_ptr: *const i8,
     label_ptr: *const u8,
     label_len: i32,
-    keywords_ptr: *const i8,
+    keywords_ptr: *const u8,
     base_url_ptr: *const i8,
 ) -> i32 {
     #[cfg(debug_assertions)]
@@ -459,7 +459,7 @@ pub unsafe extern "C" fn h_search_cloud(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert_cloud(
-    upsert_results_ptr: *mut *const i8,
+    upsert_results_ptr: *mut *const u8,
     upsert_results_len: *mut i32,
     token_ptr: *const i8,
     label_ptr: *const u8,
@@ -511,7 +511,7 @@ pub unsafe extern "C" fn h_upsert_cloud(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_generate_new_token(
-    token_ptr: *mut u8,
+    token_ptr: *mut *const u8,
     token_len: *mut i32,
     index_id_ptr: *const i8,
     fetch_entries_seed_ptr: *const u8,
@@ -572,12 +572,8 @@ pub unsafe extern "C" fn h_generate_new_token(
         "cannot generate random findex master key"
     );
 
-    ffi_write_bytes!(
-        "search results",
-        token.to_string().as_bytes(),
-        token_ptr,
-        token_len
-    );
+    let token_bytes = token.to_string().as_bytes().to_vec();
+    ffi_return_bytes!(token_bytes, token_ptr, token_len);
 
     0
 }
@@ -602,11 +598,11 @@ unsafe fn ffi_search<
 >(
     findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
-    search_results_ptr: *mut i8,
+    search_results_ptr: *mut *const u8,
     search_results_len: *mut i32,
     label_ptr: *const u8,
     label_len: i32,
-    keywords_ptr: *const i8,
+    keywords_ptr: *const u8,
 ) -> i32 {
     let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
     let label = Label::from(label_bytes);
@@ -668,15 +664,9 @@ unsafe fn ffi_search<
             "error serializing locations"
         );
     }
+
     let serialized_uids = serializer.finalize();
-
-    ffi_write_bytes!(
-        "search results",
-        &serialized_uids,
-        search_results_ptr,
-        search_results_len
-    );
-
+    ffi_return_bytes!(serialized_uids, search_results_ptr, search_results_len);
     0
 }
 
@@ -699,7 +689,7 @@ unsafe extern "C" fn ffi_upsert<
 >(
     findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
-    upsert_results_ptr: *mut *const i8,
+    upsert_results_ptr: *mut *const u8,
     upsert_results_len: *mut i32,
     label_ptr: *const u8,
     label_len: i32,
@@ -744,11 +734,7 @@ unsafe extern "C" fn ffi_upsert<
         }
     };
 
-    // Serialize the results.
     let serialized_keywords = ffi_unwrap!(serialize_set(&new_keywords), "serialize new keywords");
-
-    *upsert_results_len = serialized_keywords.len() as i32;
-    *upsert_results_ptr = serialized_keywords.as_ptr().cast::<i8>();
-    std::mem::forget(serialized_keywords);
+    ffi_return_bytes!(serialized_keywords, upsert_results_ptr, upsert_results_len);
     0
 }

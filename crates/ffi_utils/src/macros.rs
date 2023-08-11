@@ -62,6 +62,17 @@ macro_rules! ffi_bail {
     };
 }
 
+#[macro_export]
+macro_rules! ffi_return_bytes {
+    ($($bytes:expr, $ptr:ident, $len:ident $(,)?)+) => {
+        $(
+            *$len = $bytes.len() as i32;
+            *$ptr = $bytes.as_ptr();
+            std::mem::forget($bytes);
+        )+
+    };
+}
+
 /// Writes the given bytes to FFI buffers with checks.
 ///
 /// # Description
