@@ -16,25 +16,25 @@ use tracing::trace;
 
 use super::{error::FindexRedisError, RemovedLocationsFinder};
 
+/// The length of the prefix of the table name in bytes
+/// 0x00ee for the entry table
+/// 0x00ef for the chain table
+const TABLE_PREFIX_LENGTH: usize = 2;
+
 #[derive(Copy, Clone)]
 enum FindexTable {
-    Entry,
-    Chain,
+    Entry = 0xee,
+    Chain = 0xef,
 }
 
 /// Generate a key for the entry table or chain table
 fn key(table: FindexTable, uid: &[u8]) -> Vec<u8> {
-    let mut key = match table {
-        FindexTable::Entry => b"fe::".to_vec(),
-        FindexTable::Chain => b"fc::".to_vec(),
-    };
-    key.extend_from_slice(uid);
-    key
+    [&[0x00, table as u8], uid].concat()
 }
 
 pub struct FindexRedis {
     // we keep redis_url for the updateLines method
-    mgr: ConnectionManager,
+    manager: ConnectionManager,
     upsert_script: Script,
     removed_locations_finder: Arc<dyn RemovedLocationsFinder + Sync + Send>,
     compact_lock: RwLock<()>,
@@ -64,10 +64,10 @@ impl FindexRedis {
         removed_locations_finder: Arc<dyn RemovedLocationsFinder + Sync + Send>,
     ) -> Result<Self, FindexRedisError> {
         let client = redis::Client::open(redis_url)?;
-        let mgr = ConnectionManager::new(client).await?;
+        let manager = ConnectionManager::new(client).await?;
 
         Ok(FindexRedis {
-            mgr,
+            manager,
             upsert_script: Script::new(Self::CONDITIONAL_UPSERT_SCRIPT),
             removed_locations_finder,
             compact_lock: RwLock::new(()),
@@ -80,11 +80,11 @@ impl FindexRedis {
     ///  * `redis_url` - The Redis URL e.g.
     ///    "redis://user:password@localhost:6379"
     pub async fn connect_with_manager(
-        mgr: ConnectionManager,
+        manager: ConnectionManager,
         removed_locations_finder: Arc<dyn RemovedLocationsFinder + Sync + Send>,
     ) -> Result<Self, FindexRedisError> {
         Ok(FindexRedis {
-            mgr,
+            manager,
             upsert_script: Script::new(Self::CONDITIONAL_UPSERT_SCRIPT),
             removed_locations_finder,
             compact_lock: RwLock::new(()),
@@ -97,7 +97,7 @@ impl FindexRedis {
     /// This is definitive
     pub async fn clear_indexes(&self) -> Result<(), FindexRedisError> {
         redis::cmd("FLUSHDB")
-            .query_async(&mut self.mgr.clone())
+            .query_async(&mut self.manager.clone())
             .await?;
         Ok(())
     }
@@ -116,7 +116,7 @@ impl FindexRedis {
     /// The set of new keywords that were added
     pub async fn upsert(
         &self,
-        master_key: &[u8; 16],
+        master_key: &[u8; MASTER_KEY_LENGTH],
         label: &[u8],
         additions: HashMap<IndexedValue, HashSet<Keyword>>,
         deletions: HashMap<IndexedValue, HashSet<Keyword>>,
@@ -143,7 +143,7 @@ impl FindexRedis {
     /// - `max_depth`           : maximum recursion depth allowed
     pub async fn search(
         &self,
-        master_key: &[u8; 16],
+        master_key: &[u8; MASTER_KEY_LENGTH],
         label: &[u8],
         keywords: HashSet<Keyword>,
     ) -> Result<HashMap<Keyword, HashSet<Location>>, FindexRedisError> {
@@ -208,13 +208,17 @@ impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
     }
 
     async fn fetch_all_entry_table_uids(&self) -> Result<Uids<UID_LENGTH>, FindexRedisError> {
-        let keys: Vec<Vec<u8>> = self.mgr.clone().keys(key(FindexTable::Entry, b"*")).await?;
+        let keys: Vec<Vec<u8>> = self
+            .manager
+            .clone()
+            .keys(key(FindexTable::Entry, b"*"))
+            .await?;
         trace!("fetch_all_entry_table_uids num keywords: {}", keys.len());
         Ok(Uids(
             keys.iter()
                 .map(|v| {
                     let mut uid = [0u8; UID_LENGTH];
-                    uid.copy_from_slice(&v[4..]);
+                    uid.copy_from_slice(&v[TABLE_PREFIX_LENGTH..]);
                     Uid::from(uid)
                 })
                 .collect(),
@@ -234,19 +238,20 @@ impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
             return Ok(EncryptedMultiTable::default());
         }
 
+        // collect uids from the entry table
+        let uids: Vec<Uid<32>> = entry_table_uids.0.into_iter().collect();
+
         // build Redis keys
-        let keys: Vec<Vec<u8>> = entry_table_uids
-            .0
+        let keys: Vec<Vec<u8>> = uids
             .iter()
             .map(|uid| key(FindexTable::Entry, uid))
             .collect();
 
         // mget the values from the Redis keys
-        let values: Vec<Vec<u8>> = self.mgr.clone().mget(keys).await?;
+        let values: Vec<Vec<u8>> = self.manager.clone().mget(keys).await?;
 
         // discard empty values
-        let tuples = entry_table_uids
-            .0
+        let tuples = uids
             .into_iter()
             .zip(values)
             .filter(|(_uid, v)| !v.is_empty())
@@ -270,17 +275,17 @@ impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
             return Ok(EncryptedTable::default());
         }
 
-        let keys: Vec<Vec<u8>> = chain_table_uids
-            .0
+        // collect uids from the chain table
+        let uids: Vec<Uid<32>> = chain_table_uids.0.into_iter().collect();
+
+        let keys: Vec<Vec<u8>> = uids
             .iter()
             .map(|uid| key(FindexTable::Chain, uid))
             .collect();
-        let values: Vec<Vec<u8>> = self.mgr.clone().mget(keys).await?;
+        let values: Vec<Vec<u8>> = self.manager.clone().mget(keys).await?;
 
         Ok(EncryptedTable::from(
-            chain_table_uids
-                .0
-                .into_iter()
+            uids.into_iter()
                 .zip(values)
                 .filter(|(_uid, v)| !v.is_empty())
                 .collect::<HashMap<Uid<UID_LENGTH>, Vec<u8>>>(),
@@ -305,7 +310,7 @@ impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
                 .arg(key(FindexTable::Entry, &uid))
                 .arg(old_value.unwrap_or_default())
                 .arg(new_value)
-                .invoke_async(&mut self.mgr.clone())
+                .invoke_async(&mut self.manager.clone())
                 .await?;
             if !value.is_empty() {
                 rejected.insert(uid, value);
@@ -323,7 +328,7 @@ impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
         for item in items {
             pipe.set(key(FindexTable::Chain, &item.0), item.1);
         }
-        pipe.atomic().query_async(&mut self.mgr.clone()).await?;
+        pipe.atomic().query_async(&mut self.manager.clone()).await?;
         Ok(())
     }
 
@@ -335,10 +340,10 @@ impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
     ) -> Result<(), FindexRedisError> {
         // Prevent compacting while already compacting
         // We could add support to make sure we are not upserting
-        if self.compact_lock.try_read().is_err() {
-            return Err(FindexRedisError::Compacting);
-        }
-        let _compact_lock = self.compact_lock.write().await;
+        let _compact_lock = match self.compact_lock.try_write() {
+            Ok(lock) => lock,
+            Err(_) => return Err(FindexRedisError::Compacting), /* another thread is compacting already so we return an error */
+        };
 
         trace!(
             "update_lines chain_table_uids_to_remove: {}, new_encrypted_entry_table_items: {}, \
@@ -347,34 +352,61 @@ impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
             new_encrypted_entry_table_items.len(),
             new_encrypted_chain_table_items.len()
         );
-        // delete the entry table
-        let entry_keys: Vec<Vec<u8>> = self.mgr.clone().keys(key(FindexTable::Entry, b"*")).await?;
-        let mut pipeline = pipe();
-        for entry_key in entry_keys {
-            pipeline.del(entry_key);
-        }
-        pipeline.atomic().query_async(&mut self.mgr.clone()).await?;
+        // collect all the entry table keys to delete
+        let entry_keys_to_delete: Vec<Vec<u8>> = self
+            .manager
+            .clone()
+            .keys(key(FindexTable::Entry, b"*"))
+            .await?;
 
         // add new entry table entries
+        // keep track of the keys we added so we don't delete them later on
+        let mut new_keys: Vec<Vec<u8>> = Vec::with_capacity(new_encrypted_chain_table_items.len());
         let mut pipeline = pipe();
         for item in new_encrypted_entry_table_items {
-            pipeline.set(key(FindexTable::Entry, &item.0), item.1);
+            let key = key(FindexTable::Entry, &item.0);
+            pipeline.set(key.clone(), item.1);
+            // do not delete that key later on
+            new_keys.push(key);
         }
-        pipeline.atomic().query_async(&mut self.mgr.clone()).await?;
+        pipeline
+            .atomic()
+            .query_async(&mut self.manager.clone())
+            .await?;
 
         // delete the chain table
         let mut pipeline = pipe();
         for item in chain_table_uids_to_remove {
             pipeline.del(key(FindexTable::Chain, &item));
         }
-        pipeline.atomic().query_async(&mut self.mgr.clone()).await?;
+        pipeline
+            .atomic()
+            .query_async(&mut self.manager.clone())
+            .await?;
 
         // add new chain table entries
         let mut pipeline = pipe();
         for item in new_encrypted_chain_table_items {
             pipeline.set(key(FindexTable::Chain, &item.0), item.1);
         }
-        pipeline.atomic().query_async(&mut self.mgr.clone()).await?;
+        pipeline
+            .atomic()
+            .query_async(&mut self.manager.clone())
+            .await?;
+
+        // now delete the old entries
+        let mut pipeline = pipe();
+        for entry_key in entry_keys_to_delete {
+            // do not delete the new keys
+            if new_keys.contains(&entry_key) {
+                continue;
+            }
+            pipeline.del(entry_key);
+        }
+        pipeline
+            .atomic()
+            .query_async(&mut self.manager.clone())
+            .await?;
 
         Ok(())
     }

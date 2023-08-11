@@ -5,8 +5,10 @@
 #![cfg_attr(any(feature = "wasm_bindgen", feature = "ffi"), feature(const_option))]
 #![cfg_attr(feature = "cloud", feature(iter_next_chunk))]
 
-pub mod implementations;
 pub mod ser_de;
+
+#[cfg(any(feature = "findex-redis", feature = "findex-sqlite"))]
+pub mod implementations;
 
 #[cfg(feature = "cloud")]
 pub mod cloud;

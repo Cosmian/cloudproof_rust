@@ -1,6 +1,5 @@
 //! This file contains the implementation of the Sqlite database used for the
 //! tests.
-#![allow(dead_code)]
 
 use std::sync::{Arc, RwLock};
 
