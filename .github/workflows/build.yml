@@ -15,7 +15,7 @@ jobs:
       toolchain: nightly-2023-06-27
       kms-version: 4.4.3
       findex-cloud-version: 0.1.0
-      branch-java: feature/use_findex_v5.0.0
+      branch-java: feature/allocate_from_rust
       branch-js: cloudproof_2_2_0
       branch-flutter: feature/findex_5
       branch-python: feature/findex_5_0_0

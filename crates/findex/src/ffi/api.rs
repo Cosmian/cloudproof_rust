@@ -1,23 +1,19 @@
 //! Defines the Findex FFI API.
 
-use std::{
-    collections::{HashMap, HashSet},
-    convert::TryFrom,
-    num::NonZeroU32,
-};
+use std::{collections::HashSet, convert::TryFrom, num::NonZeroU32};
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
 use cosmian_ffi_utils::{
     error::{h_get_error, set_last_error, FfiError},
-    ffi_bail, ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes,
+    ffi_bail, ffi_read_bytes, ffi_read_string, ffi_return_bytes, ffi_unwrap,
 };
 use cosmian_findex::{
     parameters::{
         BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
     },
-    CallbackError, Error as FindexError, FindexCompact, FindexSearch, FindexUpsert, IndexedValue,
-    KeyingMaterial, Keyword, Label,
+    CallbackError, Error as FindexError, FindexCompact, FindexSearch, FindexUpsert, KeyingMaterial,
+    Keyword, Label,
 };
 
 use super::error::ToErrorCode;
@@ -76,13 +72,13 @@ pub unsafe extern "C" fn get_last_error(error_ptr: *mut i8, error_len: *mut i32)
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_search(
-    search_results_ptr: *mut i8,
+    search_results_ptr: *mut *const u8,
     search_results_len: *mut i32,
-    master_key_ptr: *const i8,
+    master_key_ptr: *const u8,
     master_key_len: i32,
     label_ptr: *const u8,
     label_len: i32,
-    keywords_ptr: *const i8,
+    keywords_ptr: *const u8,
     entry_table_number: u32,
     progress_callback: ProgressCallback,
     fetch_entry_callback: FetchEntryTableCallback,
@@ -169,7 +165,7 @@ pub unsafe extern "C" fn h_search(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert(
-    upsert_results_ptr: *mut i8,
+    upsert_results_ptr: *mut *const u8,
     upsert_results_len: *mut i32,
     master_key_ptr: *const u8,
     master_key_len: i32,
@@ -383,12 +379,12 @@ pub unsafe extern "C" fn h_compact(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_search_cloud(
-    search_results_ptr: *mut i8,
+    search_results_ptr: *mut *const u8,
     search_results_len: *mut i32,
     token_ptr: *const i8,
     label_ptr: *const u8,
     label_len: i32,
-    keywords_ptr: *const i8,
+    keywords_ptr: *const u8,
     base_url_ptr: *const i8,
 ) -> i32 {
     #[cfg(debug_assertions)]
@@ -463,7 +459,7 @@ pub unsafe extern "C" fn h_search_cloud(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_upsert_cloud(
-    upsert_results_ptr: *mut i8,
+    upsert_results_ptr: *mut *const u8,
     upsert_results_len: *mut i32,
     token_ptr: *const i8,
     label_ptr: *const u8,
@@ -515,7 +511,7 @@ pub unsafe extern "C" fn h_upsert_cloud(
 ///
 /// Cannot be safe since using FFI.
 pub unsafe extern "C" fn h_generate_new_token(
-    token_ptr: *mut u8,
+    token_ptr: *mut *const u8,
     token_len: *mut i32,
     index_id_ptr: *const i8,
     fetch_entries_seed_ptr: *const u8,
@@ -576,12 +572,8 @@ pub unsafe extern "C" fn h_generate_new_token(
         "cannot generate random findex master key"
     );
 
-    ffi_write_bytes!(
-        "search results",
-        token.to_string().as_bytes(),
-        token_ptr,
-        token_len
-    );
+    let token_bytes = token.to_string().as_bytes().to_vec();
+    ffi_return_bytes!(token_bytes, token_ptr, token_len);
 
     0
 }
@@ -606,11 +598,11 @@ unsafe fn ffi_search<
 >(
     findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
-    search_results_ptr: *mut i8,
+    search_results_ptr: *mut *const u8,
     search_results_len: *mut i32,
     label_ptr: *const u8,
     label_len: i32,
-    keywords_ptr: *const i8,
+    keywords_ptr: *const u8,
 ) -> i32 {
     let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
     let label = Label::from(label_bytes);
@@ -672,39 +664,12 @@ unsafe fn ffi_search<
             "error serializing locations"
         );
     }
+
     let serialized_uids = serializer.finalize();
-
-    ffi_write_bytes!(
-        "search results",
-        &serialized_uids,
-        search_results_ptr,
-        search_results_len
-    );
-
+    ffi_return_bytes!(serialized_uids, search_results_ptr, search_results_len);
     0
 }
 
-fn get_upsert_output_size(
-    additions: &HashMap<IndexedValue, HashSet<Keyword>>,
-    deletions: &HashMap<IndexedValue, HashSet<Keyword>>,
-) -> usize {
-    // Since `h_upsert` returns the set of keywords that have been inserted (and
-    // deleted), caller MUST know in advance how much memory is needed before
-    // calling `h_upsert`. In order to centralize into Rust the computation of the
-    // allocation size, 2 calls to `h_upsert` are required:
-    // - the first call is made with `upsert_results_len` with a 0 value. No
-    //   indexation at all is done. It simply returns an upper bound estimation of
-    //   the allocation size considering the maps `additions` and `deletions`.
-    // - the second call takes this returned value for `upsert_results_len`
-    additions
-        .values()
-        .flat_map(|set| set.iter().map(|e| e.len() + 8))
-        .sum::<usize>()
-        + deletions
-            .values()
-            .flat_map(|set| set.iter().map(|e| e.len() + 8))
-            .sum::<usize>()
-}
 /// Helper to merge the cloud and non-cloud implementations
 ///
 /// # Safety
@@ -724,7 +689,7 @@ unsafe extern "C" fn ffi_upsert<
 >(
     findex: T,
     master_key: &KeyingMaterial<MASTER_KEY_LENGTH>,
-    upsert_results_ptr: *mut i8,
+    upsert_results_ptr: *mut *const u8,
     upsert_results_len: *mut i32,
     label_ptr: *const u8,
     label_len: i32,
@@ -750,16 +715,6 @@ unsafe extern "C" fn ffi_upsert<
         "failed parsing deleted indexed values"
     );
 
-    let output_size = get_upsert_output_size(&additions, &deletions);
-    if *upsert_results_len < output_size as i32 {
-        set_last_error(FfiError::Generic(format!(
-            "The pre-allocated upsert_result buffer is too small; need {} bytes, allocated {}",
-            output_size, upsert_results_len as i32
-        )));
-        *upsert_results_len = output_size as i32;
-        return 1;
-    }
-
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime"
@@ -779,15 +734,7 @@ unsafe extern "C" fn ffi_upsert<
         }
     };
 
-    // Serialize the results.
     let serialized_keywords = ffi_unwrap!(serialize_set(&new_keywords), "serialize new keywords");
-
-    ffi_write_bytes!(
-        "upsert results",
-        &serialized_keywords,
-        upsert_results_ptr,
-        upsert_results_len
-    );
-
+    ffi_return_bytes!(serialized_keywords, upsert_results_ptr, upsert_results_len);
     0
 }
