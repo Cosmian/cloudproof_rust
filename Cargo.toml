@@ -1,13 +1,13 @@
 [workspace]
 members = [
-  "crates/aesgcm",
-  "crates/anonymization",
-  "crates/cloudproof",
-  "crates/cover_crypt",
-  "crates/ecies",
-  "crates/ffi_utils",
-  "crates/findex",
-  "crates/fpe",
+    "crates/aesgcm",
+    "crates/anonymization",
+    "crates/cloudproof",
+    "crates/cover_crypt",
+    "crates/ecies",
+    "crates/ffi_utils",
+    "crates/findex",
+    "crates/fpe",
 ]
 # some crates are on edition 2021 which defaults to `resolver = "2"`, but virtual workspaces default to `resolver = "1"`. Fix the resolver value to avoid surprises.
 resolver = "1"
@@ -15,12 +15,17 @@ resolver = "1"
 [workspace.dependencies]
 async-trait = "0.1.51"
 base64 = "0.21.0"
-cosmian_crypto_core = "9.0.0"
-cloudproof_cover_crypt = "12.0.1"
+cosmian_crypto_core = "9.0"
+cloudproof_cover_crypt = "12.0"
 cosmian_ffi_utils = "0.1.2"
 hex = "0.4.3"
 js-sys = "0.3"
-pyo3 = { version = "0.19.1", features = ["extension-module", "abi3", "abi3-py37", "generate-import-lib"] }
+pyo3 = { version = "0.19.1", features = [
+    "extension-module",
+    "abi3",
+    "abi3-py37",
+    "generate-import-lib",
+] }
 rand = "0.8"
 thiserror = "1.0"
 tracing = "0.1"
