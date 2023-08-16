@@ -75,10 +75,6 @@ impl FindexRedis {
     }
 
     /// Connect to a Redis server with a `ConnectionManager`
-    ///
-    /// # Arguments
-    ///  * `redis_url` - The Redis URL e.g.
-    ///    "redis://user:password@localhost:6379"
     pub async fn connect_with_manager(
         manager: ConnectionManager,
         removed_locations_finder: Arc<dyn RemovedLocationsFinder + Sync + Send>,
