@@ -136,7 +136,6 @@ impl FindexRedis {
     /// - `master_key`          : Findex master key
     /// - `label`               : public label
     /// - `keywords`            : keywords to search
-    /// - `max_depth`           : maximum recursion depth allowed
     pub async fn search(
         &self,
         master_key: &[u8; MASTER_KEY_LENGTH],
