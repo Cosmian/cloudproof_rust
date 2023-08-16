@@ -50,7 +50,7 @@ async-trait = { workspace = true, optional = true }
 base64 = { workspace = true, optional = true }
 cosmian_crypto_core = { workspace = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
-cosmian_findex = { version = "5.0.0" }
+cosmian_findex = "5.0.0"
 faker_rand = { version = "0.1", optional = true }
 futures = { version = "0.3.26", optional = true }
 hex = { workspace = true, optional = true }
