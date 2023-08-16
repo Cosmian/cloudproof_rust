@@ -347,39 +347,16 @@ impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
             new_encrypted_entry_table_items.len(),
             new_encrypted_chain_table_items.len()
         );
-        // collect all the entry table keys to delete
-        let entry_keys_to_delete: Vec<Vec<u8>> = self
+
+        // Collect all the entry table keys to delete.
+        let old_entries: Vec<Vec<u8>> = self
             .manager
             .clone()
             .keys(key(FindexTable::Entry, b"*"))
             .await?;
+        let mut old_entries = old_entries.into_iter().collect::<HashSet<_>>();
 
-        // add new entry table entries
-        // keep track of the keys we added so we don't delete them later on
-        let mut new_keys: Vec<Vec<u8>> = Vec::with_capacity(new_encrypted_chain_table_items.len());
-        let mut pipeline = pipe();
-        for item in new_encrypted_entry_table_items {
-            let key = key(FindexTable::Entry, &item.0);
-            pipeline.set(key.clone(), item.1);
-            // do not delete that key later on
-            new_keys.push(key);
-        }
-        pipeline
-            .atomic()
-            .query_async(&mut self.manager.clone())
-            .await?;
-
-        // delete the chain table
-        let mut pipeline = pipe();
-        for item in chain_table_uids_to_remove {
-            pipeline.del(key(FindexTable::Chain, &item));
-        }
-        pipeline
-            .atomic()
-            .query_async(&mut self.manager.clone())
-            .await?;
-
-        // add new chain table entries
+        // Add new chains.
         let mut pipeline = pipe();
         for item in new_encrypted_chain_table_items {
             pipeline.set(key(FindexTable::Chain, &item.0), item.1);
@@ -389,14 +366,34 @@ impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
             .query_async(&mut self.manager.clone())
             .await?;
 
-        // now delete the old entries
+        // Add new entries.
+        // keep track of the keys we added so we don't delete them later on
         let mut pipeline = pipe();
-        for entry_key in entry_keys_to_delete {
-            // do not delete the new keys
-            if new_keys.contains(&entry_key) {
-                continue;
-            }
+        for item in new_encrypted_entry_table_items {
+            let key = key(FindexTable::Entry, &item.0);
+            // Do not delete that key later on.
+            old_entries.remove(&key);
+            pipeline.set(key, item.1);
+        }
+        pipeline
+            .atomic()
+            .query_async(&mut self.manager.clone())
+            .await?;
+
+        // Delete old entries.
+        let mut pipeline = pipe();
+        for entry_key in old_entries {
             pipeline.del(entry_key);
+        }
+        pipeline
+            .atomic()
+            .query_async(&mut self.manager.clone())
+            .await?;
+
+        // Delete the old chains.
+        let mut pipeline = pipe();
+        for item in chain_table_uids_to_remove {
+            pipeline.del(key(FindexTable::Chain, &item));
         }
         pipeline
             .atomic()
