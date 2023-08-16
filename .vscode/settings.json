@@ -4,9 +4,25 @@
     "chinese",
     "ciphertext",
     "cleartext",
+    "cloudproof",
     "cosmian",
     "Cosmian",
     "Feistel",
-    "thiserror"
+    "findex",
+    "Findex",
+    "Rusqlite",
+    "sqlite",
+    "Sqlite",
+    "thiserror",
+    "upserting",
+    "Upserts"
+  ],
+  "rust-analyzer.cargo.features": [
+    "cloud",
+    "ffi",
+    "python",
+    "findex-redis",
+    "findex-sqlite",
+    "wasm_bindgen"
   ]
 }

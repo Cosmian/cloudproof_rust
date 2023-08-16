@@ -127,6 +127,15 @@ extern "C" {
     pub type SearchResults;
 }
 
+pub fn upsert_results_to_js(results: &HashSet<Keyword>) -> Result<ArrayOfKeywords, JsValue> {
+    let array = Array::new_with_length(results.len() as u32);
+    for (i, keyword) in results.iter().enumerate() {
+        let keyword_array = Uint8Array::from(keyword.to_vec().as_slice());
+        array.set(i as u32, keyword_array.into());
+    }
+    Ok(ArrayOfKeywords::from(JsValue::from(array)))
+}
+
 pub fn search_results_to_js(
     results: &HashMap<Keyword, HashSet<Location>>,
 ) -> Result<SearchResults, JsValue> {

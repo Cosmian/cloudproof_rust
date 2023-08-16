@@ -13,8 +13,8 @@ use super::core::{Fetch, FindexUser, Insert, Progress, Upsert};
 #[cfg(feature = "cloud")]
 use crate::cloud::{FindexCloud, Token, SIGNATURE_SEED_LENGTH};
 use crate::wasm_bindgen::core::{
-    search_results_to_js, to_indexed_values_to_keywords, ArrayOfKeywords, IndexedValuesAndWords,
-    SearchResults,
+    search_results_to_js, to_indexed_values_to_keywords, upsert_results_to_js, ArrayOfKeywords,
+    IndexedValuesAndWords, SearchResults,
 };
 
 /// See [`FindexSearch::search()`](cosmian_findex::FindexSearch::search).
@@ -46,7 +46,7 @@ pub async fn webassembly_search(
         .map(|word| Keyword::from(Uint8Array::new(&word).to_vec()))
         .collect::<HashSet<_>>();
 
-    let mut wasm_search = FindexUser {
+    let wasm_search = FindexUser {
         progress: Some(progress),
         fetch_entry: Some(fetch_entry),
         fetch_chain: Some(fetch_chain),
@@ -78,6 +78,9 @@ pub async fn webassembly_logger_init() {
 /// - `fetch_entries`               : the callback to fetch from the entry table
 /// - `upsert_entries`              : the callback to upsert in the entry table
 /// - `insert_chains`               : the callback to insert in the chain table
+///
+/// # Returns
+/// The list of new keywords added to the entry table.
 #[wasm_bindgen]
 pub async fn webassembly_upsert(
     master_key: Uint8Array,
@@ -87,7 +90,7 @@ pub async fn webassembly_upsert(
     fetch_entry: Fetch,
     upsert_entry: Upsert,
     insert_chain: Insert,
-) -> Result<(), JsValue> {
+) -> Result<ArrayOfKeywords, JsValue> {
     let master_key = KeyingMaterial::deserialize(&master_key.to_vec())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
     let label = Label::from(label_bytes.to_vec());
@@ -100,7 +103,7 @@ pub async fn webassembly_upsert(
         "error converting to indexed values and keywords"
     );
 
-    let mut wasm_upsert = FindexUser {
+    let wasm_upsert = FindexUser {
         progress: None,
         fetch_entry: Some(fetch_entry),
         fetch_chain: None,
@@ -110,9 +113,9 @@ pub async fn webassembly_upsert(
     let ret = wasm_upsert
         .upsert(&master_key, &label, additions, deletions)
         .await
-        .map_err(|e| JsValue::from(format!("During Findex upsert: {e}")));
+        .map_err(|e| JsValue::from(format!("During Findex upsert: {e}")))?;
     log::info!("upsert result: {:?}", ret);
-    ret
+    upsert_results_to_js(&ret)
 }
 
 /// See [`FindexSearch::search()`](cosmian_findex::FindexSearch::search).
@@ -133,7 +136,7 @@ pub async fn webassembly_search_cloud(
     keywords: ArrayOfKeywords,
     base_url: Option<String>,
 ) -> Result<SearchResults, JsValue> {
-    let mut findex_cloud = FindexCloud::new(&token, base_url)?;
+    let findex_cloud = FindexCloud::new(&token, base_url)?;
     let master_key = KeyingMaterial::deserialize(findex_cloud.token.findex_master_key.as_ref())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
 
@@ -169,8 +172,10 @@ pub async fn webassembly_upsert_cloud(
     additions: IndexedValuesAndWords,
     deletions: IndexedValuesAndWords,
     base_url: Option<String>,
-) -> Result<(), JsValue> {
-    let mut findex_cloud = FindexCloud::new(&token, base_url)?;
+) -> Result<ArrayOfKeywords, JsValue> {
+    use super::core::upsert_results_to_js;
+
+    let findex_cloud = FindexCloud::new(&token, base_url)?;
 
     let master_key = KeyingMaterial::deserialize(findex_cloud.token.findex_master_key.as_ref())
         .map_err(|e| JsValue::from(format!("While parsing master key for Findex upsert, {e}")))?;
@@ -184,10 +189,11 @@ pub async fn webassembly_upsert_cloud(
         "error converting indexed values and keywords"
     );
 
-    findex_cloud
+    let results = findex_cloud
         .upsert(&master_key, &label, additions, deletions)
         .await
-        .map_err(|e| JsValue::from(format!("During Findex Cloud upsert: {e}")))
+        .map_err(|e| JsValue::from(format!("During Findex Cloud upsert: {e}")))?;
+    upsert_results_to_js(&results)
 }
 
 /// Generate a new Findex Cloud token with reduced permissions

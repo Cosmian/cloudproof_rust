@@ -110,6 +110,8 @@ impl InternalFindex {
     /// aforementioned relations will result in finding (at least) the
     /// corresponding `IndexedValue`.
     ///
+    /// Returns the set of new keywords added to the index.
+    ///
     /// Parameters
     ///
     /// - `master_key`                  : Findex master key
@@ -121,8 +123,8 @@ impl InternalFindex {
         label: &LabelPy,
         additions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
         deletions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
-    ) -> PyResult<()> {
-        pyo3_unwrap!(
+    ) -> PyResult<HashSet<KeywordPy>> {
+        let new_keywords = pyo3_unwrap!(
             block_on(self.upsert(
                 &master_key.0,
                 &label.0,
@@ -131,7 +133,10 @@ impl InternalFindex {
             )),
             "error blocking for upsert"
         );
-        Ok(())
+        Ok(new_keywords
+            .into_iter()
+            .map(KeywordPy)
+            .collect::<HashSet<_>>())
     }
 
     /// Recursively search Findex graphs for `Location` corresponding to the
@@ -236,8 +241,10 @@ impl FindexCloud {
         additions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
         deletions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
         base_url: Option<String>,
-    ) -> PyResult<()> {
-        let mut findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
+    ) -> PyResult<HashSet<KeywordPy>> {
+        let findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
+        // we need to allow the clone or pyo3_unwrap will fail
+        #[allow(clippy::redundant_clone)]
         let master_key = findex.token.findex_master_key.clone();
 
         let future = findex.upsert(
@@ -250,8 +257,11 @@ impl FindexCloud {
             tokio::runtime::Runtime::new(),
             "async runtime creation error"
         );
-        pyo3_unwrap!(rt.block_on(future), "error blocking for upsert");
-        Ok(())
+        let new_keywords = pyo3_unwrap!(rt.block_on(future), "error blocking for upsert");
+        Ok(new_keywords
+            .into_iter()
+            .map(KeywordPy)
+            .collect::<HashSet<_>>())
     }
 
     /// Recursively search Findex graphs for `Location` corresponding to the
@@ -279,7 +289,9 @@ impl FindexCloud {
         keywords: Vec<ToKeyword>,
         base_url: Option<String>,
     ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
-        let mut findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
+        let findex = pyo3_unwrap!(FindexCloudRust::new(token, base_url), "error reading token");
+        // we need to allow the clone or pyo3_unwrap will fail
+        #[allow(clippy::redundant_clone)]
         let master_key = findex.token.findex_master_key.clone();
 
         let keywords_set: HashSet<Keyword> =

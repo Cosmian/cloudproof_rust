@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2023-08-04
+
+### Features
+
+- Upgrade to Findex 5.0.0
+- Added full Findex over Redis implementation
+
+### Ci
+
+- Added Macos support for Pyo3 builds
+
+### Bug Fixes
+
+- Better separation of core and tests for Findex implementation over Sqlite
+
 ## [2.1.1] - 2023-07-18
 
 ### Bug Fixes

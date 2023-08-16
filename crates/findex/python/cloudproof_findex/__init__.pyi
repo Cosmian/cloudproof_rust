@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Optional, Sequence, Union
+from typing import Callable, Dict, List, Optional, Sequence, Set, Union
 
 IndexedValuesAndKeywords = Dict[Union[Location, Keyword], Sequence[Union[str, Keyword]]]
 SearchResults = Dict[Union[Keyword, str, bytes], List[Location]]
@@ -182,7 +182,7 @@ class FindexCloud:
         additions: IndexedValuesAndKeywords,
         deletions: IndexedValuesAndKeywords,
         base_url: Optional[str] = None,
-    ) -> None:
+    ) -> Set[Keyword]:
         """Upserts the given relations between `IndexedValue` and `Keyword` into Findex tables.
 
         Args:
@@ -251,7 +251,7 @@ class InternalFindex:
         label: Label,
         additions: IndexedValuesAndKeywords,
         deletions: IndexedValuesAndKeywords,
-    ) -> None: ...
+    ) -> Set[Keyword]: ...
     def search_wrapper(
         self,
         msk: MasterKey,

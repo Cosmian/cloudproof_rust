@@ -102,16 +102,6 @@ pub type UpsertEntryTableCallback = extern "C" fn(
 /// `LEB128(n_lines) || UID_1 || LEB128(value_1.len() || value_1 || ...`
 pub type InsertChainTableCallback = extern "C" fn(chains_ptr: *const u8, chains_len: u32) -> i32;
 
-/// See [`FindexCallbacks::delete_chain()`](cosmian_findex::FindexCallbacks::delete_chain).
-///
-/// # Serialization
-///
-/// The input is serialized as follows:
-///
-/// `LEB128(n_uids) || UID_1 || UID_2 || ...`
-#[cfg(feature = "compact_live")]
-pub type DeleteChainCallback = extern "C" fn(chains_ptr: *const u8, chains_len: u32) -> i32;
-
 /// See [`FindexCallbacks::update_lines()`](cosmian_findex::FindexCallbacks::update_lines).
 ///
 /// # Serialization
@@ -146,25 +136,6 @@ pub type UpdateLinesCallback = extern "C" fn(
 pub type ListRemovedLocationsCallback = extern "C" fn(
     removed_locations_ptr: *mut u8,
     removed_locations_len: *mut u32,
-    locations_ptr: *const u8,
-    locations_len: u32,
-) -> i32;
-
-/// See
-/// [`FindexCallbacks::filter_removed_locations()`](cosmian_findex::FindexCallbacks::filter_removed_locations).
-///
-/// # Serialization
-///
-/// The input is serialized as follows:
-///
-/// `LEB128(locations.len()) || LEB128(location_bytes_1.len()
-///     || location_bytes_1 || ...`
-///
-/// Outputs should follow the same serialization.
-#[cfg(feature = "compact_live")]
-pub type FilterRemovedLocationsCallback = extern "C" fn(
-    remaining_locations_ptr: *mut u8,
-    remaining_locations_len: *mut u32,
     locations_ptr: *const u8,
     locations_len: u32,
 ) -> i32;

@@ -77,7 +77,7 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
     }
 
     async fn upsert_entry_table(
-        &mut self,
+        &self,
         items: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexWasmError> {
         log::info!("fetch_chain_table: items: {items}");
@@ -122,7 +122,7 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
     }
 
     async fn insert_chain_table(
-        &mut self,
+        &self,
         items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexWasmError> {
         log::info!("insert_chain_table: items: {items}");
@@ -140,8 +140,8 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         Ok(())
     }
 
-    fn update_lines(
-        &mut self,
+    async fn update_lines(
+        &self,
         _chain_table_uids_to_remove: Uids<UID_LENGTH>,
         _new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         _new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
@@ -151,29 +151,12 @@ impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
         ))
     }
 
-    fn list_removed_locations(
+    async fn list_removed_locations(
         &self,
         _locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexWasmError> {
         Err(FindexWasmError::Callback(
             "list removed locations not implemented in WASM".to_string(),
-        ))
-    }
-
-    #[cfg(feature = "compact_live")]
-    fn filter_removed_locations(
-        &self,
-        _locations: HashSet<Location>,
-    ) -> Result<HashSet<Location>, FindexWasmError> {
-        Err(FindexWasmError::Callback(
-            "filter removed locations not implemented in WASM".to_string(),
-        ))
-    }
-
-    #[cfg(feature = "compact_live")]
-    async fn delete_chain(&mut self, _uids: Uids<UID_LENGTH>) -> Result<(), FindexWasmError> {
-        Err(FindexWasmError::Callback(
-            "delete chain not implemented in WASM".to_string(),
         ))
     }
 }
