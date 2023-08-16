@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_findex"
-version = "4.0.3"
+version = "5.0.0"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -13,7 +13,6 @@ name = "cloudproof_findex"
 
 [features]
 cloud = ["reqwest", "base64"]
-compact_live = ["cosmian_findex/live_compact"]
 default = []
 ffi = [
   "cosmian_ffi_utils",
@@ -26,7 +25,15 @@ ffi = [
   "tracing-tree",
 ]
 python = ["cloud", "futures", "pyo3", "tokio/rt-multi-thread"]
-sqlite = ["base64", "faker_rand", "rand", "rusqlite", "serde", "serde_json"]
+findex-redis = ["async-trait", "redis", "serde", "serde_json", "thiserror"]
+findex-sqlite = [
+  "base64",
+  "faker_rand",
+  "rand",
+  "rusqlite",
+  "serde",
+  "serde_json",
+]
 wasm_bindgen = [
   "cloud",
   "js-sys",
@@ -39,10 +46,11 @@ wasm_bindgen = [
 
 [dependencies]
 # Optional dependencies
+async-trait = { workspace = true, optional = true }
 base64 = { workspace = true, optional = true }
 cosmian_crypto_core = { workspace = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
-cosmian_findex = "4.0.3"
+cosmian_findex = { version = "5.0.0" }
 faker_rand = { version = "0.1", optional = true }
 futures = { version = "0.3.26", optional = true }
 hex = { workspace = true, optional = true }
@@ -50,10 +58,12 @@ js-sys = { workspace = true, optional = true }
 log = { version = "0.4.6", optional = true }
 pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 rand = { workspace = true, optional = true }
+redis = { version = "0.23", features = ["aio", "ahash", "script", "connection-manager", "tokio-comp"], optional = true }
 reqwest = { version = "0.11.14", features = ["rustls-tls"], default-features = false, optional = true }
 rusqlite = { version = "0.28", features = ["bundled"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0.93", optional = true }
+thiserror = { workspace = true, optional = true }
 tokio = { version = "1.25.0", optional = true }
 tracing = { workspace = true, optional = true }
 tracing-log = { workspace = true, optional = true }
@@ -65,3 +75,14 @@ wasm-logger = { version = "0.2.0", optional = true }
 
 [dev-dependencies]
 actix-rt = "2.8"
+serial_test = "2.0.0"
+
+[[test]]
+name = "test_sqlite"
+path = "tests/sqlite/test_sqlite.rs"
+required-features = ["findex-sqlite"]
+
+[[test]]
+name = "test_redis"
+path = "tests/redis/test_redis.rs"
+required-features = ["findex-redis"]

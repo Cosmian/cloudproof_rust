@@ -208,7 +208,7 @@ class TestFindex(unittest.TestCase):
         self.findex_backend = FindexHashmap(self.db)
         self.findex_interface = InternalFindex()
 
-    def test_upsert_search(self) -> None:
+    def test_upsert(self) -> None:
         indexed_values_and_keywords: IndexedValuesAndKeywords = {
             Location.from_int(k): v for k, v in self.db.items()
         }
@@ -218,6 +218,30 @@ class TestFindex(unittest.TestCase):
             self.findex_interface.upsert_wrapper(
                 self.msk, self.label, indexed_values_and_keywords, {}
             )
+
+        # Set upsert callbacks here
+        self.findex_interface.set_upsert_callbacks(
+            self.findex_backend.fetch_entry,
+            self.findex_backend.upsert_entry,
+            self.findex_backend.insert_chain,
+        )
+
+        res = self.findex_interface.upsert_wrapper(
+            self.msk, self.label, indexed_values_and_keywords, {}
+        )
+        # 5 keywords returned since "Sheperd" is duplicated
+        self.assertEqual(len(res), 5)
+
+        res = self.findex_interface.upsert_wrapper(
+            self.msk, self.label, {Location.from_int(4): ['John', 'Snow']}, {}
+        )
+        # 1 keyword returned since "John" is already indexed
+        self.assertEqual(res, set(['Snow']))
+
+    def test_upsert_search(self) -> None:
+        indexed_values_and_keywords: IndexedValuesAndKeywords = {
+            Location.from_int(k): v for k, v in self.db.items()
+        }
 
         # Set upsert callbacks here
         self.findex_interface.set_upsert_callbacks(

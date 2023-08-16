@@ -7,6 +7,9 @@
 
 pub mod ser_de;
 
+#[cfg(any(feature = "findex-redis", feature = "findex-sqlite"))]
+pub mod implementations;
+
 #[cfg(feature = "cloud")]
 pub mod cloud;
 
@@ -15,9 +18,6 @@ pub mod ffi;
 
 #[cfg(feature = "python")]
 pub mod pyo3;
-
-#[cfg(feature = "sqlite")]
-pub mod sqlite;
 
 #[cfg(feature = "wasm_bindgen")]
 pub mod wasm_bindgen;

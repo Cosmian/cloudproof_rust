@@ -1,8 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
-#[cfg(feature = "compact_live")]
-use cosmian_findex::FindexLiveCompact;
 use cosmian_findex::{
     parameters::{
         BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
@@ -152,7 +150,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
 
     #[tracing::instrument(fields(modifications = %modifications), ret(Display), err)]
     async fn upsert_entry_table(
-        &mut self,
+        &self,
         modifications: UpsertData<UID_LENGTH>,
     ) -> Result<EncryptedTable<UID_LENGTH>, FindexFfiError> {
         let upsert_entry = unwrap_callback!("upsert_entry", self, upsert_entry);
@@ -202,7 +200,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
 
     #[tracing::instrument(fields(items = %items), ret, err)]
     async fn insert_chain_table(
-        &mut self,
+        &self,
         items: EncryptedTable<UID_LENGTH>,
     ) -> Result<(), FindexFfiError> {
         info!("items: {items}");
@@ -236,8 +234,8 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
         ret,
         err
     )]
-    fn update_lines(
-        &mut self,
+    async fn update_lines(
+        &self,
         chain_table_uids_to_remove: Uids<UID_LENGTH>,
         new_encrypted_entry_table_items: EncryptedTable<UID_LENGTH>,
         new_encrypted_chain_table_items: EncryptedTable<UID_LENGTH>,
@@ -277,7 +275,7 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     }
 
     #[tracing::instrument(ret, err)]
-    fn list_removed_locations(
+    async fn list_removed_locations(
         &self,
         locations: HashSet<Location>,
     ) -> Result<HashSet<Location>, FindexFfiError> {
@@ -326,77 +324,6 @@ impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
 
         Ok(locations_to_remove)
     }
-
-    #[cfg(feature = "compact_live")]
-    fn filter_removed_locations(
-        &self,
-        locations: HashSet<Location>,
-    ) -> Result<HashSet<Location>, FindexFfiError> {
-        let filter_removed_locations =
-            unwrap_callback!("filter_removed_locations", self, filter_removed_locations);
-
-        let serialized_chain_table_uids_to_remove = wrapping_callback_ser_de_error_with_context!(
-            serialize_set(&locations),
-            "serializing locations for filter removed locations callback"
-        );
-
-        let mut output_bytes = vec![0_u8; serialized_chain_table_uids_to_remove.len()];
-        let output_ptr = output_bytes.as_mut_ptr().cast::<u8>();
-        let mut output_len = u32::try_from(serialized_chain_table_uids_to_remove.len())?;
-
-        let error_code = filter_removed_locations(
-            output_ptr,
-            &mut output_len,
-            serialized_chain_table_uids_to_remove.as_ptr(),
-            u32::try_from(serialized_chain_table_uids_to_remove.len())?,
-        );
-
-        if error_code != ErrorCode::Success.code() {
-            return Err(FindexFfiError::UserCallbackErrorCode {
-                callback_name: "list removed locations",
-                code: error_code,
-            });
-        }
-
-        if output_len == 0 {
-            return Ok(HashSet::new());
-        }
-
-        let output_locations_bytes =
-            unsafe { std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize) };
-
-        let locations = wrapping_callback_ser_de_error_with_context!(
-            deserialize_set(output_locations_bytes),
-            "deserializing existing locations from filter removed locations callback"
-        )
-        .into_iter()
-        .collect();
-
-        Ok(locations)
-    }
-
-    #[cfg(feature = "compact_live")]
-    async fn delete_chain(&mut self, uids: Uids<UID_LENGTH>) -> Result<(), FindexFfiError> {
-        let delete_chain = unwrap_callback!("delete_chain", self, delete_chain);
-
-        // Callback input
-        let serialized_items = wrapping_callback_ser_de_error_with_context!(
-            serialize_set(&uids.0),
-            "serializing uids for delete chains callback"
-        );
-
-        // FFI callback
-        let res = delete_chain(serialized_items.as_ptr(), serialized_items.len() as u32);
-
-        if ErrorCode::Success.code() != res {
-            return Err(FindexFfiError::UserCallbackErrorCode {
-                callback_name: "delete_chain",
-                code: res,
-            });
-        }
-
-        Ok(())
-    }
 }
 
 impl FetchChains<UID_LENGTH, BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KWI_LENGTH, FindexFfiError>
@@ -441,20 +368,4 @@ impl
         FindexFfiError,
     > for FindexUser
 {
-}
-
-#[cfg(feature = "compact_live")]
-impl
-    FindexLiveCompact<
-        UID_LENGTH,
-        BLOCK_LENGTH,
-        CHAIN_TABLE_WIDTH,
-        MASTER_KEY_LENGTH,
-        KWI_LENGTH,
-        KMAC_KEY_LENGTH,
-        FindexFfiError,
-    > for FindexUser
-{
-    const BATCH_SIZE: usize = 100;
-    const NOISE_RATIO: f64 = 0.5;
 }

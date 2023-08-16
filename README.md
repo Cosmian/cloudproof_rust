@@ -25,16 +25,16 @@ The Cloudproof Rust repository provides these interfaces such as FFI, WebAssembl
 - [Licensing](#licensing)
 - [Cryptographic primitives](#cryptographic-primitives)
 - [Building and testing](#building-and-testing)
-  * [Building the library for `cloudproof_java`](#building-the-library-for-cloudproof_java)
-  * [Building the library for `cloudproof_flutter`](#building-the-library-for-cloudproof_flutter)
-  * [Build the library for `cloudproof_js`](#build-the-library-for-cloudproof_js)
-  * [Build the library for `cloudproof_python`](#build-the-library-for-cloudproof_python)
-  * [Building the library for a different glibc](#building-the-library-for-a-different-glibc)
+  - [Building the library for `cloudproof_java`](#building-the-library-for-cloudproof_java)
+  - [Building the library for `cloudproof_flutter`](#building-the-library-for-cloudproof_flutter)
+  - [Build the library for `cloudproof_js`](#build-the-library-for-cloudproof_js)
+  - [Build the library for `cloudproof_python`](#build-the-library-for-cloudproof_python)
+  - [Building the library for a different glibc](#building-the-library-for-a-different-glibc)
 - [Benchmarks](#benchmarks)
 - [Documentation](#documentation)
-  * [CoverCrypt](#covercrypt)
-  * [Findex](#findex)
-  * [Format Preserving Encryption](#format-preserving-encryption)
+  - [CoverCrypt](#covercrypt)
+  - [Findex](#findex)
+  - [Format Preserving Encryption](#format-preserving-encryption)
 - [Releases](#releases)
 
 <!-- tocstop -->
@@ -48,12 +48,12 @@ The library is available under a dual licensing scheme Affero GPL/v3 and commerc
 These interfaces are based on:
 
 - [CoverCrypt](https://github.com/Cosmian/cover_crypt) algorithm which allows
-creating ciphertexts for a set of attributes and issuing user keys with access
-policies over these attributes. `CoverCrypt` offers Post-Quantum resistance.
+  creating ciphertexts for a set of attributes and issuing user keys with access
+  policies over these attributes. `CoverCrypt` offers Post-Quantum resistance.
 
 - [Findex](https://github.com/Cosmian/findex) which is a cryptographic protocol designed to securely make search queries on
-an untrusted cloud server. Thanks to its encrypted indexes, large databases can
-securely be outsourced without compromising usability.
+  an untrusted cloud server. Thanks to its encrypted indexes, large databases can
+  securely be outsourced without compromising usability.
 
 - [FPE](./crates/fpe/README.md) provides `Format Preserving Encryption` (FPE) techniques for use in a zero-trust environment. These techniques are based on FPE-FF1 which is described in [NIST:800-38G](https://nvlpubs.nist.gov/nistpubs/specialpublications/nist.sp.800-38g.pdf).
 
@@ -103,10 +103,12 @@ The `.so` libraries can then be found in `target/release/`.
 From the root directory:
 
 ```bash
-wasm-pack build --release --features wasm_bindgen
+wasm-pack build -t web --release --features wasm_bindgen
 ```
 
 The `.wasm` libraries can then be found in `pkg/`.
+
+These can be used to test new functionalities in cloudproof_js.
 
 ### Build the library for `cloudproof_python`
 
@@ -118,7 +120,7 @@ maturin build --release --manifest-path crates/<cover_crypt or findex>/Cargo.tom
 
 **Note**: when a new function or class is added to the PyO3 interface, its
 signature needs to be added to
-[`**init**.pyi`](./crates/<cover_crypt or findex>/python/cloudproof_<cover_crypt or findex>/**init**.pyi).
+[`**init**.pyi`](./crates/<cover*crypt or findex>/python/cloudproof*<cover_crypt or findex>/**init**.pyi).
 
 To run tests on the Python interface, run:
 

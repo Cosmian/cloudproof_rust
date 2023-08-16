@@ -1,3 +1,9 @@
+//! This file contains the implementation of the Sqlite database used for the
+//! tests.
+
+use std::sync::{Arc, RwLock};
+
+use cloudproof_findex::implementations::sqlite::Error;
 use faker_rand::{
     en_us::addresses::PostalCode,
     fr_fr::{
@@ -9,8 +15,6 @@ use faker_rand::{
 };
 use rusqlite::{Connection, Result};
 use serde::{Deserialize, Serialize};
-
-use crate::sqlite::Error;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize)]
@@ -61,13 +65,20 @@ impl Default for User {
     }
 }
 
-pub struct SqliteDatabase;
+pub struct SqliteDatabase {
+    connection: Arc<RwLock<Connection>>,
+}
 
 impl SqliteDatabase {
-    pub(crate) fn new(connection: &Connection, dataset_path: &str) -> Result<Self, Error> {
-        Self::create_tables(connection)?;
-        Self::insert_users(connection, dataset_path)?;
-        Ok(Self {})
+    pub(crate) fn new(
+        connection: Arc<RwLock<Connection>>,
+        dataset_path: &str,
+    ) -> Result<Self, Error> {
+        let cnx_arc = connection.clone();
+        let cnx = cnx_arc.read().expect("Rusqlite connection lock poisoned");
+        Self::create_tables(&cnx)?;
+        Self::insert_users(&cnx, dataset_path)?;
+        Ok(Self { connection })
     }
 
     fn create_tables(conn: &Connection) -> Result<(), Error> {
@@ -145,8 +156,12 @@ impl SqliteDatabase {
         Ok(())
     }
 
-    pub(crate) fn select_all_users(connection: &Connection) -> Result<Vec<User>, Error> {
-        let mut stmt = connection.prepare("SELECT * FROM users")?;
+    pub(crate) fn select_all_users(&self) -> Result<Vec<User>, Error> {
+        let cnx = self
+            .connection
+            .write()
+            .expect("Rusqlite connection lock poisoned");
+        let mut stmt = cnx.prepare("SELECT * FROM users")?;
         let user_iter = stmt.query_map([], |row| {
             Ok(User {
                 firstName: row.get("firstName")?,
