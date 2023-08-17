@@ -19,8 +19,8 @@ name = "cloudproof"
 
 [features]
 cloud = ["cloudproof_findex/cloud"]
-findex-redis = ["cloudproof_findex/findex-redis"]
-findex-sqlite = ["cloudproof_findex/findex-sqlite"]
+findex-redis = ["cloudproof_findex/findex-redis", "cloudproof_findex/default"]
+findex-sqlite = ["cloudproof_findex/findex-sqlite", "cloudproof_findex/default"]
 default = [
     "cloudproof_aesgcm/default",
     "cloudproof_anonymization/default",
