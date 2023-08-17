@@ -2,11 +2,11 @@
 name = "cloudproof"
 version = "2.2.0"
 authors = [
-  "Théophile Brézot<theophile.brezot@cosmian.com>",
-  "Emmanuel Coste<emmanuel.coste@cosmian.com>",
-  "Thibaud Dauce<thibaud.dauce@cosmian.com>",
-  "Bruno Grieder<bruno.grieder@cosmian.com>",
-  "Hugo Rosenkranz-costa<hugo.rosenkranz@cosmian.com>",
+    "Théophile Brézot<theophile.brezot@cosmian.com>",
+    "Emmanuel Coste<emmanuel.coste@cosmian.com>",
+    "Thibaud Dauce<thibaud.dauce@cosmian.com>",
+    "Bruno Grieder<bruno.grieder@cosmian.com>",
+    "Hugo Rosenkranz-costa<hugo.rosenkranz@cosmian.com>",
 ]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -19,23 +19,24 @@ name = "cloudproof"
 
 [features]
 cloud = ["cloudproof_findex/cloud"]
+findex-redis = ["cloudproof_findex/findex-redis"]
+findex-sqlite = ["cloudproof_findex/findex-sqlite"]
 default = [
-  "cloudproof_aesgcm/default",
-  "cloudproof_anonymization/default",
-  "cloudproof_cover_crypt/default",
-  "cloudproof_ecies/default",
-  "cloudproof_findex/default",
-  "cloudproof_fpe/default",
+    "cloudproof_aesgcm/default",
+    "cloudproof_anonymization/default",
+    "cloudproof_cover_crypt/default",
+    "cloudproof_ecies/default",
+    "cloudproof_findex/default",
+    "cloudproof_fpe/default",
 ]
 ffi = [
-  "cloudproof_aesgcm/ffi",
-  "cloudproof_anonymization/ffi",
-  "cloudproof_cover_crypt/ffi",
-  "cloudproof_ecies/ffi",
-  "cloudproof_findex/ffi",
-  "cloudproof_fpe/ffi",
+    "cloudproof_aesgcm/ffi",
+    "cloudproof_anonymization/ffi",
+    "cloudproof_cover_crypt/ffi",
+    "cloudproof_ecies/ffi",
+    "cloudproof_findex/ffi",
+    "cloudproof_fpe/ffi",
 ]
-
 [dependencies]
 ######
 # Watchout: for convenience in development mode, we can set one of those following dependencies such as:
