@@ -21,3 +21,8 @@ pub mod pyo3;
 
 #[cfg(feature = "wasm_bindgen")]
 pub mod wasm_bindgen;
+
+pub mod reexport {
+    pub use cosmian_crypto_core as crypto_core;
+    pub use cosmian_findex as findex;
+}
