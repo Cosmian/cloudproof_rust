@@ -7,8 +7,6 @@ All notable changes to this project will be documented in this file.
 ### Bug Fixes
 
 - Reexport `Findex` features in `cloudproof` crate
-- Reexport `zeroize`
-- Reexport `tiny-keccak` for feature `sha3`
 
 ## [2.2.0] - 2023-08-04
 
