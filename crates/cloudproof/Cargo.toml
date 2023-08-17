@@ -44,7 +44,7 @@ ffi = [
 # cloudproof_anonymization = { path = "../anonymization", optional = true }
 # cloudproof_cover_crypt = { path = "../cover_crypt", optional = true }
 # cloudproof_ecies = { path = "../ecies", optional = true }
-# cloudproof_findex = { path = "../findex", optional = true }
+cloudproof_findex = { path = "../findex", optional = true }
 # cloudproof_fpe = { path = "../fpe", optional = true }
 # But:
 #  - to publish `cloudproof` package, we must publish those sub-crates individually and manually.
@@ -54,5 +54,5 @@ cloudproof_aesgcm = { version = "0.1.1", optional = true }
 cloudproof_anonymization = { version = "0.1.1", optional = true }
 cloudproof_cover_crypt = { version = "12.0.1", optional = true }
 cloudproof_ecies = { version = "0.1.1", optional = true }
-cloudproof_findex = { version = "5.0.0", optional = true }
+# cloudproof_findex = { version = "5.0.0", optional = true }
 cloudproof_fpe = { version = "0.2.1", optional = true }
