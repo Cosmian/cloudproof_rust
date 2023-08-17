@@ -22,6 +22,4 @@ pub mod pyo3;
 #[cfg(feature = "wasm_bindgen")]
 pub mod wasm_bindgen;
 
-pub mod reexport {
-    pub use cosmian_findex as findex;
-}
+pub use cosmian_findex::*;
