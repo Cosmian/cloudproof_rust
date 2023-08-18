@@ -145,7 +145,7 @@ class Label:
             Label
         """
 
-class MasterKey:
+class Key:
     """Input key used to derive Findex keys."""
 
     def to_bytes(self) -> bytes:
@@ -155,22 +155,43 @@ class MasterKey:
             bytes
         """
     @staticmethod
-    def random() -> MasterKey:
+    def random() -> Key:
         """Initialize a random key.
 
         Returns:
-            MasterKey
+            Key
         """
     @staticmethod
-    def from_bytes(key_bytes: bytes) -> MasterKey:
+    def from_bytes(key_bytes: bytes) -> Key:
         """Load from bytes.
 
         Args:
             key_bytes (bytes)
 
         Returns:
-            MasterKey
+            Key
         """
+
+class PythonCallbacks:
+    """Callback structure used to instantiate a Findex backend."""
+    @staticmethod
+    def new() -> PythonCallbacks:
+        """Initialize a new callback structure."""
+
+    def set_fetch(self, callback: object):
+        """Sets the fetch callback."""
+
+    def set_upsert(self, callback: object):
+        """Sets the upsert callback."""
+
+    def set_insert(self, callback: object):
+        """Sets the insert callback."""
+
+    def set_delete(self, callback: object):
+        """Sets the delete callback."""
+
+    def set_dump_tokens(self, callback: object):
+        """Sets the dump_tokens callback."""
 
 class FindexCloud:
     """Ready to use Findex with a backend powered by Cosmian."""
@@ -223,46 +244,37 @@ class FindexCloud:
         insert_chains_seed: bytes,
     ) -> str: ...
 
-class InternalFindex:
-    """This is an internal class. See `cloudproof_py.findex.Findex` abstract class instead."""
-
-    def set_upsert_callbacks(
+class Findex:
+    @staticmethod
+    def new_with_sqlite_backend(entry_path: str, chain_path: str) -> Findex: ...
+    @staticmethod
+    def new_with_redis_backend(entry_url: str, chain_url: str) -> Findex: ...
+    @staticmethod
+    def new_with_custom_backend(entry_callbacks: PythonCallbacks,
+                                chain_callbacks: PythonCallbacks) -> Findex: ...
+    def add(
         self,
-        fetch_entry_table: Callable,
-        upsert_entry_table: Callable,
-        insert_chain_table: Callable,
-    ) -> None: ...
-    def set_search_callbacks(
-        self,
-        fetch_entry_table: Callable,
-        fetch_chain_table: Callable,
-    ) -> None: ...
-    def set_compact_callbacks(
-        self,
-        fetch_entry_table: Callable,
-        fetch_chain_table: Callable,
-        update_lines: Callable,
-        list_removed_locations: Callable,
-        fetch_all_entry_table_uids: Callable,
-    ) -> None: ...
-    def upsert_wrapper(
-        self,
-        master_key: MasterKey,
+        key: Key,
         label: Label,
         additions: IndexedValuesAndKeywords,
+    ) -> Set[Keyword]: ...
+    def delete(
+        self,
+        key: Key,
+        label: Label,
         deletions: IndexedValuesAndKeywords,
     ) -> Set[Keyword]: ...
-    def search_wrapper(
+    def search(
         self,
-        msk: MasterKey,
+        key: Key,
         label: Label,
         keywords: Sequence[Union[Keyword, str]],
-        progress_callback: Optional[Callable] = None,
+        interrupt: Optional[Callable] = None,
     ) -> SearchResults: ...
-    def compact_wrapper(
+    def compact(
         self,
-        master_key: MasterKey,
-        new_master_key: MasterKey,
+        key: Key,
+        new_key: Key,
         new_label: Label,
         num_reindexing_before_full_set: int,
     ) -> None: ...

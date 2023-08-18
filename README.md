@@ -1,8 +1,8 @@
 # Cosmian Cloudproof Data Protection Library
 
-![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/ci.yml/badge.svg)
-![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/build.yml/badge.svg)
-![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/benches.yml/badge.svg)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/ci.yml/badge.svg?branch=main)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/build.yml/badge.svg?branch=main)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/benches.yml/badge.svg?branch=main)
 
 Cloudproof Encryption provides libraries and tools to encrypt and securely index large repositories of data with advanced, high-performance security primitives with Post-Quantum resistance.
 
@@ -118,8 +118,7 @@ From the root directory:
 maturin build --release --manifest-path crates/<cover_crypt or findex>/Cargo.toml --features python
 ```
 
-**Note**: when a new function or class is added to the PyO3 interface, its
-signature needs to be added to
+**Note**: when a new function or class is added to the PyO3 interface, its signature needs to be added to
 [`**init**.pyi`](./crates/<cover*crypt or findex>/python/cloudproof*<cover_crypt or findex>/**init**.pyi).
 
 To run tests on the Python interface, run:

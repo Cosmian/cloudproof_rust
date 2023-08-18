@@ -9,7 +9,7 @@ pub use cloudproof_cover_crypt::ffi as cover_crypt_ffi;
 #[cfg(feature = "ffi")]
 pub use cloudproof_ecies::ffi as ecies_ffi;
 #[cfg(feature = "ffi")]
-pub use cloudproof_findex::ffi as findex_ffi;
+pub use cloudproof_findex::interfaces::ffi as findex_ffi;
 #[cfg(feature = "ffi")]
 pub use cloudproof_fpe::ffi as fpe_ffi;
 

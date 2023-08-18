@@ -18,9 +18,9 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 name = "cloudproof"
 
 [features]
-cloud = ["cloudproof_findex/cloud"]
-findex-redis = ["cloudproof_findex/findex-redis", "cloudproof_findex/default"]
-findex-sqlite = ["cloudproof_findex/findex-sqlite", "cloudproof_findex/default"]
+cloud = ["cloudproof_findex/backend-cloud"]
+findex-redis = ["cloudproof_findex/backend-redis"]
+findex-sqlite = ["cloudproof_findex/backend-sqlite"]
 default = [
   "cloudproof_aesgcm/default",
   "cloudproof_anonymization/default",
@@ -40,19 +40,19 @@ ffi = [
 [dependencies]
 ######
 # Watchout: for convenience in development mode, we can set one of those following dependencies such as:
-# cloudproof_aesgcm = { path = "../aesgcm", optional = true }
-# cloudproof_anonymization = { path = "../anonymization", optional = true }
-# cloudproof_cover_crypt = { path = "../cover_crypt", optional = true }
-# cloudproof_ecies = { path = "../ecies", optional = true }
-# cloudproof_findex = { path = "../findex", optional = true }
-# cloudproof_fpe = { path = "../fpe", optional = true }
+ cloudproof_aesgcm = { path = "../aesgcm", optional = true }
+ cloudproof_anonymization = { path = "../anonymization", optional = true }
+ cloudproof_cover_crypt = { path = "../cover_crypt", optional = true }
+ cloudproof_ecies = { path = "../ecies", optional = true }
+ cloudproof_findex = { path = "../findex", optional = true }
+ cloudproof_fpe = { path = "../fpe", optional = true }
 # But:
 #  - to publish `cloudproof` package, we must publish those sub-crates individually and manually.
 #  - cbindgen follows the cargo deps and fetch the crates from crates.io.
 ######
-cloudproof_aesgcm = { version = "0.1.2", optional = true }
-cloudproof_anonymization = { version = "0.1.1", optional = true }
-cloudproof_cover_crypt = { version = "13.0.0", optional = true }
-cloudproof_ecies = { version = "0.1.2", optional = true }
-cloudproof_findex = { version = "5.0.4", optional = true }
-cloudproof_fpe = { version = "0.2.1", optional = true }
+#cloudproof_aesgcm = { version = "0.1.2", optional = true }
+#cloudproof_anonymization = { version = "0.1.1", optional = true }
+#cloudproof_cover_crypt = { version = "13.0.0", optional = true }
+#cloudproof_ecies = { version = "0.1.2", optional = true }
+#cloudproof_findex = { version = "5.0.4", optional = true }
+#cloudproof_fpe = { version = "0.2.1", optional = true }

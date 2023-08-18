@@ -13,10 +13,10 @@ jobs:
     with:
       project-name: cloudproof_rust
       toolchain: stable
-      kms-version: feat-edit_policy
-      findex-cloud-version: 0.1.0
-      branch-java: feat/edit_policy
-      branch-js: feat/edit_policy
-      branch-flutter: feat/edit_policy
-      branch-python: feat/edit_policy
+      kms-version: 4.9.0
+      findex-cloud-version: 0.3.1
+      branch-java: feature/findex_v6
+      branch-js: feature/findex_v6
+      branch-flutter: develop
+      branch-python: develop
     secrets: inherit
