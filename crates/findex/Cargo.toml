@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_findex"
-version = "5.0.1"
+version = "5.0.2"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -68,7 +68,7 @@ pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 rand = { workspace = true, optional = true }
 redis = { version = "0.23", features = ["aio", "ahash", "script", "connection-manager", "tokio-comp"], optional = true }
 reqwest = { version = "0.11.14", features = ["rustls-tls"], default-features = false, optional = true }
-rusqlite = { version = "0.28", features = ["bundled"], optional = true }
+rusqlite = { version = "0.29", features = ["bundled"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0.93", optional = true }
 thiserror = { workspace = true, optional = true }
