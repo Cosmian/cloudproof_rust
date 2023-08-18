@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.1] - 2023-08-17
+
+### Bug Fixes
+
+- Reexport `Findex` features in `cloudproof` crate
+
 ## [2.2.0] - 2023-08-04
 
 ### Features

@@ -21,3 +21,5 @@ pub mod pyo3;
 
 #[cfg(feature = "wasm_bindgen")]
 pub mod wasm_bindgen;
+
+pub use cosmian_findex::*;

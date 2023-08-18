@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_findex"
-version = "5.0.0"
+version = "5.0.1"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -15,33 +15,41 @@ name = "cloudproof_findex"
 cloud = ["reqwest", "base64"]
 default = []
 ffi = [
-  "cosmian_ffi_utils",
-  "base64",
-  "serde_json",
-  "tokio/rt-multi-thread",
-  "tracing",
-  "tracing-log",
-  "tracing-subscriber",
-  "tracing-tree",
+    "cosmian_ffi_utils",
+    "base64",
+    "serde_json",
+    "tokio/rt-multi-thread",
+    "tracing",
+    "tracing-log",
+    "tracing-subscriber",
+    "tracing-tree",
 ]
 python = ["cloud", "futures", "pyo3", "tokio/rt-multi-thread"]
-findex-redis = ["async-trait", "redis", "serde", "serde_json", "thiserror"]
+findex-redis = [
+    "async-trait",
+    "redis",
+    "serde",
+    "serde_json",
+    "thiserror",
+    "tokio",
+    "tracing",
+]
 findex-sqlite = [
-  "base64",
-  "faker_rand",
-  "rand",
-  "rusqlite",
-  "serde",
-  "serde_json",
+    "base64",
+    "faker_rand",
+    "rand",
+    "rusqlite",
+    "serde",
+    "serde_json",
 ]
 wasm_bindgen = [
-  "cloud",
-  "js-sys",
-  "hex",
-  "wasm-bindgen",
-  "wasm-bindgen-futures",
-  "log",
-  "wasm-logger",
+    "cloud",
+    "js-sys",
+    "hex",
+    "wasm-bindgen",
+    "wasm-bindgen-futures",
+    "log",
+    "wasm-logger",
 ]
 
 [dependencies]
@@ -58,8 +66,16 @@ js-sys = { workspace = true, optional = true }
 log = { version = "0.4.6", optional = true }
 pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 rand = { workspace = true, optional = true }
-redis = { version = "0.23", features = ["aio", "ahash", "script", "connection-manager", "tokio-comp"], optional = true }
-reqwest = { version = "0.11.14", features = ["rustls-tls"], default-features = false, optional = true }
+redis = { version = "0.23", features = [
+    "aio",
+    "ahash",
+    "script",
+    "connection-manager",
+    "tokio-comp",
+], optional = true }
+reqwest = { version = "0.11.14", features = [
+    "rustls-tls",
+], default-features = false, optional = true }
 rusqlite = { version = "0.28", features = ["bundled"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0.93", optional = true }
