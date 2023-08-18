@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
 use cosmian_findex::{
     IndexedValue as IndexedValueRust, IndexedValueToKeywordsMap, Keyword, KeywordToDataMap,
@@ -9,7 +12,7 @@ use tokio::runtime::Runtime;
 
 use super::types::ToKeyword;
 use crate::{
-    backends::custom::python::PythonCallbacks,
+    backends::{custom::python::PythonCallbacks, rest::AuthorizationToken},
     interfaces::python::types::{
         Key as KeyPy, Keyword as KeywordPy, Label as LabelPy, Location as LocationPy,
         ToIndexedValue,
@@ -17,7 +20,7 @@ use crate::{
     BackendConfiguration, InstantiatedFindex,
 };
 
-#[pyclass]
+#[pyclass(unsendable)]
 pub struct Findex {
     runtime: Runtime,
     instance: InstantiatedFindex,
@@ -68,6 +71,26 @@ impl Findex {
         );
         let instance = pyo3_unwrap!(
             runtime.block_on(InstantiatedFindex::new(configuration)),
+            "error instantiating Findex with Redis backend"
+        );
+        Ok(Self { runtime, instance })
+    }
+
+    /// Instantiates Findex with a REST backend.
+    #[staticmethod]
+    pub fn new_with_rest_backend(token: String, url: String) -> PyResult<Self> {
+        let token = pyo3_unwrap!(
+            AuthorizationToken::from_str(&token),
+            "cannot convert token string"
+        );
+        let runtime = pyo3_unwrap!(
+            tokio::runtime::Runtime::new(),
+            "error creating Tokio runtime"
+        );
+        let instance = pyo3_unwrap!(
+            runtime.block_on(InstantiatedFindex::new(BackendConfiguration::Rest(
+                token, url
+            ))),
             "error instantiating Findex with Redis backend"
         );
         Ok(Self { runtime, instance })
@@ -286,10 +309,7 @@ fn search_results_to_python(
         .map(|(keyword, locations)| {
             (
                 KeywordPy(keyword),
-                locations
-                    .into_iter()
-                    .map(|location| LocationPy(location))
-                    .collect::<Vec<_>>(),
+                locations.into_iter().map(LocationPy).collect::<Vec<_>>(),
             )
         })
         .collect::<HashMap<_, _>>()

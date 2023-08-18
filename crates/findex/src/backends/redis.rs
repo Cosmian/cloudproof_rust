@@ -33,10 +33,16 @@ pub struct RedisEntryBackend {
     upsert_script: Script,
 }
 
+impl std::fmt::Debug for RedisEntryBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RedisEntryBackend").finish()
+    }
+}
+
 /// The conditional upsert script used to only update a table if the
 /// indexed value matches ARGV[2]. When the value does not match, the
 /// indexed value is returned.
-const CONDITIONAL_UPSERT_SCRIPT: &str = r#"
+const CONDITIONAL_UPSERT_SCRIPT: &str = r"
         local value=redis.call('GET',ARGV[1])
         if((value==false) or (not(value == false) and (ARGV[2] == value))) then
             redis.call('SET', ARGV[1], ARGV[3])
@@ -44,7 +50,7 @@ const CONDITIONAL_UPSERT_SCRIPT: &str = r#"
         else
             return value
         end;
-    "#;
+    ";
 
 impl RedisEntryBackend {
     /// Connects to a Redis server using the given URL.
@@ -93,10 +99,9 @@ impl EdxStore<ENTRY_LENGTH> for RedisEntryBackend {
 
         keys.iter()
             .filter_map(|v| {
-                if &v[..TABLE_PREFIX_LENGTH] == &[0x00, FindexTable::Entry as u8] {
+                if v[..TABLE_PREFIX_LENGTH] == [0x00, FindexTable::Entry as u8] {
                     Some(Token::try_from(&v[TABLE_PREFIX_LENGTH..]).map_err(Self::Error::Findex))
                 } else {
-                    println!("not an entry: {:?}", &v[..TABLE_PREFIX_LENGTH]);
                     None
                 }
             })
@@ -202,6 +207,12 @@ impl EdxStore<ENTRY_LENGTH> for RedisEntryBackend {
 
 pub struct RedisChainBackend(ConnectionManager);
 
+impl std::fmt::Debug for RedisChainBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("RedisChainBackend").finish()
+    }
+}
+
 impl RedisChainBackend {
     /// Connects to a Redis server using the given `url`.
     pub async fn connect(url: &str) -> Result<Self, BackendError> {
@@ -239,7 +250,7 @@ impl EdxStore<LINK_LENGTH> for RedisChainBackend {
         &self,
         tokens: Tokens,
     ) -> Result<TokenWithEncryptedValueList<LINK_LENGTH>, Self::Error> {
-        trace!("fetch_entry_table num keywords: {}:", tokens.len(),);
+        trace!("fetch_entry_table num keywords: {}:", tokens.len());
         if tokens.is_empty() {
             return Ok(Default::default());
         }
@@ -417,10 +428,7 @@ mod tests {
         let rejected = et
             .upsert(
                 rejected.clone(),
-                rejected
-                    .keys()
-                    .map(|k| (Token::from(*k), new_value.clone()))
-                    .collect(),
+                rejected.keys().map(|k| (*k, new_value.clone())).collect(),
             )
             .await?;
         assert_eq!(0, rejected.len());

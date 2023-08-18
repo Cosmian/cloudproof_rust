@@ -1,16 +1,13 @@
 //! Defines Findex interfaces for other languages.
 
-#[cfg(all(feature = "wasm_bindgen", feature = "python"))]
-compile_error!("Python interface cannot be compiled along with the WASM interface.");
-
 pub mod backends;
 
 #[cfg(any(
-    feature = "backend-cloud",
     feature = "backend-ffi",
     feature = "backend-python",
-    feature = "backend-sqlite",
     feature = "backend-redis",
+    feature = "backend-rest",
+    feature = "backend-sqlite",
     feature = "backend-wasm",
 ))]
 mod instantiation;
@@ -25,11 +22,11 @@ pub mod logger;
 pub mod ser_de;
 
 #[cfg(any(
-    feature = "backend-cloud",
     feature = "backend-ffi",
     feature = "backend-python",
-    feature = "backend-sqlite",
     feature = "backend-redis",
+    feature = "backend-rest",
+    feature = "backend-sqlite",
     feature = "backend-wasm",
 ))]
 pub use instantiation::{BackendConfiguration, InstantiatedFindex};
@@ -37,7 +34,7 @@ pub use instantiation::{BackendConfiguration, InstantiatedFindex};
 /// Error code returned by the callbacks.
 ///
 /// They can be generated either by the Rust code or the FFI backend.
-#[cfg(any(feature = "backend-ffi", feature = "interface-ffi"))]
+#[cfg(any(feature = "backend-ffi", feature = "ffi"))]
 #[repr(i32)]
 #[derive(Debug)]
 pub enum ErrorCode {
@@ -50,7 +47,7 @@ pub enum ErrorCode {
     Other(i32),
 }
 
-#[cfg(any(feature = "backend-ffi", feature = "interface-ffi"))]
+#[cfg(any(feature = "backend-ffi", feature = "ffi"))]
 impl ErrorCode {
     #[must_use]
     pub fn code(&self) -> i32 {

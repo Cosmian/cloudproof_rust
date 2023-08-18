@@ -51,7 +51,7 @@ impl From<JsValue> for SerializationError {
         Self(format!(
             "Js error: {}",
             match e.dyn_ref::<JsString>() {
-                Some(string) => format!("{}", string),
+                Some(string) => format!("{string}"),
                 None => match e.dyn_ref::<Object>() {
                     Some(object) => format!("{}", object.to_string()),
                     None => format!("{e:?}"),
@@ -61,7 +61,7 @@ impl From<JsValue> for SerializationError {
     }
 }
 
-#[cfg(any(feature = "backend-cloud", feature = "backend-ffi", feature = "ffi"))]
+#[cfg(any(feature = "backend-ffi", feature = "backend-rest", feature = "ffi"))]
 pub mod ffi_ser_de;
 #[cfg(any(feature = "backend-wasm", feature = "wasm_bindgen"))]
 pub mod wasm_ser_de;

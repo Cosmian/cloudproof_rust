@@ -2,9 +2,12 @@
 from array import array
 from pickle import dump
 import unittest
+import requests
+import json
 from typing import Dict, List, Sequence, Set, Tuple
 
 from cloudproof_findex import (
+    AuthorizationToken,
     Findex,
     IndexedValuesAndKeywords,
     Keyword,
@@ -12,7 +15,7 @@ from cloudproof_findex import (
     Location,
     Key,
     ProgressResults,
-    PythonCallbacks
+    PythonCallbacks,
 )
 
 
@@ -210,7 +213,7 @@ def define_custom_backends(is_with_test: bool = False):
 
     def upsert_entries(old_values: dict, new_values: dict):
         res = {}
-        for (uid, new_value) in new_values.items():
+        for uid, new_value in new_values.items():
             if old_values.get(uid) == entry_table.get(uid):
                 entry_table[uid] = new_value
             elif entry_table.__contains__(uid):
@@ -218,9 +221,9 @@ def define_custom_backends(is_with_test: bool = False):
         return res
 
     def insert_links(new_links: Dict):
-        for (uid, value) in new_links.items():
+        for uid, value in new_links.items():
             if chain_table.__contains__(uid):
-                raise ValueError("collision in the Chain Table on uid: " + uid)
+                raise ValueError('collision in the Chain Table on uid: ' + uid)
             chain_table[uid] = value
 
     def delete(uids, table: Dict):
@@ -231,17 +234,16 @@ def define_custom_backends(is_with_test: bool = False):
         return entry_table.keys()
 
     if is_with_test:
-        k1 = "my first key"
-        k2 = "my second key"
+        k1 = 'my first key'
+        k2 = 'my second key'
         v1 = [1, 2, 3]
         v2 = [4, 5, 6]
         v3 = [7, 8, 9]
 
         # Test values can be upserted.
-        res = upsert_entries({}, {k1: v1 })
+        res = upsert_entries({}, {k1: v1})
         assert res == {}
         assert v1 == fetch([k1], entry_table)[k1]
-
 
         res = upsert_entries({k1: v1}, {k1: v2})
         assert res == {}
@@ -259,7 +261,7 @@ def define_custom_backends(is_with_test: bool = False):
 
         try:
             insert_links({k1: v2})
-            raise ValueError("collision on key: " + k1)
+            raise ValueError('collision on key: ' + k1)
         except:
             pass
 
@@ -293,15 +295,29 @@ class TestFindex(unittest.TestCase):
             3: ['John', 'Sheperd'],
         }
 
+        # Parameters used by the cloud backend.
+        # url = 'http://localhost:8080'
+        # res = requests.get(url + '/indexes', headers={'Content-Type': 'application/json'}, json='{name: "Test"}')
+        # response = res.json()
+        # index = response[0]
+        # token = AuthorizationToken.new(index_id=index['public_id'],
+        #                                findex_key=Key.random(),
+        #                                fetch_entries_key=Key.from_bytes(index['fetch_entries_key']),
+        #                                fetch_chains_key=Key.from_bytes(index['fetch_chains_key']),
+        #                                upsert_entries_key=Key.from_bytes(index['upsert_entries_key']),
+        #    insert_chains_key=Key.from_bytes(index['insert_chains_key']))
+
+        # Parameters used by the custom backend.
         (entry_callbacks, chain_callbacks) = define_custom_backends()
 
         self.findex_interfaces = {
-                "sqlite":
-                Findex.new_with_sqlite_backend('./target/tmp/test.sqlite',
-                                               './target/tmp/test.sqlite'),
-                "redis": Findex.new_with_redis_backend('redis://localhost:6379',
-                                                       'redis://localhost:6379'),
-                "custom": Findex.new_with_custom_backend(entry_callbacks, chain_callbacks)
+            'sqlite': Findex.new_with_sqlite_backend(
+                '/tmp/cloudpoof_findex.sqlite', '/tmp/cloudproof_findex.sqlite'
+            ),
+            # "redis": Findex.new_with_redis_backend('redis://localhost:6379', # Github CI runners (on windows and macos) does not support docker (and then no redis container)
+            #                                        'redis://localhost:6379'),
+            # 'rest': Findex.new_with_rest_backend(token.__str__(), url),
+            'custom': Findex.new_with_custom_backend(entry_callbacks, chain_callbacks),
         }
 
     def test_upsert(self) -> None:
@@ -309,11 +325,9 @@ class TestFindex(unittest.TestCase):
             Location.from_int(k): v for k, v in self.db.items()
         }
 
-        for (backend, instance) in self.findex_interfaces.items():
-            print("Test upserting on {} backend.", backend)
-            res = instance.add(
-                self.msk, self.label, indexed_values_and_keywords
-            )
+        for backend, instance in self.findex_interfaces.items():
+            print('Test upserting on {} backend.', backend)
+            res = instance.add(self.msk, self.label, indexed_values_and_keywords)
             # 5 keywords returned since "Sheperd" is duplicated
             self.assertEqual(len(res), 5)
 
@@ -328,8 +342,8 @@ class TestFindex(unittest.TestCase):
             Location.from_int(k): v for k, v in self.db.items()
         }
 
-        for (backend, instance) in self.findex_interfaces.items():
-            print("Test upserting and search on {} backend.", backend)
+        for backend, instance in self.findex_interfaces.items():
+            print('Test upserting and search on {} backend.', backend)
             instance.add(self.msk, self.label, indexed_values_and_keywords)
 
             res = instance.search(
@@ -348,8 +362,8 @@ class TestFindex(unittest.TestCase):
             Location.from_int(k): v for k, v in self.db.items()
         }
 
-        for (backend, instance) in self.findex_interfaces.items():
-            print("Test graph upserting and search on {} backend.", backend)
+        for backend, instance in self.findex_interfaces.items():
+            print('Test graph upserting and search on {} backend.', backend)
             instance.add(self.msk, self.label, indexed_values_and_keywords)
 
             # Adding custom keywords graph
@@ -394,57 +408,55 @@ class TestFindex(unittest.TestCase):
             # only one location found after early stopping
             self.assertEqual(len(res['Mar']), 1)
 
+    # def test_compact(self) -> None:
+    #     # use upsert, search and compact callbacks
+    #     self.findex_interface.set_upsert_callbacks(
+    #         self.findex_backend.fetch_entry,
+    #         self.findex_backend.upsert_entry,
+    #         self.findex_backend.insert_chain,
+    #     )
+    #     self.findex_interface.set_search_callbacks(
+    #         self.findex_backend.fetch_entry,
+    #         self.findex_backend.fetch_chain,
+    #     )
+    #     self.findex_interface.set_compact_callbacks(
+    #         self.findex_backend.fetch_entry,
+    #         self.findex_backend.fetch_chain,
+    #         self.findex_backend.update_lines,
+    #         self.findex_backend.list_removed_locations,
+    #         self.findex_backend.fetch_all_entry_table_uids,
+    #     )
 
-"""
-    def test_compact(self) -> None:
-        # use upsert, search and compact callbacks
-        self.findex_interface.set_upsert_callbacks(
-            self.findex_backend.fetch_entry,
-            self.findex_backend.upsert_entry,
-            self.findex_backend.insert_chain,
-        )
-        self.findex_interface.set_search_callbacks(
-            self.findex_backend.fetch_entry,
-            self.findex_backend.fetch_chain,
-        )
-        self.findex_interface.set_compact_callbacks(
-            self.findex_backend.fetch_entry,
-            self.findex_backend.fetch_chain,
-            self.findex_backend.update_lines,
-            self.findex_backend.list_removed_locations,
-            self.findex_backend.fetch_all_entry_table_uids,
-        )
+    #     indexed_values_and_keywords: IndexedValuesAndKeywords = {
+    #         Location.from_int(k): v for k, v in self.db.items()
+    #     }
+    #     self.findex_interface.upsert_wrapper(
+    #         self.msk, self.label, indexed_values_and_keywords, {}
+    #     )
 
-        indexed_values_and_keywords: IndexedValuesAndKeywords = {
-            Location.from_int(k): v for k, v in self.db.items()
-        }
-        self.findex_interface.upsert_wrapper(
-            self.msk, self.label, indexed_values_and_keywords, {}
-        )
+    #     new_label = Label.random()
+    #     res = self.findex_interface.search_wrapper(self.msk, new_label, ["Sheperd"])
+    #     # new_label cannot search before compacting
+    #     self.assertEqual(len(res["Sheperd"]), 0)
 
-        new_label = Label.random()
-        res = self.findex_interface.search_wrapper(self.msk, new_label, ["Sheperd"])
-        # new_label cannot search before compacting
-        self.assertEqual(len(res["Sheperd"]), 0)
+    #     # removing 2nd db line
+    #     del self.db[2]
+    #     self.findex_interface.compact_wrapper(self.msk, self.msk, new_label, 1)
 
-        # removing 2nd db line
-        del self.db[2]
-        self.findex_interface.compact_wrapper(self.msk, self.msk, new_label, 1)
+    #     # now new_label can perform search
+    #     res = self.findex_interface.search_wrapper(self.msk, new_label, ["Sheperd"])
+    #     self.assertEqual(len(res["Sheperd"]), 2)
+    #     # but not the previous label
+    #     res = self.findex_interface.search_wrapper(self.msk, self.label, ["Sheperd"])
+    #     self.assertEqual(len(res["Sheperd"]), 0)
 
-        # now new_label can perform search
-        res = self.findex_interface.search_wrapper(self.msk, new_label, ["Sheperd"])
-        self.assertEqual(len(res["Sheperd"]), 2)
-        # but not the previous label
-        res = self.findex_interface.search_wrapper(self.msk, self.label, ["Sheperd"])
-        self.assertEqual(len(res["Sheperd"]), 0)
+    #     # and the keywords corresponding to the 2nd line have been removed
+    #     res = self.findex_interface.search_wrapper(
+    #         self.msk, new_label, ["Martial", "Wilkins"]
+    #     )
+    #     assert len(res["Martial"]) == 0
+    #     assert len(res["Wilkins"]) == 0
 
-        # and the keywords corresponding to the 2nd line have been removed
-        res = self.findex_interface.search_wrapper(
-            self.msk, new_label, ["Martial", "Wilkins"]
-        )
-        assert len(res["Martial"]) == 0
-        assert len(res["Wilkins"]) == 0
-"""
 
 if __name__ == '__main__':
     define_custom_backends(True)

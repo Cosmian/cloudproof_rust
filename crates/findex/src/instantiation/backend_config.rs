@@ -1,21 +1,20 @@
-#[cfg(feature = "backend-cloud")]
-use crate::backends::cloud::CloudParameters;
 #[cfg(feature = "backend-ffi")]
 use crate::backends::custom::ffi::FfiCallbacks;
 #[cfg(feature = "backend-python")]
 use crate::backends::custom::python::PythonCallbacks;
 #[cfg(feature = "backend-wasm")]
 use crate::backends::custom::wasm::WasmCallbacks;
+#[cfg(feature = "backend-rest")]
+use crate::backends::rest::AuthorizationToken;
 
 /// Contains all parameters needed to instantiate the corresponding backends.
 ///
 /// Inner parameters go by pair. The first ones are used to instantiate the
 /// Entry Table while the second ones are used to instantiate the Chain Table.
 pub enum BackendConfiguration {
-    /// Cloud backends require valid
-    /// [`CloudParameters`](super::cloud::CloudParameters)
-    #[cfg(feature = "backend-cloud")]
-    Cloud(CloudParameters, CloudParameters),
+    /// REST backends require an authorization token and a server URL.
+    #[cfg(feature = "backend-rest")]
+    Rest(AuthorizationToken, String),
 
     /// FFI backends request FFI functions corresponding to the APIs used by the
     /// Entry/Chain tables.

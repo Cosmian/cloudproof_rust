@@ -12,7 +12,7 @@ extern "C" {
     #[wasm_bindgen(
         typescript_type = "(uids: Uint8Array[]) => Promise<{uid: Uint8Array, value: Uint8Array}[]>"
     )]
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub type Fetch;
 }
 
@@ -23,7 +23,7 @@ extern "C" {
                            Uint8Array, value: Uint8Array}[]) => Promise<{uid: Uint8Array, value: \
                            Uint8Array}[]>"
     )]
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub type Upsert;
 }
 
@@ -33,16 +33,13 @@ extern "C" {
         typescript_type = "(uidsAndValues: {uid: Uint8Array, value: Uint8Array}[]) => \
                            Promise<void>"
     )]
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub type Insert;
 }
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(
-        typescript_type = "(progressResults: Array<{ keyword: Uint8Array, results: \
-                           Array<Uint8Array> }>) => Promise<Boolean>"
-    )]
-    #[derive(Debug)]
+    #[wasm_bindgen(typescript_type = "(uids: Uint8Array[]) => Promise<void>")]
+    #[derive(Debug, Clone)]
     pub type Delete;
 }

@@ -9,8 +9,6 @@ use cosmian_findex::{
     ENTRY_LENGTH, LINK_LENGTH,
 };
 
-#[cfg(feature = "backend-cloud")]
-use crate::backends::cloud::{CloudChainBackend, CloudEntryBackend};
 #[cfg(feature = "backend-ffi")]
 use crate::backends::custom::ffi::{FfiChainBackend, FfiEntryBackend};
 #[cfg(feature = "backend-python")]
@@ -19,11 +17,14 @@ use crate::backends::custom::python::{PythonChainBackend, PythonEntryBackend};
 use crate::backends::custom::wasm::{WasmChainBackend, WasmEntryBackend};
 #[cfg(feature = "backend-redis")]
 use crate::backends::redis::{RedisChainBackend, RedisEntryBackend};
+#[cfg(feature = "backend-rest")]
+use crate::backends::rest::{RestChainBackend, RestEntryBackend, RestParameters};
 #[cfg(feature = "backend-sqlite")]
 use crate::backends::sqlite::{SqlChainBackend, SqlEntryBackend};
 use crate::{backends::BackendError, BackendConfiguration};
 
 /// Wrapper around Findex instantiations used for static dispatch.
+#[derive(Debug)]
 pub enum InstantiatedFindex {
     #[cfg(feature = "backend-sqlite")]
     Sqlite(
@@ -69,12 +70,12 @@ pub enum InstantiatedFindex {
         >,
     ),
 
-    #[cfg(feature = "backend-cloud")]
-    Cloud(
+    #[cfg(feature = "backend-rest")]
+    Rest(
         Findex<
             BackendError,
-            EntryTable<ENTRY_LENGTH, CloudEntryBackend>,
-            ChainTable<LINK_LENGTH, CloudChainBackend>,
+            EntryTable<ENTRY_LENGTH, RestEntryBackend>,
+            ChainTable<LINK_LENGTH, RestChainBackend>,
         >,
     ),
 }
@@ -95,10 +96,13 @@ impl InstantiatedFindex {
                 ChainTable::setup(RedisChainBackend::connect(&chain_params).await?),
             )),
 
-            #[cfg(feature = "backend-cloud")]
-            BackendConfiguration::Cloud(entry_params, chain_params) => Self::Cloud(Findex::new(
-                EntryTable::setup(CloudEntryBackend::new(entry_params)),
-                ChainTable::setup(CloudChainBackend::new(chain_params)),
+            #[cfg(feature = "backend-rest")]
+            BackendConfiguration::Rest(token, url) => Self::Rest(Findex::new(
+                EntryTable::setup(RestEntryBackend::new(RestParameters::new(
+                    token.clone(),
+                    Some(url.clone()),
+                ))),
+                ChainTable::setup(RestChainBackend::new(RestParameters::new(token, Some(url)))),
             )),
 
             #[cfg(feature = "backend-ffi")]
@@ -136,8 +140,8 @@ impl InstantiatedFindex {
             Self::Python(findex) => findex.keygen(),
             #[cfg(feature = "backend-wasm")]
             Self::Wasm(findex) => findex.keygen(),
-            #[cfg(feature = "backend-cloud")]
-            Self::Cloud(findex) => findex.keygen(),
+            #[cfg(feature = "backend-rest")]
+            Self::Rest(findex) => findex.keygen(),
         }
     }
 
@@ -153,8 +157,8 @@ impl InstantiatedFindex {
         interrupt: &Interrupt,
     ) -> Result<KeywordToDataMap, FindexError<BackendError>> {
         match self {
-            #[cfg(feature = "backend-cloud")]
-            Self::Cloud(findex) => findex.search(key, label, keywords, interrupt).await,
+            #[cfg(feature = "backend-rest")]
+            Self::Rest(findex) => findex.search(key, label, keywords, interrupt).await,
             #[cfg(feature = "backend-ffi")]
             Self::Ffi(findex) => findex.search(key, label, keywords, interrupt).await,
             #[cfg(feature = "backend-python")]
@@ -186,8 +190,8 @@ impl InstantiatedFindex {
             Self::Python(findex) => findex.add(key, label, additions).await,
             #[cfg(feature = "backend-wasm")]
             Self::Wasm(findex) => findex.add(key, label, additions).await,
-            #[cfg(feature = "backend-cloud")]
-            Self::Cloud(findex) => findex.add(key, label, additions).await,
+            #[cfg(feature = "backend-rest")]
+            Self::Rest(findex) => findex.add(key, label, additions).await,
         }
     }
 
@@ -209,8 +213,8 @@ impl InstantiatedFindex {
             Self::Python(findex) => findex.delete(key, label, deletions).await,
             #[cfg(feature = "backend-wasm")]
             Self::Wasm(findex) => findex.delete(key, label, deletions).await,
-            #[cfg(feature = "backend-cloud")]
-            Self::Cloud(findex) => findex.delete(key, label, deletions).await,
+            #[cfg(feature = "backend-rest")]
+            Self::Rest(findex) => findex.delete(key, label, deletions).await,
         }
     }
 
@@ -293,8 +297,8 @@ impl InstantiatedFindex {
                     )
                     .await
             }
-            #[cfg(feature = "backend-cloud")]
-            Self::Cloud(findex) => {
+            #[cfg(feature = "backend-rest")]
+            Self::Rest(findex) => {
                 findex
                     .compact(
                         old_key,

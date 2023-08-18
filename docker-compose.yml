@@ -1,5 +1,9 @@
 ---
 services:
+  findex_cloud:
+    image: ghcr.io/cosmian/findex_cloud:0.1.0
+    ports:
+      - 8080:8080
   redis:
     image: redis:latest
     ports:

@@ -15,10 +15,10 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 
 #[cfg(any(
-    feature = "backend-cloud",
     feature = "backend-ffi",
+    feature = "backend-rest",
     feature = "backend-wasm",
-    feature = "interface-ffi"
+    feature = "ffi"
 ))]
 use crate::ser_de::SerializationError;
 
@@ -33,11 +33,11 @@ pub enum BackendError {
     Ffi(String, i32),
     #[cfg(feature = "backend-python")]
     Python(String),
-    #[cfg(feature = "backend-cloud")]
+    #[cfg(feature = "backend-rest")]
     MalformedToken(String),
     #[cfg(feature = "backend-wasm")]
     Wasm(String),
-    #[cfg(feature = "backend-cloud")]
+    #[cfg(feature = "backend-rest")]
     MissingPermission(i32),
     Findex(FindexCoreError),
     CryptoCore(CryptoCoreError),
@@ -52,19 +52,19 @@ impl Display for BackendError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             #[cfg(feature = "backend-sqlite")]
-            Self::Rusqlite(err) => write!(f, "rustqlite: {err}"),
+            Self::Rusqlite(err) => write!(f, "rusqlite: {err}"),
             #[cfg(feature = "backend-redis")]
             Self::Redis(err) => write!(f, "redis: {err}"),
             Self::MissingCallback(err) => write!(f, "unknown callback: {err}"),
             #[cfg(feature = "backend-ffi")]
             Self::Ffi(err, code) => write!(f, "{err}: {code}"),
-            #[cfg(feature = "backend-cloud")]
+            #[cfg(feature = "backend-rest")]
             Self::MalformedToken(err) => write!(f, "{err}"),
             #[cfg(feature = "backend-python")]
             Self::Python(err) => write!(f, "{err}"),
             #[cfg(feature = "backend-wasm")]
             Self::Wasm(err) => write!(f, "wasm callback error: {err}"),
-            #[cfg(feature = "backend-cloud")]
+            #[cfg(feature = "backend-rest")]
             Self::MissingPermission(err) => write!(f, "missing permission: {err}"),
             Self::CryptoCore(err) => write!(f, "crypto_core: {err}"),
             Self::Findex(err) => write!(f, "findex: {err}"),
@@ -96,10 +96,10 @@ impl From<RedisError> for BackendError {
 }
 
 #[cfg(any(
-    feature = "backend-cloud",
     feature = "backend-ffi",
+    feature = "backend-rest",
     feature = "backend-wasm",
-    feature = "interface-ffi"
+    feature = "ffi"
 ))]
 impl From<SerializationError> for BackendError {
     fn from(e: SerializationError) -> Self {
@@ -113,7 +113,7 @@ impl From<TryFromIntError> for BackendError {
     }
 }
 
-#[cfg(feature = "backend-cloud")]
+#[cfg(feature = "backend-rest")]
 impl From<TryFromSliceError> for BackendError {
     fn from(e: TryFromSliceError) -> Self {
         Self::SliceConversion(e)
@@ -144,7 +144,7 @@ impl From<JsValue> for BackendError {
         Self::Wasm(format!(
             "Js error: {}",
             match e.dyn_ref::<JsString>() {
-                Some(string) => format!("{}", string),
+                Some(string) => format!("{string}"),
                 None => match e.dyn_ref::<Object>() {
                     Some(object) => format!("{}", object.to_string()),
                     None => format!("{e:?}"),
