@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof"
-version = "2.2.0"
+version = "2.2.1"
 authors = [
   "Théophile Brézot<theophile.brezot@cosmian.com>",
   "Emmanuel Coste<emmanuel.coste@cosmian.com>",
@@ -19,6 +19,8 @@ name = "cloudproof"
 
 [features]
 cloud = ["cloudproof_findex/cloud"]
+findex-redis = ["cloudproof_findex/findex-redis", "cloudproof_findex/default"]
+findex-sqlite = ["cloudproof_findex/findex-sqlite", "cloudproof_findex/default"]
 default = [
   "cloudproof_aesgcm/default",
   "cloudproof_anonymization/default",
@@ -35,7 +37,6 @@ ffi = [
   "cloudproof_findex/ffi",
   "cloudproof_fpe/ffi",
 ]
-
 [dependencies]
 ######
 # Watchout: for convenience in development mode, we can set one of those following dependencies such as:
@@ -53,5 +54,5 @@ cloudproof_aesgcm = { version = "0.1.1", optional = true }
 cloudproof_anonymization = { version = "0.1.1", optional = true }
 cloudproof_cover_crypt = { version = "12.0.1", optional = true }
 cloudproof_ecies = { version = "0.1.1", optional = true }
-cloudproof_findex = { version = "5.0.0", optional = true }
+cloudproof_findex = { version = "5.0.1", optional = true }
 cloudproof_fpe = { version = "0.2.1", optional = true }

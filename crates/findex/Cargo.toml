@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_findex"
-version = "5.0.0"
+version = "5.0.1"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -25,7 +25,15 @@ ffi = [
   "tracing-tree",
 ]
 python = ["cloud", "futures", "pyo3", "tokio/rt-multi-thread"]
-findex-redis = ["async-trait", "redis", "serde", "serde_json", "thiserror"]
+findex-redis = [
+  "async-trait",
+  "redis",
+  "serde",
+  "serde_json",
+  "thiserror",
+  "tokio",
+  "tracing",
+]
 findex-sqlite = [
   "base64",
   "faker_rand",
