@@ -54,5 +54,5 @@ cloudproof_aesgcm = { version = "0.1.1", optional = true }
 cloudproof_anonymization = { version = "0.1.1", optional = true }
 cloudproof_cover_crypt = { version = "12.0.1", optional = true }
 cloudproof_ecies = { version = "0.1.1", optional = true }
-cloudproof_findex = { version = "5.0.1", optional = true }
+cloudproof_findex = { version = "5.0.2", optional = true }
 cloudproof_fpe = { version = "0.2.1", optional = true }
