@@ -1,4 +1,4 @@
-use cloudproof_cover_crypt::reexport::crypto_core::{
+use cosmian_crypto_core::{
     Aes256Gcm as Aes256GcmRust, CryptoCoreError, Dem, FixedSizeCBytes, Instantiable, Nonce,
     SymmetricKey,
 };
@@ -78,7 +78,7 @@ pub fn decrypt(
 
 #[cfg(test)]
 mod tests {
-    use cloudproof_cover_crypt::reexport::crypto_core::Aes256Gcm;
+    use cosmian_crypto_core::Aes256Gcm;
 
     use crate::core::aesgcm::{decrypt, encrypt};
 

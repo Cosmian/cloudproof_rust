@@ -1,7 +1,7 @@
 use argon2::Argon2;
 use base64::{engine::general_purpose, Engine as _};
+use cosmian_crypto_core::reexport::tiny_keccak::{Hasher as _, Sha3};
 use sha2::{Digest, Sha256};
-use tiny_keccak::{Hasher as _, Sha3};
 
 use crate::{ano_error, core::AnoError};
 

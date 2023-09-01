@@ -19,26 +19,24 @@ name = "benches"
 default = []
 ffi = ["cosmian_ffi_utils"]
 python = ["pyo3"]
-wasm_bindgen = ["js-sys", "wasm-bindgen"]
+wasm_bindgen = ["wasm-bindgen"]
 
 [dependencies]
 aes = { version = "0.8" }
 cosmian_fpe = { version = "0.5.2" }
 itertools = { version = "0.10" }
 num-bigint = { version = "0.4", default-features = false }
-num-integer = { version = "0.1", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 
 # Optional dependencies
 cosmian_ffi_utils = { workspace = true, optional = true }
-js-sys = { workspace = true, optional = true }
 pyo3 = { workspace = true, features = ["extension-module"], optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion = { version = "0.4.0", default-features = false }
+criterion = { version = "0.5.1", default-features = false }
 getrandom = { version = "0.2", features = ["js"] } # required by wasm-bindgen-test
 rand = "0.8"
 rand_chacha = "0.3"
 rand_distr = "0.4"
-wasm-bindgen-test = "0.3.34"
+wasm-bindgen-test = "0.3.37"

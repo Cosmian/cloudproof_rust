@@ -1,4 +1,4 @@
-use cloudproof_cover_crypt::reexport::crypto_core::Aes256Gcm;
+use cosmian_crypto_core::Aes256Gcm;
 use cosmian_ffi_utils::error::get_last_error;
 
 use super::aesgcm::{h_aes256gcm_decrypt, h_aes256gcm_encrypt};

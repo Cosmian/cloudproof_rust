@@ -1,4 +1,4 @@
-use cloudproof_cover_crypt::reexport::crypto_core::{
+use cosmian_crypto_core::{
     Ecies, EciesSalsaSealBox, FixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
 };
 use cosmian_ffi_utils::error::get_last_error;
