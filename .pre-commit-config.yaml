@@ -118,7 +118,7 @@ repos:
         args: [--skip-string-normalization]
 
   - repo: https://github.com/Cosmian/git-hooks.git
-    rev: v1.0.13
+    rev: v1.0.14
     hooks:
       - id: dprint-toml-fix
       - id: cargo-format
@@ -127,6 +127,7 @@ repos:
       - id: cargo-audit-deny-warnings
       - id: cargo-outdated
       - id: cargo-udeps
+      - id: cargo-machete
       - id: cargo-tests-all
       - id: cargo-test-doc
       - id: clippy-autofix-all
