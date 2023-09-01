@@ -1,6 +1,6 @@
 use std::{array::TryFromSliceError, fmt::Display};
 
-use cloudproof_cover_crypt::reexport::crypto_core::CryptoCoreError;
+use cosmian_crypto_core::CryptoCoreError;
 #[cfg(feature = "python")]
 use pyo3::{exceptions::PyException, PyErr};
 #[cfg(feature = "wasm_bindgen")]

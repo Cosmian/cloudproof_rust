@@ -215,7 +215,7 @@ fn test_correlated_noise_laplace_i64() -> Result<(), JsValue> {
 #[wasm_bindgen_test]
 fn test_correlated_noise_uniform_date() -> Result<(), JsValue> {
     let mut noise_generator = NoiseGeneratorWithBounds::new("Uniform", 0.0, 10.0)?;
-    let values = vec![
+    let values = [
         "2023-05-02T00:00:00Z",
         "2023-05-02T00:00:00Z",
         "2023-05-02T00:00:00Z",
@@ -246,7 +246,7 @@ fn test_correlated_noise_uniform_date() -> Result<(), JsValue> {
 #[wasm_bindgen_test]
 fn test_mask_word() -> Result<(), JsValue> {
     let input_str = String::from("Confidential: contains -secret- documents");
-    let block_words = vec!["confidential", "SECRET"].join(";");
+    let block_words = ["confidential", "SECRET"].join(";");
     let word_masker = WordMasker::new(block_words);
 
     let safe_str = word_masker.apply(&input_str);
@@ -258,7 +258,7 @@ fn test_mask_word() -> Result<(), JsValue> {
 #[wasm_bindgen_test]
 fn test_token_word() -> Result<(), JsValue> {
     let input_str = String::from("confidential : contains secret documents with confidential info");
-    let block_words = vec!["confidential", "SECRET"].join(";");
+    let block_words = ["confidential", "SECRET"].join(";");
     let word_tokenizer = WordTokenizer::new(block_words)?;
 
     let safe_str = word_tokenizer.apply(&input_str);

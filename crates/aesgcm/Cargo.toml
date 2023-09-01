@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_aesgcm"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Emmanuel Coste<emmanuel.coste@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -18,7 +18,7 @@ python = ["pyo3"]
 wasm_bindgen = ["js-sys", "wasm-bindgen"]
 
 [dependencies]
-cloudproof_cover_crypt = { workspace = true }
+cosmian_crypto_core = { workspace = true }
 
 # Optional dependencies
 cosmian_ffi_utils = { workspace = true, optional = true }
@@ -27,4 +27,4 @@ pyo3 = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.34"
+wasm-bindgen-test = "0.3.37"

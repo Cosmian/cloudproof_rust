@@ -1,4 +1,4 @@
-use cloudproof_cover_crypt::reexport::crypto_core::Aes256Gcm;
+use cosmian_crypto_core::Aes256Gcm;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 use crate::wasm_bindgen::aesgcm::{webassembly_aes256gcm_decrypt, webassembly_aes256gcm_encrypt};
