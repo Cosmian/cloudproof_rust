@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof"
-version = "2.2.1"
+version = "2.2.2"
 authors = [
   "Théophile Brézot<theophile.brezot@cosmian.com>",
   "Emmanuel Coste<emmanuel.coste@cosmian.com>",
@@ -50,9 +50,9 @@ ffi = [
 #  - to publish `cloudproof` package, we must publish those sub-crates individually and manually.
 #  - cbindgen follows the cargo deps and fetch the crates from crates.io.
 ######
-cloudproof_aesgcm = { version = "0.1.1", optional = true }
+cloudproof_aesgcm = { version = "0.1.2", optional = true }
 cloudproof_anonymization = { version = "0.1.1", optional = true }
-cloudproof_cover_crypt = { version = "12.0.1", optional = true }
-cloudproof_ecies = { version = "0.1.1", optional = true }
-cloudproof_findex = { version = "5.0.2", optional = true }
+cloudproof_cover_crypt = { version = "12.0.2", optional = true }
+cloudproof_ecies = { version = "0.1.2", optional = true }
+cloudproof_findex = { version = "5.0.3", optional = true }
 cloudproof_fpe = { version = "0.2.1", optional = true }

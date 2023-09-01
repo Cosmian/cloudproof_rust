@@ -1,4 +1,4 @@
-use cloudproof_cover_crypt::reexport::crypto_core::{FixedSizeCBytes, X25519PublicKey};
+use cosmian_crypto_core::{FixedSizeCBytes, X25519PublicKey};
 use wasm_bindgen_test::wasm_bindgen_test;
 
 use crate::wasm_bindgen::ecies::{

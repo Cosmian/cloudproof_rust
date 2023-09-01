@@ -1,4 +1,4 @@
-use cloudproof_cover_crypt::reexport::crypto_core::{
+use cosmian_crypto_core::{
     reexport::rand_core::SeedableRng, CsRng, Ecies, EciesSalsaSealBox, FixedSizeCBytes,
     RandomFixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
 };
