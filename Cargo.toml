@@ -13,9 +13,9 @@ members = [
 resolver = "1"
 
 [workspace.dependencies]
-cosmian_crypto_core = "9.1.0"
 async-trait = "0.1.73"
 base64 = "0.21.3"
+cosmian_crypto_core = "9.1.0"
 cosmian_ffi_utils = "0.1.2"
 hex = "0.4.3"
 js-sys = "0.3"
