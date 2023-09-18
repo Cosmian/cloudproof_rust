@@ -7,12 +7,14 @@ use async_trait::async_trait;
 use cloudproof_findex::implementations::redis::{
     FindexRedis, FindexRedisError, RemovedLocationsFinder,
 };
-use cosmian_crypto_core::CsRng;
+use cosmian_crypto_core::{
+    reexport::rand_core::{RngCore, SeedableRng},
+    CsRng,
+};
 use cosmian_findex::{
     parameters::{MASTER_KEY_LENGTH, UID_LENGTH},
     EncryptedTable, FindexCallbacks, IndexedValue, Keyword, Label, Location, Uid, UpsertData,
 };
-use rand::{RngCore, SeedableRng};
 use serial_test::serial;
 use tracing::trace;
 

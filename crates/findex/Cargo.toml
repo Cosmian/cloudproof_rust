@@ -26,7 +26,6 @@ ffi = [
 ]
 python = ["cloud", "futures", "pyo3", "tokio/rt-multi-thread"]
 findex-redis = [
-  "async-trait",
   "redis",
   "serde",
   "serde_json",
@@ -53,12 +52,13 @@ wasm_bindgen = [
 ]
 
 [dependencies]
-# Optional dependencies
-async-trait = { workspace = true, optional = true }
-base64 = { workspace = true, optional = true }
+async-trait = { workspace = true }
 cosmian_crypto_core = { workspace = true }
+cosmian_findex = { git = "https://github.com/Cosmian/findex", branch = "fix/relax_async_req" }
+
+# Optional dependencies
+base64 = { workspace = true, optional = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
-cosmian_findex = "5.0.1"
 faker_rand = { version = "0.1", optional = true }
 futures = { version = "0.3.28", optional = true }
 hex = { workspace = true, optional = true }
@@ -84,6 +84,9 @@ wasm-logger = { version = "0.2.0", optional = true }
 [dev-dependencies]
 actix-rt = "2.9"
 serial_test = "2.0.0"
+tracing-log = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-tree = { workspace = true }
 
 [[test]]
 name = "test_sqlite"

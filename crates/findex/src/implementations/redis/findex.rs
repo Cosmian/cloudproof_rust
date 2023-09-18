@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use async_trait::async_trait;
 use cosmian_findex::{
     parameters::{
         BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
@@ -193,6 +194,7 @@ impl FindexRedis {
     }
 }
 
+#[async_trait(?Send)]
 impl FindexCallbacks<FindexRedisError, UID_LENGTH> for FindexRedis {
     async fn progress(
         &self,

@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use async_trait::async_trait;
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
     parameters::{
@@ -28,6 +29,7 @@ impl SqliteFindex {
     }
 }
 
+#[async_trait(?Send)]
 impl FindexCallbacks<Error, UID_LENGTH> for SqliteFindex {
     async fn progress(
         &self,
