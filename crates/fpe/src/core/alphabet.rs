@@ -144,7 +144,7 @@ impl Alphabet {
     /// * `additional_characters` - A string of characters to be added to the
     ///   alphabet.
     pub fn extend_with(&mut self, additional_characters: &str) {
-        self.extend_(additional_characters.chars().collect::<Vec<_>>())
+        self.extend_(additional_characters.chars().collect::<Vec<_>>());
     }
 
     /// Returns the number of characters in the alphabet.
@@ -199,7 +199,7 @@ impl Alphabet {
         let mut non_alphabet_chars = HashMap::<usize, char>::new();
         for (idx, c) in input.chars().enumerate() {
             if let Some(pos) = self.char_to_position(c) {
-                stripped_input.push(pos)
+                stripped_input.push(pos);
             } else {
                 non_alphabet_chars.insert(idx, c);
             };

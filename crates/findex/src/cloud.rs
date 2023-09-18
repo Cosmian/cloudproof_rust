@@ -212,7 +212,7 @@ impl FromStr for Token {
         while SIGNATURE_SEED_LENGTH < bytes.len() - pos {
             let prefix = bytes[pos];
             let callback =
-                <Callback>::try_from(prefix).map_err(|_| FindexCloudError::MalformedToken {
+                <Callback>::try_from(prefix).map_err(|()| FindexCloudError::MalformedToken {
                     error: format!("unknown prefix {prefix:?} at keys section offset {}", pos),
                 })?;
             pos += 1;

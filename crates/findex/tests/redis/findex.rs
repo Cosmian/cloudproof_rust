@@ -48,7 +48,7 @@ pub async fn test_compact() -> Result<(), FindexRedisError> {
 
     // let f: FindRemovedLocations = Box::new(|s|
     // Box::pin(dataset.find_removed_locations(s)));
-    let mut findex = FindexRedis::connect(&get_redis_url(), dataset.clone()).await?;
+    let findex = FindexRedis::connect(&get_redis_url(), dataset.clone()).await?;
     findex.clear_indexes().await?;
 
     let mut rng = CsRng::from_entropy();
@@ -74,7 +74,7 @@ pub async fn test_compact() -> Result<(), FindexRedisError> {
         .await?;
 
     //search for the "France" keyword
-    assert_french_search(&mut findex, &master_key, &label, &FRANCE_LOCATIONS).await;
+    assert_french_search(&findex, &master_key, &label, &FRANCE_LOCATIONS).await;
 
     // compact the index, changing the label
     let new_label = Label::random(&mut rng);
@@ -83,10 +83,10 @@ pub async fn test_compact() -> Result<(), FindexRedisError> {
         .await?;
 
     // search should be empty with old label
-    assert_french_search(&mut findex, &master_key, &label, &[]).await;
+    assert_french_search(&findex, &master_key, &label, &[]).await;
 
     // search should be ok with new label
-    assert_french_search(&mut findex, &master_key, &new_label, &FRANCE_LOCATIONS).await;
+    assert_french_search(&findex, &master_key, &new_label, &FRANCE_LOCATIONS).await;
 
     // remove the index 17 from the Dataset
     dataset.remove(17).await;
@@ -101,7 +101,7 @@ pub async fn test_compact() -> Result<(), FindexRedisError> {
         .into_iter()
         .filter(|v| *v != 17)
         .collect::<Vec<u16>>();
-    assert_french_search(&mut findex, &master_key, &new_label, &updated_result).await;
+    assert_french_search(&findex, &master_key, &new_label, &updated_result).await;
 
     // now remove the index 19 from Findex
     let employee_19 = dataset.get(19).await.unwrap();
@@ -120,7 +120,7 @@ pub async fn test_compact() -> Result<(), FindexRedisError> {
         .into_iter()
         .filter(|v| *v != 17 && *v != 19)
         .collect::<Vec<u16>>();
-    assert_french_search(&mut findex, &master_key, &new_label, &updated_result).await;
+    assert_french_search(&findex, &master_key, &new_label, &updated_result).await;
 
     // compact the dataset
     findex
@@ -132,7 +132,7 @@ pub async fn test_compact() -> Result<(), FindexRedisError> {
         .into_iter()
         .filter(|v| *v != 17 && *v != 19)
         .collect::<Vec<u16>>();
-    assert_french_search(&mut findex, &master_key, &new_label, &updated_result).await;
+    assert_french_search(&findex, &master_key, &new_label, &updated_result).await;
 
     // note: employee 19 is still in the database but not in the index anymore
     assert!(dataset.get(19).await.is_some());
@@ -141,7 +141,7 @@ pub async fn test_compact() -> Result<(), FindexRedisError> {
 }
 
 async fn assert_french_search(
-    findex: &mut FindexRedis,
+    findex: &FindexRedis,
     master_key: &[u8; MASTER_KEY_LENGTH],
     label: &Label,
     expected_values: &[u16],

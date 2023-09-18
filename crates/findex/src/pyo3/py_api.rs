@@ -80,7 +80,7 @@ impl InternalFindex {
     ) {
         self.fetch_entry = fetch_entry;
         self.upsert_entry = upsert_entry;
-        self.insert_chain = insert_chain
+        self.insert_chain = insert_chain;
     }
 
     /// Sets the required callbacks to implement [`FindexSearch`].
