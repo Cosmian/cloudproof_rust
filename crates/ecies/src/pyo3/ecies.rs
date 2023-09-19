@@ -1,7 +1,6 @@
 use cosmian_crypto_core::{
     reexport::rand_core::SeedableRng, CsRng, Ecies as EciesRust,
-    EciesSalsaSealBox as EciesSalsaSealBoxRust, FixedSizeCBytes, RandomFixedSizeCBytes,
-    X25519PrivateKey, X25519PublicKey,
+    EciesSalsaSealBox as EciesSalsaSealBoxRust, FixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
 };
 use pyo3::{exceptions::PyException, pyclass, pymethods, PyResult};
 

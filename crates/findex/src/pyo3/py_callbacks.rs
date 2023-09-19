@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
 };
 
+use async_trait::async_trait;
 use cosmian_findex::{
     parameters::{
         BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
@@ -39,6 +40,7 @@ impl Display for FindexPyo3Error {
 impl std::error::Error for FindexPyo3Error {}
 impl CallbackError for FindexPyo3Error {}
 
+#[async_trait(?Send)]
 impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
     async fn progress(
         &self,

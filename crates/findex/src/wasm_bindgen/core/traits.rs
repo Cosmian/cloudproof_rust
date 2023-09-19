@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use async_trait::async_trait;
 use cosmian_findex::{
     parameters::{
         BLOCK_LENGTH, CHAIN_TABLE_WIDTH, KMAC_KEY_LENGTH, KWI_LENGTH, MASTER_KEY_LENGTH, UID_LENGTH,
@@ -19,6 +20,7 @@ use super::{
 };
 use crate::wasm_bindgen::FindexWasmError;
 
+#[async_trait(?Send)]
 impl FindexCallbacks<FindexWasmError, UID_LENGTH> for FindexUser {
     async fn progress(
         &self,

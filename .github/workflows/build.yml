@@ -12,11 +12,11 @@ jobs:
     uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
     with:
       project-name: cloudproof_rust
-      toolchain: nightly-2023-06-27
+      toolchain: stable
       kms-version: 4.5.0
       findex-cloud-version: 0.1.0
-      branch-java: feature/use_findex_v5.0.0
+      branch-java: develop
       branch-js: v9.2.0
-      branch-flutter: feature/findex_5
+      branch-flutter: develop
       branch-python: v4.1.0
     secrets: inherit

@@ -6,6 +6,7 @@ use std::{
     str::FromStr,
 };
 
+use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use cosmian_crypto_core::{bytes_ser_de::Serializable, reexport::rand_core::SeedableRng, CsRng};
 use cosmian_findex::{
@@ -180,23 +181,23 @@ impl FromStr for Token {
 
     fn from_str(token: &str) -> Result<Self, Self::Err> {
         let (index_id, tail) = token.split_at(INDEX_ID_LENGTH);
-        let mut bytes = STANDARD
+        let bytes = STANDARD
             .decode(tail)
             .map_err(|e| FindexCloudError::MalformedToken {
                 error: format!("the keys section is not base64 encoded ({e})"),
-            })?
-            .into_iter();
-        let original_length = bytes.len();
+            })?;
 
-        let findex_master_key =
-            KeyingMaterial::deserialize(&bytes.next_chunk::<MASTER_KEY_LENGTH>().map_err(
-                |e| FindexCloudError::MalformedToken {
-                    error: format!(
-                        "cannot read the Findex master key at the beginning of the keys section \
-                         ({e:?})"
-                    ),
-                },
-            )?)?;
+        if bytes.len() < MASTER_KEY_LENGTH {
+            return Err(FindexCloudError::MalformedToken {
+                error: "cannot read the Findex master key at the beginning of the keys section: \
+                        token too small"
+                    .to_string(),
+            });
+        }
+        let mut pos = 0;
+
+        let findex_master_key = KeyingMaterial::deserialize(&bytes[..MASTER_KEY_LENGTH])?;
+        pos += MASTER_KEY_LENGTH;
 
         let mut token = Self {
             index_id: index_id.to_owned(),
@@ -208,34 +209,38 @@ impl FromStr for Token {
             insert_chains_seed: None,
         };
 
-        while let Some(prefix) = bytes.next() {
-            let seed = Some(
-                bytes
-                    .next_chunk::<SIGNATURE_SEED_LENGTH>()
-                    .map_err(|_| FindexCloudError::MalformedToken {
-                        error: format!(
-                            "expecting {SIGNATURE_SEED_LENGTH} bytes after the prefix {prefix:?} \
-                             at keys section offset {}",
-                            original_length - bytes.len() - 1
-                        ),
-                    })?
-                    .into(),
+        while SIGNATURE_SEED_LENGTH < bytes.len() - pos {
+            let prefix = bytes[pos];
+            let callback =
+                <Callback>::try_from(prefix).map_err(|()| FindexCloudError::MalformedToken {
+                    error: format!("unknown prefix {prefix:?} at keys section offset {}", pos),
+                })?;
+            pos += 1;
+
+            token.set_seed(
+                callback,
+                Some(KeyingMaterial::from(
+                    <[u8; SIGNATURE_SEED_LENGTH]>::try_from(
+                        &bytes[pos..pos + SIGNATURE_SEED_LENGTH],
+                    )
+                    .unwrap(),
+                )),
             );
-
-            let callback: Callback =
-                prefix
-                    .try_into()
-                    .map_err(|_| FindexCloudError::MalformedToken {
-                        error: format!(
-                            "unknown prefix {prefix:?} at keys section offset {}",
-                            original_length - bytes.len() - 1
-                        ),
-                    })?;
-
-            token.set_seed(callback, seed);
+            pos += SIGNATURE_SEED_LENGTH;
         }
 
-        Ok(token)
+        if pos != bytes.len() {
+            Err(FindexCloudError::MalformedToken {
+                error: format!(
+                    "{} bytes remaining from which a callback seed cannot be read (should be at \
+                     leasts {} bytes)",
+                    bytes.len() - pos,
+                    1 + SIGNATURE_SEED_LENGTH
+                ),
+            })
+        } else {
+            Ok(token)
+        }
     }
 }
 
@@ -458,6 +463,7 @@ impl FindexCloud {
     }
 }
 
+#[async_trait(?Send)]
 impl FindexCallbacks<FindexCloudError, UID_LENGTH> for FindexCloud {
     async fn progress(
         &self,

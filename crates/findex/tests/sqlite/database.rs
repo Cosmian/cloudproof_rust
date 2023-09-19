@@ -1,7 +1,7 @@
 //! This file contains the implementation of the Sqlite database used for the
 //! tests.
 
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 
 use cloudproof_findex::implementations::sqlite::Error;
 use faker_rand::{
@@ -66,16 +66,16 @@ impl Default for User {
 }
 
 pub struct SqliteDatabase {
-    connection: Arc<RwLock<Connection>>,
+    connection: Arc<Mutex<Connection>>,
 }
 
 impl SqliteDatabase {
     pub(crate) fn new(
-        connection: Arc<RwLock<Connection>>,
+        connection: Arc<Mutex<Connection>>,
         dataset_path: &str,
     ) -> Result<Self, Error> {
         let cnx_arc = connection.clone();
-        let cnx = cnx_arc.read().expect("Rusqlite connection lock poisoned");
+        let cnx = cnx_arc.lock().expect("Rusqlite connection lock poisoned");
         Self::create_tables(&cnx)?;
         Self::insert_users(&cnx, dataset_path)?;
         Ok(Self { connection })
@@ -159,7 +159,7 @@ impl SqliteDatabase {
     pub(crate) fn select_all_users(&self) -> Result<Vec<User>, Error> {
         let cnx = self
             .connection
-            .write()
+            .lock()
             .expect("Rusqlite connection lock poisoned");
         let mut stmt = cnx.prepare("SELECT * FROM users")?;
         let user_iter = stmt.query_map([], |row| {
