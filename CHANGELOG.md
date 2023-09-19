@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.3] - 2023-09-19
+
+### Bug Fixes
+
+- Use Findex with the `stable` toolchain ([#45])
+
+### Features
+
+- Upgrade crypto_core to 9.2.0
+
 ## [2.2.2] - 2023-09-01
 
 ### Features
