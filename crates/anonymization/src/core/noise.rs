@@ -291,7 +291,7 @@ impl NoiseGenerator<f64> {
             Vec::with_capacity(data.len()),
             Vec::with_capacity(data.len()),
         );
-        for date_str in data.iter() {
+        for date_str in data {
             match DateTime::parse_from_rfc3339(date_str) {
                 Ok(date) => {
                     timestamps.push(date.timestamp());

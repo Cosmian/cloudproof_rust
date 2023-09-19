@@ -1,6 +1,6 @@
 use cosmian_crypto_core::{
     reexport::rand_core::SeedableRng, CsRng, Ecies, EciesSalsaSealBox, FixedSizeCBytes,
-    RandomFixedSizeCBytes, X25519PrivateKey, X25519PublicKey,
+    X25519PrivateKey, X25519PublicKey,
 };
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes};
 

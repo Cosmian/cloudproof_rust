@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex},
 };
 
 use base64::{engine::general_purpose, Engine};
@@ -18,7 +18,7 @@ pub async fn upsert(sqlite_db_path: &PathBuf, dataset_path: &str) -> Result<(), 
     //
     // Prepare database
     //
-    let connection = Arc::new(RwLock::new(Connection::open(sqlite_db_path)?));
+    let connection = Arc::new(Mutex::new(Connection::open(sqlite_db_path)?));
     let db = SqliteDatabase::new(connection.clone(), dataset_path)?;
 
     //
@@ -61,7 +61,7 @@ pub async fn search(
     bulk_words: HashSet<Keyword>,
     check: bool,
 ) -> Result<(), Error> {
-    let connection = Arc::new(RwLock::new(Connection::open(sqlite_path)?));
+    let connection = Arc::new(Mutex::new(Connection::open(sqlite_path)?));
     let rusqlite_search = SqliteFindex::new(connection.clone());
     let master_key_bytes = general_purpose::STANDARD
         .decode(include_str!("./datasets/key.json"))

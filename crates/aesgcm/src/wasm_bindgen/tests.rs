@@ -13,14 +13,14 @@ fn test_encrypt_decrypt() {
         plaintext.to_vec(),
         key.to_vec(),
         nonce.to_vec(),
-        authentication_data.to_vec(),
+        authentication_data.clone(),
     )
     .unwrap();
     let cleartext = webassembly_aes256gcm_decrypt(
         ciphertext.to_vec(),
         key.to_vec(),
         nonce.to_vec(),
-        authentication_data.to_vec(),
+        authentication_data.clone(),
     )
     .unwrap();
     assert_eq!(plaintext.to_vec(), cleartext.to_vec());

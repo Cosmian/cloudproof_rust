@@ -1,8 +1,9 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex},
 };
 
+use async_trait::async_trait;
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{
     parameters::{
@@ -19,15 +20,16 @@ use super::{
 };
 use crate::ser_de::{deserialize_fetch_entry_table_results, serialize_set};
 pub struct SqliteFindex {
-    connection: Arc<RwLock<Connection>>,
+    connection: Arc<Mutex<Connection>>,
 }
 
 impl SqliteFindex {
-    pub fn new(connection: Arc<RwLock<Connection>>) -> Self {
+    pub fn new(connection: Arc<Mutex<Connection>>) -> Self {
         SqliteFindex { connection }
     }
 }
 
+#[async_trait(?Send)]
 impl FindexCallbacks<Error, UID_LENGTH> for SqliteFindex {
     async fn progress(
         &self,
@@ -48,7 +50,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for SqliteFindex {
     ) -> Result<EncryptedMultiTable<UID_LENGTH>, Error> {
         let cnx = self
             .connection
-            .read()
+            .lock()
             .expect("Rusqlite connection lock poisoned");
         let serialized_res =
             sqlite_fetch_entry_table_items(&cnx, &serialize_set(&entry_table_uids.0)?)?;
@@ -63,7 +65,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for SqliteFindex {
     ) -> Result<EncryptedTable<UID_LENGTH>, Error> {
         let cnx = self
             .connection
-            .read()
+            .lock()
             .expect("Rusqlite connection lock poisoned");
         let mut stmt =
             prepare_statement(&cnx, &serialize_set(&chain_table_uids.0)?, "chain_table")?;
@@ -84,7 +86,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for SqliteFindex {
         let mut rejected_items = EncryptedTable::default();
         let mut cnx = self
             .connection
-            .write()
+            .lock()
             .expect("Rusqlite connection lock poisoned");
         let tx = cnx.transaction()?;
         for (uid, (old_value, new_value)) in items {
@@ -116,7 +118,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for SqliteFindex {
     async fn insert_chain_table(&self, items: EncryptedTable<UID_LENGTH>) -> Result<(), Error> {
         let mut cnx = self
             .connection
-            .write()
+            .lock()
             .expect("Rusqlite connection lock poisoned");
         let tx = cnx.transaction()?;
         for (uid, value) in items.iter() {

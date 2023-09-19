@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use async_trait::async_trait;
 use cosmian_crypto_core::bytes_ser_de::{Serializable, Serializer};
 use cosmian_findex::{
     parameters::{
@@ -24,6 +25,7 @@ use crate::{
     ser_de::{deserialize_fetch_entry_table_results, deserialize_set, serialize_set},
 };
 
+#[async_trait(?Send)]
 impl FindexCallbacks<FindexFfiError, UID_LENGTH> for FindexUser {
     #[tracing::instrument(ret, err)]
     async fn progress(
