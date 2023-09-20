@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.4] - 2023-09-19
+
+### Features
+
+- Add a way to split encrypted header and ciphertext from raw bytes
+
 ## [2.2.3] - 2023-09-19
 
 ### Bug Fixes
