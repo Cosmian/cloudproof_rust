@@ -3,8 +3,8 @@ use cosmian_cover_crypt::{
     MasterPublicKey, MasterSecretKey, UserSecretKey,
 };
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializable};
-use js_sys::{Array, JsString, Uint8Array};
-use wasm_bindgen::JsValue;
+use js_sys::{Array, JsString, Object, Reflect, Uint8Array};
+use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_test::wasm_bindgen_test;
 
 use crate::wasm_bindgen::{
@@ -12,7 +12,7 @@ use crate::wasm_bindgen::{
     generate_cc_keys::{webassembly_generate_master_keys, webassembly_generate_user_secret_key},
     hybrid_cc_aes::{
         webassembly_decrypt_hybrid_header, webassembly_encrypt_hybrid_header,
-        webassembly_hybrid_decrypt, webassembly_hybrid_encrypt,
+        webassembly_hybrid_decrypt, webassembly_hybrid_encrypt, webassembly_split_encrypted_header,
     },
 };
 
@@ -113,6 +113,37 @@ fn test_encrypt_decrypt() {
         Uint8Array::from(authentication_data.as_slice()),
     )
     .unwrap();
+
+    // try decryption by first split encrypted header and ciphertext
+    {
+        // split
+        let split = webassembly_split_encrypted_header(res.clone()).unwrap();
+        let obj = split.dyn_ref::<Object>().unwrap();
+        let mut enc_header =
+            Uint8Array::from(Reflect::get(obj, &JsValue::from_str("encryptedHeader")).unwrap())
+                .to_vec();
+        let mut ciphertext =
+            Uint8Array::from(Reflect::get(obj, &JsValue::from_str("ciphertext")).unwrap()).to_vec();
+
+        // reconcatenate
+        enc_header.append(&mut ciphertext);
+
+        // decryption should still work
+        let res = webassembly_hybrid_decrypt(
+            Uint8Array::from(usk.as_slice()),
+            Uint8Array::from(enc_header.as_slice()),
+            Uint8Array::from(authentication_data.as_slice()),
+        )
+        .unwrap()
+        .to_vec();
+
+        let mut de = Deserializer::new(res.as_slice());
+        let decrypted_header_metadata = de.read_vec().unwrap();
+        let decrypted_plaintext = de.finalize();
+
+        assert_eq!(plaintext.as_bytes(), decrypted_plaintext);
+        assert_eq!(header_metadata, decrypted_header_metadata);
+    }
 
     let res = webassembly_hybrid_decrypt(
         Uint8Array::from(usk.as_slice()),

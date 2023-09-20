@@ -8,7 +8,7 @@ use cosmian_crypto_core::{
     bytes_ser_de::{Deserializer, Serializable, Serializer},
     Aes256Gcm, FixedSizeCBytes, SymmetricKey,
 };
-use js_sys::Uint8Array;
+use js_sys::{Object, Reflect, Uint8Array};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -339,4 +339,44 @@ pub fn webassembly_hybrid_decrypt(
         "Cannot serialize the cleartext into response"
     );
     Ok(Uint8Array::from(ser.finalize().as_slice()))
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(
+        typescript_type = "Array<{ encryptedHeader: Uint8Array, ciphertext: Uint8Array }>"
+    )]
+    pub type EncryptedHeaderCiphertext;
+}
+
+/// Split the encrypted header from the ciphertext
+#[wasm_bindgen]
+pub fn webassembly_split_encrypted_header(
+    encrypted_bytes: Uint8Array,
+) -> Result<EncryptedHeaderCiphertext, JsValue> {
+    // Read encrypted bytes as the concatenation of an encrypted header and a DEM
+    // ciphertext.
+    let encrypted_bytes = encrypted_bytes.to_vec();
+    let mut de = Deserializer::new(&encrypted_bytes);
+    let header = wasm_unwrap!(
+        // This will read the exact header size.
+        de.read::<EncryptedHeader>(),
+        "Error deserializing encrypted header"
+    );
+    // The rest is the ciphertext.
+    let ciphertext = de.finalize();
+
+    let obj = Object::new();
+    Reflect::set(
+        &obj,
+        &JsValue::from_str("encryptedHeader"),
+        &Uint8Array::from(header.serialize().unwrap().to_vec().as_slice()),
+    )?;
+    Reflect::set(
+        &obj,
+        &JsValue::from_str("ciphertext"),
+        &Uint8Array::from(ciphertext.as_slice()),
+    )?;
+
+    Ok(EncryptedHeaderCiphertext::from(JsValue::from(obj)))
 }
