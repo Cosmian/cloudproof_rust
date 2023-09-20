@@ -343,9 +343,7 @@ pub fn webassembly_hybrid_decrypt(
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(
-        typescript_type = "Array<{ encryptedHeader: Uint8Array, ciphertext: Uint8Array }>"
-    )]
+    #[wasm_bindgen(typescript_type = "{ encryptedHeader: Uint8Array, ciphertext: Uint8Array }")]
     pub type EncryptedHeaderCiphertext;
 }
 
