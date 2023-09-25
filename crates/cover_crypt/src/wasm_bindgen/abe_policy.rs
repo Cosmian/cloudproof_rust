@@ -1,4 +1,4 @@
-use cosmian_cover_crypt::abe_policy::{Attribute, EncryptionHint, Policy, PolicyAxis};
+use cosmian_cover_crypt::abe_policy::{Attribute, DimensionBuilder, EncryptionHint, Policy};
 use js_sys::{Array, Boolean, JsString, Reflect};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
@@ -40,7 +40,7 @@ pub fn webassembly_policy_axis(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    serde_json::to_string(&PolicyAxis::new(
+    serde_json::to_string(&DimensionBuilder::new(
         &name,
         attribute_properties
             .iter()
@@ -53,7 +53,7 @@ pub fn webassembly_policy_axis(
 
 #[wasm_bindgen]
 pub fn webassembly_policy(nb_creations: u32) -> Result<Vec<u8>, JsValue> {
-    serde_json::to_vec(&Policy::new(nb_creations)).map_err(|e| JsValue::from_str(&e.to_string()))
+    serde_json::to_vec(&Policy::new()).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 #[wasm_bindgen]
@@ -63,7 +63,7 @@ pub fn webassembly_add_axis(policy: Vec<u8>, axis: String) -> Result<Vec<u8>, Js
         "Error deserializing the policy"
     );
     wasm_unwrap!(
-        policy.add_axis(wasm_unwrap!(
+        policy.add_dimension(wasm_unwrap!(
             serde_json::from_str(&axis),
             "Error deserializing the policy axis"
         )),

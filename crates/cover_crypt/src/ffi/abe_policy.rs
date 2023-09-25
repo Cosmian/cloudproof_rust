@@ -8,7 +8,7 @@ pub unsafe extern "C" fn h_policy(
     policy_len: *mut i32,
     max_attribute_creations: i32,
 ) -> i32 {
-    let policy = Policy::new(max_attribute_creations as u32);
+    let policy = Policy::new();
     let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error deserializing policy");
     ffi_write_bytes!("policy", &policy_bytes, policy_ptr, policy_len);
     0
@@ -34,7 +34,7 @@ pub unsafe extern "C" fn h_add_policy_axis(
         "error deserializing policy axis"
     );
 
-    ffi_unwrap!(policy.add_axis(axis), "error adding policy axis");
+    ffi_unwrap!(policy.add_dimension(axis), "error adding policy axis");
 
     let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
     ffi_write_bytes!(
