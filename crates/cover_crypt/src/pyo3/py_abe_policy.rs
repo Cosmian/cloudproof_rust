@@ -1,7 +1,7 @@
 use std::result::Result;
 
 use cosmian_cover_crypt::abe_policy::{
-    Attribute as AttributeRust, EncryptionHint, Policy as PolicyRust, PolicyAxis as PolicyAxisRust,
+    Attribute as AttributeRust, DimensionBuilder, EncryptionHint, Policy as PolicyRust,
 };
 use pyo3::{
     exceptions::{PyException, PyTypeError, PyValueError},
@@ -30,7 +30,7 @@ impl Attribute {
     /// Returns:
     ///     str
     pub fn get_axis(&self) -> &str {
-        &self.0.axis
+        &self.0.dimension
     }
 
     /// Gets the attribute name.
@@ -75,7 +75,7 @@ impl Attribute {
 /// and encryption hint
 ///         hierarchical (bool): set the axis to be hierarchical
 #[pyclass]
-pub struct PolicyAxis(PolicyAxisRust);
+pub struct PolicyAxis(DimensionBuilder);
 
 #[pymethods]
 impl PolicyAxis {
@@ -101,7 +101,7 @@ impl PolicyAxis {
             })
             .collect::<Result<_, _>>()?;
 
-        Ok(Self(PolicyAxisRust::new(name, attributes, hierarchical)))
+        Ok(Self(DimensionBuilder::new(name, attributes, hierarchical)))
     }
 
     /// Returns the number of attributes belonging to this axis.
@@ -177,15 +177,14 @@ impl Policy {
     /// creations (revocation + addition) allowed.
     /// Default maximum of attribute creations is u32::MAX
     #[new]
-    #[pyo3(signature = (max_attribute_creations = 4_294_967_295))]
-    fn new(max_attribute_creations: u32) -> Self {
-        Self(PolicyRust::new(max_attribute_creations))
+    fn new() -> Self {
+        Self(PolicyRust::new())
     }
 
     /// Adds the given policy axis to the policy.
     pub fn add_axis(&mut self, axis: &PolicyAxis) -> PyResult<()> {
         self.0
-            .add_axis(axis.0.clone())
+            .add_dimension(axis.0.clone())
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
