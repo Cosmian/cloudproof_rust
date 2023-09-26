@@ -325,7 +325,6 @@ class TestEncryption(unittest.TestCase):
         )
 
         france_attribute = Attribute('Country', 'France')
-        # new_policy = deepcopy(self.policy)
         self.policy.rotate(france_attribute)
 
         self.cc.update_master_keys(self.policy, self.msk, self.pk)
@@ -402,6 +401,136 @@ class TestEncryption(unittest.TestCase):
             decrypted_sym_key, ciphertext, self.authenticated_data
         )
         self.assertEqual(bytes(decrypted_data), self.plaintext)
+
+    def test_add_attribute(self) -> None:
+        # User secret key
+        decryption_policy = 'Secrecy::Low'
+        low_secret_usk = self.cc.generate_user_secret_key(
+            self.msk, decryption_policy, self.policy
+        )
+
+        # Add sales department
+        self.policy.add_attribute(Attribute('Country', 'Japan'), False)
+
+        # Update the master keys
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
+        # Encrypt
+        plaintext = b'My secret data'
+        ciphertext = self.cc.encrypt(
+            self.policy,
+            'Secrecy::Low && Country::Japan',
+            self.pk,
+            plaintext,
+        )
+
+        # User cannot decrypt new message without refreshing its key
+        with self.assertRaises(Exception):
+            self.cc.decrypt(low_secret_usk, ciphertext)
+
+        self.cc.refresh_user_secret_key(
+            low_secret_usk, decryption_policy, self.msk, self.policy, False
+        )
+
+        decrypted_text, _ = self.cc.decrypt(low_secret_usk, ciphertext)
+        self.assertEqual(decrypted_text, plaintext)
+
+    def test_delete_attribute(self) -> None:
+        # User secret key
+        decryption_policy = 'Secrecy::High && (Country::France || Country::UK)'
+        usk = self.cc.generate_user_secret_key(self.msk, decryption_policy, self.policy)
+
+        # Encrypt
+        plaintext = b'My secret data'
+        ciphertext = self.cc.encrypt(
+            self.policy,
+            'Secrecy::High && Country::France',
+            self.pk,
+            plaintext,
+        )
+
+        # Remove the attribute
+        self.policy.remove_attribute(Attribute('Country', 'France'))
+
+        # Update the master keys
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
+        # Decrypt with old key
+        decrypted_text, _ = self.cc.decrypt(usk, ciphertext)
+        self.assertEqual(decrypted_text, plaintext)
+
+        # Refreshing the user key will remove access to removed partitions
+        new_decryption_policy = 'Secrecy::High && Country::UK'
+        self.cc.refresh_user_secret_key(
+            usk, new_decryption_policy, self.msk, self.policy, True
+        )
+        with self.assertRaises(Exception):
+            self.cc.decrypt(usk, ciphertext)
+
+    def test_disable_attribute(self) -> None:
+        # User secret key
+        decryption_policy = 'Secrecy::High && Country::France'
+        usk = self.cc.generate_user_secret_key(self.msk, decryption_policy, self.policy)
+
+        # Encrypt
+        plaintext = b'My secret data'
+        ciphertext = self.cc.encrypt(
+            self.policy,
+            'Secrecy::High && Country::France',
+            self.pk,
+            plaintext,
+        )
+
+        # Disable the attribute
+        self.policy.disable_attribute(Attribute('Country', 'France'))
+
+        # Update the master keys
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
+        # Can no longer encrypt for this attribute
+        with self.assertRaises(Exception):
+            self.cc.encrypt(
+                self.policy,
+                'Secrecy::High && Country::France',
+                self.pk,
+                b'Test',
+            )
+
+        # Refreshing the user key will keep access to the attribute
+        new_decryption_policy = 'Secrecy::High && Country::France'
+        self.cc.refresh_user_secret_key(
+            usk, new_decryption_policy, self.msk, self.policy, False
+        )
+        decrypted_text, _ = self.cc.decrypt(usk, ciphertext)
+        self.assertEqual(decrypted_text, plaintext)
+
+    def test_rename_attribute(self) -> None:
+        # User secret key
+        decryption_policy = 'Secrecy::High && Country::Spain'
+        usk = self.cc.generate_user_secret_key(self.msk, decryption_policy, self.policy)
+
+        # Encrypt
+        plaintext = b'My secret data'
+        ciphertext = self.cc.encrypt(
+            self.policy,
+            'Secrecy::High && Country::Spain',
+            self.pk,
+            plaintext,
+        )
+
+        # Disable the attribute
+        self.policy.rename_attribute(Attribute('Country', 'Spain'), 'Espagne')
+
+        # Update the master keys
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
+        # Refreshing the user key will keep access to the attribute
+        new_decryption_policy = 'Secrecy::High && Country::Espagne'
+        self.cc.refresh_user_secret_key(
+            usk, new_decryption_policy, self.msk, self.policy, False
+        )
+        decrypted_text, _ = self.cc.decrypt(usk, ciphertext)
+        self.assertEqual(decrypted_text, plaintext)
 
 
 if __name__ == '__main__':
