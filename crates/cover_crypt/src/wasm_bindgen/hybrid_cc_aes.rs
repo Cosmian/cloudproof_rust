@@ -368,7 +368,11 @@ pub fn webassembly_split_encrypted_header(
     Reflect::set(
         &obj,
         &JsValue::from_str("encryptedHeader"),
-        &Uint8Array::from(header.serialize().unwrap().to_vec().as_slice()),
+        &Uint8Array::from(
+            wasm_unwrap!(header.serialize(), "Cannot serialize encrypted header")
+                .to_vec()
+                .as_slice(),
+        ),
     )?;
     Reflect::set(
         &obj,
