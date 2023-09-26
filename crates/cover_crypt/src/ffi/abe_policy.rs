@@ -6,7 +6,7 @@ use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_b
 pub unsafe extern "C" fn h_policy(
     policy_ptr: *mut i8,
     policy_len: *mut i32,
-    max_attribute_creations: i32,
+    _max_attribute_creations: i32,
 ) -> i32 {
     let policy = Policy::new();
     let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error deserializing policy");

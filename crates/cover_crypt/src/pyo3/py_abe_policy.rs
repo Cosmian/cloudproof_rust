@@ -188,11 +188,63 @@ impl Policy {
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
+    /// Removes the given axis from the policy.
+    pub fn remove_axis(&mut self, axis_name: String) -> PyResult<()> {
+        self.0
+            .remove_dimension(axis_name)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Adds the given attribute to the policy.
+    pub fn add_attribute(&mut self, attribute: &Attribute, is_hybridized: bool) -> PyResult<()> {
+        self.0
+            .add_attribute(
+                attribute.0.clone(),
+                if is_hybridized {
+                    EncryptionHint::Hybridized
+                } else {
+                    EncryptionHint::Classic
+                },
+            )
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Removes the given attribute from the policy
+    /// Encrypting and decrypting for this attribute will no longer be possible once the keys are updated.
+    pub fn remove_attribute(&mut self, attribute: &Attribute) -> PyResult<()> {
+        self.0
+            .remove_attribute(attribute.0.clone())
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Marks an attribute as read only.
+    /// The corresponding attribute key will be removed from the public key.
+    /// But the decryption key will be kept to allow reading old ciphertext.
+    pub fn disable_attribute(&mut self, attr: &Attribute) -> PyResult<()> {
+        self.0
+            .disable_attribute(attr.0.clone())
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Changes the name of an attribute.
+    pub fn rename_attribute(&mut self, attribute: &Attribute, new_name: &str) -> PyResult<()> {
+        self.0
+            .rename_attribute(attribute.0.clone(), new_name)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
     /// Rotates an attribute, changing its underlying value with an unused
     /// value.
     pub fn rotate(&mut self, attribute: &Attribute) -> PyResult<()> {
         self.0
             .rotate(&attribute.0)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Removes old rotations id of an attribute.
+    pub fn clear_old_rotations(&mut self, attr: &Attribute) -> PyResult<()> {
+        self.0
+            .clear_old_rotations(&attr.0)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 

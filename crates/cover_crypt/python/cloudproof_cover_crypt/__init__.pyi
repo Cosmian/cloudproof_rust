@@ -98,20 +98,59 @@ class PolicyAxis:
 class Policy:
     """A policy is a set of policy axes. A fixed number of attribute creations
     (revocations + additions) is allowed.
-
-    Args:
-        max_attribute_creations (int): number of attribute creations allowed. Defaults to 2**32 - 1
     """
 
-    def __init__(self, max_attribute_creations: int = 2**32 - 1): ...
+    def __init__(self): ...
     def add_axis(self, axis: PolicyAxis) -> None:
         """Adds the given policy axis to the policy.
 
         Args:
             axis (PolicyAxis)
         """
+    def remove_axis(self, axis_name: str) -> None:
+        """Removes the given axis from the policy.
+        Fails if there is no such axis in the policy.
+
+            Args:
+                axis_name (str)
+        """
+    def add_attribute(self, attribute: Attribute, is_hybridized: bool) -> None:
+        """Adds the given attribute to the policy.
+        Fails if the axis of the attribute does not exist in the policy.
+
+            Args:
+                attribute (Attribute): The name and axis of the new attribute.
+                is_hybridized (bool): Whether to use post quantum keys for this attribute
+        """
+    def remove_attribute(self, attribute: Attribute) -> None:
+        """Removes the given attribute from the policy.
+        Encrypting and decrypting for this attribute will no longer be possible once the keys are updated.
+
+            Args:
+                attribute (Attribute)
+        """
+    def disable_attribute(self, attribute: Attribute) -> None:
+        """Marks an attribute as read only.
+        The corresponding attribute key will be removed from the public key.
+        But the decryption key will be kept to allow reading old ciphertext.
+
+            Args:
+                attribute (Attribute)
+        """
+    def rename_attribute(self, attribute: Attribute) -> None:
+        """Changes the name of an attribute.
+
+        Args:
+            attribute (Attribute)
+        """
     def rotate(self, attribute: Attribute) -> None:
-        """Rotates an attribute, changing its underlying value with an unused value.
+        """Rotates an attribute, changing its underlying value with a new value.
+
+        Args:
+            attribute (Attribute)
+        """
+    def clear_old_rotations(self, attribute: Attribute) -> None:
+        """Removes old rotations value of an attribute
 
         Args:
             attribute (Attribute)
@@ -171,12 +210,6 @@ class MasterSecretKey:
         Returns:
             bytes
         """
-    def deep_copy(self) -> MasterSecretKey:
-        """Clones the key.
-
-        Returns:
-            MasterSecretKey
-        """
     @staticmethod
     def from_bytes(key_bytes: bytes) -> MasterSecretKey:
         """Reads key from bytes.
@@ -195,12 +228,6 @@ class MasterPublicKey:
         Returns:
             bytes
         """
-    def deep_copy(self) -> MasterPublicKey:
-        """Clones the key.
-
-        Returns:
-            MasterPublicKey
-        """
     @staticmethod
     def from_bytes(key_bytes: bytes) -> MasterPublicKey:
         """Reads key from bytes.
@@ -218,12 +245,6 @@ class UserSecretKey:
 
         Returns:
             bytes
-        """
-    def deep_copy(self) -> UserSecretKey:
-        """Clones the key.
-
-        Returns:
-            UserSecretKey
         """
     @staticmethod
     def from_bytes(key_bytes: bytes) -> UserSecretKey:

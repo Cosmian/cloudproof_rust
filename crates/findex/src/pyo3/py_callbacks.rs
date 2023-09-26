@@ -156,7 +156,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
         let empty_vec = &vec![];
         Python::with_gil(|py| {
             let py_entry_table = PyDict::new(py);
-            for (key, (old_value, new_value)) in items.iter() {
+            for (key, (old_value, new_value)) in &*items {
                 py_entry_table
                     .set_item(
                         PyBytes::new(py, key),
@@ -190,7 +190,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
     ) -> Result<(), FindexPyo3Error> {
         Python::with_gil(|py| {
             let py_chain_table = PyDict::new(py);
-            for (key, value) in items.iter() {
+            for (key, value) in &*items {
                 py_chain_table
                     .set_item(PyBytes::new(py, key), PyBytes::new(py, value))
                     .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (insert_chain)")))?;
@@ -210,7 +210,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
     ) -> Result<(), FindexPyo3Error> {
         Python::with_gil(|py| {
             let py_entry_table_items = PyDict::new(py);
-            for (key, value) in new_encrypted_entry_table_items.iter() {
+            for (key, value) in &*new_encrypted_entry_table_items {
                 py_entry_table_items
                     .set_item(PyBytes::new(py, key), PyBytes::new(py, value))
                     .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (update_lines)")))?;
@@ -223,7 +223,7 @@ impl FindexCallbacks<FindexPyo3Error, UID_LENGTH> for InternalFindex {
                 .collect();
 
             let py_chain_table_items = PyDict::new(py);
-            for (key, value) in new_encrypted_chain_table_items.iter() {
+            for (key, value) in &*new_encrypted_chain_table_items {
                 py_chain_table_items
                     .set_item(PyBytes::new(py, key), PyBytes::new(py, value))
                     .map_err(|e| FindexPyo3Error::ConversionError(format!("{e} (update_lines)")))?;

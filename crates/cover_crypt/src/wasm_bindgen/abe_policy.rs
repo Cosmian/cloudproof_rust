@@ -52,7 +52,7 @@ pub fn webassembly_policy_axis(
 }
 
 #[wasm_bindgen]
-pub fn webassembly_policy(nb_creations: u32) -> Result<Vec<u8>, JsValue> {
+pub fn webassembly_policy(_nb_creations: u32) -> Result<Vec<u8>, JsValue> {
     serde_json::to_vec(&Policy::new()).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 

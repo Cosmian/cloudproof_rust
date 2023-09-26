@@ -4,10 +4,10 @@ import unittest
 from cloudproof_cover_crypt import (
     Attribute,
     CoverCrypt,
+    MasterPublicKey,
     MasterSecretKey,
     Policy,
     PolicyAxis,
-    MasterPublicKey,
     SymmetricKey,
     UserSecretKey,
 )
@@ -15,7 +15,7 @@ from cloudproof_cover_crypt import (
 
 class TestPolicy(unittest.TestCase):
     def policy(self) -> Policy:
-        policy = Policy(100)
+        policy = Policy()
         policy.add_axis(
             PolicyAxis(
                 'Country',
@@ -52,7 +52,7 @@ class TestPolicy(unittest.TestCase):
         )
         self.assertEqual(
             country_axis.to_string(),
-            'Country: [AxisAttributeProperties { name: "France", encryption_hint: Classic }, AxisAttributeProperties { name: "UK", encryption_hint: Classic }, AxisAttributeProperties { name: "Spain", encryption_hint: Classic }, AxisAttributeProperties { name: "Germany", encryption_hint: Classic }], hierarchical: false',
+            'Country: [AttributeBuilder { name: "France", encryption_hint: Classic }, AttributeBuilder { name: "UK", encryption_hint: Classic }, AttributeBuilder { name: "Spain", encryption_hint: Classic }, AttributeBuilder { name: "Germany", encryption_hint: Classic }], hierarchical: false',
         )
         secrecy_axis = PolicyAxis(
             'Secrecy',
@@ -61,7 +61,7 @@ class TestPolicy(unittest.TestCase):
         )
         self.assertEqual(
             secrecy_axis.to_string(),
-            'Secrecy: [AxisAttributeProperties { name: "Low", encryption_hint: Classic }, AxisAttributeProperties { name: "Medium", encryption_hint: Classic }, AxisAttributeProperties { name: "High", encryption_hint: Hybridized }], hierarchical: true',
+            'Secrecy: [AttributeBuilder { name: "Low", encryption_hint: Classic }, AttributeBuilder { name: "Medium", encryption_hint: Classic }, AttributeBuilder { name: "High", encryption_hint: Hybridized }], hierarchical: true',
         )
 
         self.assertTrue(PolicyAxis('Test', [], False).is_empty())
@@ -111,7 +111,7 @@ class TestKeyGeneration(unittest.TestCase):
         secrecy_axis = PolicyAxis(
             'Secrecy', [('Low', False), ('Medium', False), ('High', True)], True
         )
-        self.policy = Policy(100)
+        self.policy = Policy()
         self.policy.add_axis(country_axis)
         self.policy.add_axis(secrecy_axis)
 
@@ -119,13 +119,6 @@ class TestKeyGeneration(unittest.TestCase):
         self.msk, self.pk = self.cc.generate_master_keys(self.policy)
 
     def test_master_key_serialization(self) -> None:
-        # test deep copy
-        copy_msk = self.msk.deep_copy()
-        self.assertIsInstance(copy_msk, MasterSecretKey)
-
-        copy_pk = self.pk.deep_copy()
-        self.assertIsInstance(copy_pk, MasterPublicKey)
-
         # test serialization
         msk_bytes = self.msk.to_bytes()
         self.assertIsInstance(MasterSecretKey.from_bytes(msk_bytes), MasterSecretKey)
@@ -143,9 +136,6 @@ class TestKeyGeneration(unittest.TestCase):
             'Secrecy::High && (Country::France || Country::Spain)',
             self.policy,
         )
-        # test deep copy
-        copy_usk = self.msk.deep_copy()
-        self.assertIsInstance(copy_usk, MasterSecretKey)
 
         # test serialization
         usk_bytes = usk.to_bytes()
@@ -179,7 +169,7 @@ class TestEncryption(unittest.TestCase):
         secrecy_axis = PolicyAxis(
             'Secrecy', [('Low', False), ('Medium', False), ('High', True)], True
         )
-        self.policy = Policy(100)
+        self.policy = Policy()
         self.policy.add_axis(country_axis)
         self.policy.add_axis(secrecy_axis)
 
