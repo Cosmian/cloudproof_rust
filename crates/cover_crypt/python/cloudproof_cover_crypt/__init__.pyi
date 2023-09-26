@@ -137,7 +137,7 @@ class Policy:
             Args:
                 attribute (Attribute)
         """
-    def rename_attribute(self, attribute: Attribute) -> None:
+    def rename_attribute(self, attribute: Attribute, new_name: str) -> None:
         """Changes the name of an attribute.
 
         Args:

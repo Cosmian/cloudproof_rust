@@ -84,6 +84,88 @@ class TestPolicy(unittest.TestCase):
         new_france_value = policy.attribute_current_value(france_attribute)
         self.assertEqual(new_france_value, 8)
         self.assertEqual(policy.attribute_values(france_attribute), [8, 1])
+        # clear rotation
+        policy.clear_old_rotations(france_attribute)
+        self.assertEqual(policy.attribute_values(france_attribute), [8])
+        # clearing rotation of non existing attribute will raise an Error
+        with self.assertRaises(Exception):
+            policy.clear_old_rotations(Attribute('Department', 'Missing'))
+
+    def test_edit_policy(self) -> None:
+        # Create and initialize policy
+        policy = self.policy()
+        self.assertEqual(len(policy.attributes()), 7)
+
+        # Rename R&D to Research
+        policy.rename_attribute(Attribute('Country', 'Spain'), 'Espagne')
+
+        # Try renaming Research to already used name MKG
+        with self.assertRaises(Exception):
+            policy.rename_attribute(Attribute('Country', 'Japan'), 'Japon')
+        self.assertEqual(len(policy.attributes()), 7)
+
+        # Add new attribute Japan
+        new_attr = Attribute('Country', 'Japan')
+        policy.add_attribute(new_attr, False)
+        self.assertEqual(len(policy.attributes()), 8)
+
+        # Try adding already existing attribute
+        duplicate_attr = Attribute('Country', 'France')
+        with self.assertRaises(Exception):
+            policy.add_attribute(duplicate_attr, False)
+
+        # Try adding attribute to non-existing dimension
+        missing_dimension = Attribute('Missing', 'dimension')
+        with self.assertRaises(Exception):
+            policy.add_attribute(missing_dimension, False)
+
+        # Remove research attribute
+        delete_attr = Attribute('Country', 'Espagne')
+        policy.remove_attribute(delete_attr)
+        self.assertEqual(len(policy.attributes()), 7)
+
+        # Duplicate remove
+        with self.assertRaises(Exception):
+            policy.remove_attribute(delete_attr)
+
+        # Missing dimension remove
+        with self.assertRaises(Exception):
+            policy.remove_attribute(missing_dimension)
+
+        # Remove all attributes from a dimension
+        policy.remove_attribute(new_attr)
+        policy.remove_attribute(Attribute('Country', 'France'))
+        policy.remove_attribute(Attribute('Country', 'UK'))
+        policy.remove_attribute(Attribute('Country', 'Germany'))
+        self.assertEqual(len(policy.attributes()), 3)
+
+        # Add new dimension
+        new_dimension = PolicyAxis(
+            'DimensionTest',
+            [
+                ('Attr1', False),
+                ('Attr2', False),
+            ],
+            False,
+        )
+        policy.add_axis(new_dimension)
+        self.assertEqual(len(policy.attributes()), 5)
+
+        # Remove the new dimension
+        policy.remove_axis('DimensionTest')
+        self.assertEqual(len(policy.attributes()), 3)
+
+        # Try removing non-existing dimension
+        with self.assertRaises(Exception):
+            policy.remove_axis('MissingDim')
+
+        # Try modifying hierarchical dimension
+        with self.assertRaises(Exception):
+            policy.remove_attribute(Attribute('Secrecy', 'Top Secret'))
+
+        # Removing a hierarchical dimension is permitted
+        policy.remove_axis('Secrecy')
+        self.assertEqual(len(policy.attributes()), 0)
 
     def test_policy_cloning_serialization(self) -> None:
         policy = self.policy()
