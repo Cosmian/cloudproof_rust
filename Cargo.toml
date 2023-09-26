@@ -15,7 +15,7 @@ resolver = "1"
 [workspace.dependencies]
 async-trait = "0.1.73"
 base64 = "0.21.4"
-cosmian_crypto_core = "9.2.0"
+cosmian_crypto_core = "9.2.1"
 cosmian_ffi_utils = "0.1.2"
 hex = "0.4.3"
 js-sys = "0.3"
