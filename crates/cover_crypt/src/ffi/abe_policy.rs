@@ -1,4 +1,4 @@
-use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, Policy};
+use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, EncryptionHint, Policy};
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
 
 /// # Safety
@@ -49,6 +49,197 @@ pub unsafe extern "C" fn h_add_policy_axis(
 
 /// # Safety
 #[no_mangle]
+pub unsafe extern "C" fn h_remove_policy_axis(
+    updated_policy_ptr: *mut i8,
+    updated_policy_len: *mut i32,
+    current_policy_ptr: *const i8,
+    current_policy_len: i32,
+    axis_name_ptr: *const i8,
+) -> i32 {
+    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
+    let mut policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
+
+    let axis_name = ffi_read_string!("axis name", axis_name_ptr);
+
+    ffi_unwrap!(
+        policy.remove_dimension(axis_name),
+        "error removing policy axis"
+    );
+
+    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
+    ffi_write_bytes!(
+        "updated policy",
+        &policy_bytes,
+        updated_policy_ptr,
+        updated_policy_len
+    );
+
+    0
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn h_add_policy_attribute(
+    updated_policy_ptr: *mut i8,
+    updated_policy_len: *mut i32,
+    current_policy_ptr: *const i8,
+    current_policy_len: i32,
+    attribute: *const i8,
+    is_hybridized: bool,
+) -> i32 {
+    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
+    let mut policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
+
+    let attr_string = ffi_read_string!("attribute", attribute);
+    let attr = ffi_unwrap!(
+        Attribute::try_from(attr_string.as_str()),
+        "error parsing attribute"
+    );
+
+    ffi_unwrap!(
+        policy.add_attribute(
+            attr,
+            if is_hybridized {
+                EncryptionHint::Hybridized
+            } else {
+                EncryptionHint::Classic
+            }
+        ),
+        "error adding policy attribute"
+    );
+
+    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
+    ffi_write_bytes!(
+        "updated policy",
+        &policy_bytes,
+        updated_policy_ptr,
+        updated_policy_len
+    );
+
+    0
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn h_remove_policy_attribute(
+    updated_policy_ptr: *mut i8,
+    updated_policy_len: *mut i32,
+    current_policy_ptr: *const i8,
+    current_policy_len: i32,
+    attribute: *const i8,
+) -> i32 {
+    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
+    let mut policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
+
+    let attr_string = ffi_read_string!("attribute", attribute);
+    let attr = ffi_unwrap!(
+        Attribute::try_from(attr_string.as_str()),
+        "error parsing attribute"
+    );
+
+    ffi_unwrap!(
+        policy.remove_attribute(attr),
+        "error removing policy attribute"
+    );
+
+    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
+    ffi_write_bytes!(
+        "updated policy",
+        &policy_bytes,
+        updated_policy_ptr,
+        updated_policy_len
+    );
+
+    0
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn h_disable_policy_attribute(
+    updated_policy_ptr: *mut i8,
+    updated_policy_len: *mut i32,
+    current_policy_ptr: *const i8,
+    current_policy_len: i32,
+    attribute: *const i8,
+) -> i32 {
+    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
+    let mut policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
+
+    let attr_string = ffi_read_string!("attribute", attribute);
+    let attr = ffi_unwrap!(
+        Attribute::try_from(attr_string.as_str()),
+        "error parsing attribute"
+    );
+
+    ffi_unwrap!(
+        policy.disable_attribute(attr),
+        "error disabling policy attribute"
+    );
+
+    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
+    ffi_write_bytes!(
+        "updated policy",
+        &policy_bytes,
+        updated_policy_ptr,
+        updated_policy_len
+    );
+
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn h_rename_policy_attribute(
+    updated_policy_ptr: *mut i8,
+    updated_policy_len: *mut i32,
+    current_policy_ptr: *const i8,
+    current_policy_len: i32,
+    attribute: *const i8,
+    new_attribute_name_ptr: *const i8,
+) -> i32 {
+    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
+    let mut policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
+
+    let attr_string = ffi_read_string!("attribute", attribute);
+    let attr = ffi_unwrap!(
+        Attribute::try_from(attr_string.as_str()),
+        "error parsing attribute"
+    );
+
+    let new_attribute_name = ffi_read_string!("new attribute name", new_attribute_name_ptr);
+
+    ffi_unwrap!(
+        policy.rename_attribute(attr, &new_attribute_name),
+        "error renaming policy attribute"
+    );
+
+    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
+    ffi_write_bytes!(
+        "updated policy",
+        &policy_bytes,
+        updated_policy_ptr,
+        updated_policy_len
+    );
+
+    0
+}
+
+/// # Safety
+#[no_mangle]
 pub unsafe extern "C" fn h_rotate_attribute(
     updated_policy_ptr: *mut i8,
     updated_policy_len: *mut i32,
@@ -68,6 +259,42 @@ pub unsafe extern "C" fn h_rotate_attribute(
     );
 
     ffi_unwrap!(policy.rotate(&attr), "error rotating policy");
+
+    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
+    ffi_write_bytes!(
+        "updated policy",
+        &policy_bytes,
+        updated_policy_ptr,
+        updated_policy_len
+    );
+
+    0
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn h_clear_old_rotations_attribute(
+    updated_policy_ptr: *mut i8,
+    updated_policy_len: *mut i32,
+    current_policy_ptr: *const i8,
+    current_policy_len: i32,
+    attribute: *const i8,
+) -> i32 {
+    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
+    let mut policy = ffi_unwrap!(
+        Policy::parse_and_convert(policy_bytes),
+        "error deserializing policy"
+    );
+    let attr_string = ffi_read_string!("attribute", attribute);
+    let attr = ffi_unwrap!(
+        Attribute::try_from(attr_string.as_str()),
+        "error parsing attribute"
+    );
+
+    ffi_unwrap!(
+        policy.clear_old_rotations(&attr),
+        "error clearing old rotations policy"
+    );
 
     let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
     ffi_write_bytes!(
@@ -181,5 +408,181 @@ mod tests {
 
         // assert ffi and non-ffi have same behavior.
         assert_eq!(policy, ffi_rotated_policy);
+
+        // clear old rotations for attribute 2
+        let attr_rotations = ffi_rotated_policy.attribute_values(&attributes[2]).unwrap();
+        assert_eq!(attr_rotations.len(), 2);
+        policy_bytes = unsafe {
+            let current_policy_ptr = policy_bytes.as_ptr().cast();
+            let current_policy_len = policy_bytes.len() as i32;
+            let mut updated_policy_bytes = vec![0u8; 8192];
+            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
+
+            let res = h_clear_old_rotations_attribute(
+                updated_policy_ptr,
+                &mut updated_policy_len,
+                current_policy_ptr,
+                current_policy_len,
+                attribute.as_ptr().cast(),
+            );
+            if res != 0 {
+                let mut error = vec![0u8; 8192];
+                let error_ptr = error.as_mut_ptr().cast();
+                let mut error_len = error.len() as i32;
+                h_get_error(error_ptr, &mut error_len);
+                panic!("{}", CStr::from_ptr(error_ptr).to_str().unwrap());
+            }
+            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
+                .to_vec()
+        };
+        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let attr_rotations = ffi_rotated_policy.attribute_values(&attributes[2]).unwrap();
+        assert_eq!(attr_rotations.len(), 1);
+    }
+
+    #[test]
+    fn test_edit_policy() {
+        let policy = policy().unwrap();
+        let mut policy_bytes = <Vec<u8>>::try_from(&policy).unwrap();
+        let attributes = policy.attributes();
+
+        assert_eq!(attributes.len(), 9);
+        // Remove Security Level axis
+        policy_bytes = unsafe {
+            let current_policy_ptr = policy_bytes.as_ptr().cast();
+            let current_policy_len = policy_bytes.len() as i32;
+            let mut updated_policy_bytes = vec![0u8; 8192];
+            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
+            let axis_name = "Security Level".to_string();
+
+            let res = h_remove_policy_axis(
+                updated_policy_ptr,
+                &mut updated_policy_len,
+                current_policy_ptr,
+                current_policy_len,
+                axis_name.as_ptr().cast(),
+            );
+            assert_eq!(res, 0);
+            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
+                .to_vec()
+        };
+
+        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_rotated_policy.attributes();
+        // Check policy size
+        assert_eq!(ffi_attributes.len(), 4);
+
+        // Add attribute Sales
+        policy_bytes = unsafe {
+            let current_policy_ptr = policy_bytes.as_ptr().cast();
+            let current_policy_len = policy_bytes.len() as i32;
+            let mut updated_policy_bytes = vec![0u8; 8192];
+            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
+            let attr = Attribute::new("Department", "Sales");
+            let c_attr = CString::new(attr.to_string()).unwrap();
+
+            let res = h_add_policy_attribute(
+                updated_policy_ptr,
+                &mut updated_policy_len,
+                current_policy_ptr,
+                current_policy_len,
+                c_attr.as_ptr().cast(),
+                false,
+            );
+            assert_eq!(res, 0);
+            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
+                .to_vec()
+        };
+
+        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_rotated_policy.attributes();
+        // Check policy size
+        assert_eq!(ffi_attributes.len(), 5);
+
+        // Remove attribute
+        policy_bytes = unsafe {
+            let current_policy_ptr = policy_bytes.as_ptr().cast();
+            let current_policy_len = policy_bytes.len() as i32;
+            let mut updated_policy_bytes = vec![0u8; 8192];
+            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
+            let attr = Attribute::new("Department", "R&D");
+            let c_attr = CString::new(attr.to_string()).unwrap();
+
+            let res = h_remove_policy_attribute(
+                updated_policy_ptr,
+                &mut updated_policy_len,
+                current_policy_ptr,
+                current_policy_len,
+                c_attr.as_ptr().cast(),
+            );
+            assert_eq!(res, 0);
+            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
+                .to_vec()
+        };
+
+        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_rotated_policy.attributes();
+        // Check policy size
+        assert_eq!(ffi_attributes.len(), 4);
+
+        // Disable attribute
+        policy_bytes = unsafe {
+            let current_policy_ptr = policy_bytes.as_ptr().cast();
+            let current_policy_len = policy_bytes.len() as i32;
+            let mut updated_policy_bytes = vec![0u8; 8192];
+            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
+            let attr = Attribute::new("Department", "MKG");
+            let c_attr = CString::new(attr.to_string()).unwrap();
+
+            let res = h_disable_policy_attribute(
+                updated_policy_ptr,
+                &mut updated_policy_len,
+                current_policy_ptr,
+                current_policy_len,
+                c_attr.as_ptr().cast(),
+            );
+            assert_eq!(res, 0);
+            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
+                .to_vec()
+        };
+
+        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_rotated_policy.attributes();
+        // Check policy size
+        assert_eq!(ffi_attributes.len(), 4);
+
+        // Rename attribute
+        policy_bytes = unsafe {
+            let current_policy_ptr = policy_bytes.as_ptr().cast();
+            let current_policy_len = policy_bytes.len() as i32;
+            let mut updated_policy_bytes = vec![0u8; 8192];
+            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
+            let attr = Attribute::new("Department", "FIN");
+            let c_attr = CString::new(attr.to_string()).unwrap();
+            let c_new_attribute_name = CString::new("Finance".to_string()).unwrap();
+
+            let res = h_rename_policy_attribute(
+                updated_policy_ptr,
+                &mut updated_policy_len,
+                current_policy_ptr,
+                current_policy_len,
+                c_attr.as_ptr().cast(),
+                c_new_attribute_name.as_ptr().cast(),
+            );
+            assert_eq!(res, 0);
+            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
+                .to_vec()
+        };
+
+        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_rotated_policy.attributes();
+        // Check policy size
+        assert_eq!(ffi_attributes.len(), 4);
     }
 }

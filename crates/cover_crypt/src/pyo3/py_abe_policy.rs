@@ -210,7 +210,8 @@ impl Policy {
     }
 
     /// Removes the given attribute from the policy
-    /// Encrypting and decrypting for this attribute will no longer be possible once the keys are updated.
+    /// Encrypting and decrypting for this attribute will no longer be possible
+    /// once the keys are updated.
     pub fn remove_attribute(&mut self, attribute: &Attribute) -> PyResult<()> {
         self.0
             .remove_attribute(attribute.0.clone())
