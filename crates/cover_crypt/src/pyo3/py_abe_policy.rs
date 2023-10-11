@@ -198,14 +198,7 @@ impl Policy {
     /// Adds the given attribute to the policy.
     pub fn add_attribute(&mut self, attribute: &Attribute, is_hybridized: bool) -> PyResult<()> {
         self.0
-            .add_attribute(
-                attribute.0.clone(),
-                if is_hybridized {
-                    EncryptionHint::Hybridized
-                } else {
-                    EncryptionHint::Classic
-                },
-            )
+            .add_attribute(attribute.0.clone(), EncryptionHint::new(is_hybridized))
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 

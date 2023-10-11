@@ -221,7 +221,20 @@ class TestKeyGeneration(unittest.TestCase):
 
         # test serialization
         usk_bytes = usk.to_bytes()
-        self.assertIsInstance(UserSecretKey.from_bytes(usk_bytes), UserSecretKey)
+        deserialized_usk = UserSecretKey.from_bytes(usk_bytes)
+        self.assertIsInstance(deserialized_usk, UserSecretKey)
+
+        # test KMAC authenticity of the deserialized key
+        france_attribute = Attribute('Country', 'France')
+        self.policy.rotate(france_attribute)
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+        self.cc.refresh_user_secret_key(
+            deserialized_usk,
+            'Secrecy::High && (Country::France || Country::Spain)',
+            self.msk,
+            self.policy,
+            keep_old_accesses=True,
+        )
 
         with self.assertRaises(Exception):
             UserSecretKey.from_bytes(b'wrong data')
