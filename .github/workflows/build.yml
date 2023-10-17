@@ -15,8 +15,8 @@ jobs:
       toolchain: stable
       kms-version: feat-edit_policy
       findex-cloud-version: 0.1.0
-      branch-java: develop
-      branch-js: v9.2.0
+      branch-java: feat/edit_policy
+      branch-js: feat/edit_policy
       branch-flutter: develop
       branch-python: feat/edit_policy
     secrets: inherit
