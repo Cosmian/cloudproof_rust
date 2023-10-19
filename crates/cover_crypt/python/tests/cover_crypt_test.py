@@ -517,6 +517,11 @@ class TestEncryption(unittest.TestCase):
         decrypted_text, _ = self.cc.decrypt(usk, ciphertext)
         self.assertEqual(decrypted_text, plaintext)
 
+        # Rotating the disabled attribute
+        self.policy.rotate(Attribute('Country', 'France'))
+        # Update the master keys without error
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
     def test_rename_attribute(self) -> None:
         # User secret key
         decryption_policy = 'Secrecy::High && Country::Spain'
