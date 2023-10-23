@@ -16,6 +16,7 @@ use pyo3::{
 ///     axis (str): policy axis the attributes belongs to
 ///     name (str): unique attribute name within this axis
 #[pyclass]
+#[derive(Clone)]
 pub struct Attribute(AttributeRust);
 
 #[pymethods]
@@ -189,16 +190,16 @@ impl Policy {
     }
 
     /// Removes the given axis from the policy.
-    pub fn remove_axis(&mut self, axis_name: String) -> PyResult<()> {
+    pub fn remove_axis(&mut self, axis_name: &str) -> PyResult<()> {
         self.0
             .remove_dimension(axis_name)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
     /// Adds the given attribute to the policy.
-    pub fn add_attribute(&mut self, attribute: &Attribute, is_hybridized: bool) -> PyResult<()> {
+    pub fn add_attribute(&mut self, attribute: Attribute, is_hybridized: bool) -> PyResult<()> {
         self.0
-            .add_attribute(attribute.0.clone(), EncryptionHint::new(is_hybridized))
+            .add_attribute(attribute.0, EncryptionHint::new(is_hybridized))
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
@@ -207,23 +208,23 @@ impl Policy {
     /// once the keys are updated.
     pub fn remove_attribute(&mut self, attribute: &Attribute) -> PyResult<()> {
         self.0
-            .remove_attribute(attribute.0.clone())
+            .remove_attribute(&attribute.0)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
     /// Marks an attribute as read only.
     /// The corresponding attribute key will be removed from the public key.
     /// But the decryption key will be kept to allow reading old ciphertext.
-    pub fn disable_attribute(&mut self, attr: &Attribute) -> PyResult<()> {
+    pub fn disable_attribute(&mut self, attribute: &Attribute) -> PyResult<()> {
         self.0
-            .disable_attribute(attr.0.clone())
+            .disable_attribute(&attribute.0)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
     /// Changes the name of an attribute.
     pub fn rename_attribute(&mut self, attribute: &Attribute, new_name: &str) -> PyResult<()> {
         self.0
-            .rename_attribute(attribute.0.clone(), new_name)
+            .rename_attribute(&attribute.0, new_name)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
@@ -236,9 +237,9 @@ impl Policy {
     }
 
     /// Removes old rotations id of an attribute.
-    pub fn clear_old_rotations(&mut self, attr: &Attribute) -> PyResult<()> {
+    pub fn clear_old_attribute_values(&mut self, attr: &Attribute) -> PyResult<()> {
         self.0
-            .clear_old_rotations(&attr.0)
+            .clear_old_attribute_values(&attr.0)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 

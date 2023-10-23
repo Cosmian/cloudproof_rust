@@ -3,11 +3,7 @@ use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_b
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn h_policy(
-    policy_ptr: *mut i8,
-    policy_len: *mut i32,
-    _max_attribute_creations: i32,
-) -> i32 {
+pub unsafe extern "C" fn h_policy(policy_ptr: *mut i8, policy_len: *mut i32) -> i32 {
     let policy = Policy::new();
     let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error deserializing policy");
     ffi_write_bytes!("policy", &policy_bytes, policy_ptr, policy_len);
@@ -65,7 +61,7 @@ pub unsafe extern "C" fn h_remove_policy_axis(
     let axis_name = ffi_read_string!("axis name", axis_name_ptr);
 
     ffi_unwrap!(
-        policy.remove_dimension(axis_name),
+        policy.remove_dimension(&axis_name),
         "error removing policy axis"
     );
 
@@ -147,7 +143,7 @@ pub unsafe extern "C" fn h_remove_policy_attribute(
     );
 
     ffi_unwrap!(
-        policy.remove_attribute(attr),
+        policy.remove_attribute(&attr),
         "error removing policy attribute"
     );
 
@@ -184,7 +180,7 @@ pub unsafe extern "C" fn h_disable_policy_attribute(
     );
 
     ffi_unwrap!(
-        policy.disable_attribute(attr),
+        policy.disable_attribute(&attr),
         "error disabling policy attribute"
     );
 
@@ -223,7 +219,7 @@ pub unsafe extern "C" fn h_rename_policy_attribute(
     let new_attribute_name = ffi_read_string!("new attribute name", new_attribute_name_ptr);
 
     ffi_unwrap!(
-        policy.rename_attribute(attr, &new_attribute_name),
+        policy.rename_attribute(&attr, &new_attribute_name),
         "error renaming policy attribute"
     );
 
@@ -273,7 +269,7 @@ pub unsafe extern "C" fn h_rotate_attribute(
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn h_clear_old_rotations_attribute(
+pub unsafe extern "C" fn h_clear_old_attribute_values(
     updated_policy_ptr: *mut i8,
     updated_policy_len: *mut i32,
     current_policy_ptr: *const i8,
@@ -292,7 +288,7 @@ pub unsafe extern "C" fn h_clear_old_rotations_attribute(
     );
 
     ffi_unwrap!(
-        policy.clear_old_rotations(&attr),
+        policy.clear_old_attribute_values(&attr),
         "error clearing old rotations policy"
     );
 
@@ -419,7 +415,7 @@ mod tests {
             let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
             let mut updated_policy_len = updated_policy_bytes.len() as i32;
 
-            let res = h_clear_old_rotations_attribute(
+            let res = h_clear_old_attribute_values(
                 updated_policy_ptr,
                 &mut updated_policy_len,
                 current_policy_ptr,
