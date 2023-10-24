@@ -1,6 +1,63 @@
 use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, EncryptionHint, Policy};
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
 
+/// This macro handles deserializing the policy from JS, deserializing an
+/// attribute from JS, and performing a specified action on the policy. It also
+/// ensures proper error handling and serialization of the updated policy into
+/// the response.
+///
+///
+/// # Parameters
+///
+/// TODO:
+/// - `$cc_policy`: A placeholder name for the deserialized policy.
+/// - `$cc_attr`: A placeholder name for the deserialized attribute.
+/// - `$action`: The action to perform on the policy.
+/// - `$error_msg`: The error message to display in case of failures.
+///
+/// # Returns
+///
+/// The serialized updated Policy.
+/// ```
+macro_rules! update_policy {
+    (
+        $updated_policy_ptr:ident,
+        $updated_policy_len:ident,
+        $current_policy_ptr:ident,
+        $current_policy_len:ident,
+        $attr_bytes:ident,
+        $cc_policy:ident,
+        $cc_attr:ident,
+        $action:expr,
+        $error_msg:expr
+    ) => {{
+        let policy_bytes =
+            ffi_read_bytes!("current policy", $current_policy_ptr, $current_policy_len);
+        let mut $cc_policy = ffi_unwrap!(
+            Policy::parse_and_convert(policy_bytes),
+            "error deserializing policy"
+        );
+
+        let attr_string = ffi_read_string!("attribute", $attr_bytes);
+        let $cc_attr = ffi_unwrap!(
+            Attribute::try_from(attr_string.as_str()),
+            "error parsing attribute"
+        );
+
+        ffi_unwrap!($action, $error_msg);
+
+        let policy_bytes =
+            ffi_unwrap!(<Vec<u8>>::try_from(&$cc_policy), "error serializing policy");
+        ffi_write_bytes!(
+            "updated policy",
+            &policy_bytes,
+            $updated_policy_ptr,
+            $updated_policy_len
+        );
+        0
+    }};
+}
+
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn h_policy(policy_ptr: *mut i8, policy_len: *mut i32) -> i32 {
@@ -86,39 +143,17 @@ pub unsafe extern "C" fn h_add_policy_attribute(
     attribute: *const i8,
     is_hybridized: bool,
 ) -> i32 {
-    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
-    let mut policy = ffi_unwrap!(
-        Policy::parse_and_convert(policy_bytes),
-        "error deserializing policy"
-    );
-
-    let attr_string = ffi_read_string!("attribute", attribute);
-    let attr = ffi_unwrap!(
-        Attribute::try_from(attr_string.as_str()),
-        "error parsing attribute"
-    );
-
-    ffi_unwrap!(
-        policy.add_attribute(
-            attr,
-            if is_hybridized {
-                EncryptionHint::Hybridized
-            } else {
-                EncryptionHint::Classic
-            }
-        ),
-        "error adding policy attribute"
-    );
-
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
-    ffi_write_bytes!(
-        "updated policy",
-        &policy_bytes,
+    update_policy!(
         updated_policy_ptr,
-        updated_policy_len
-    );
-
-    0
+        updated_policy_len,
+        current_policy_ptr,
+        current_policy_len,
+        attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.add_attribute(cc_attr, EncryptionHint::new(is_hybridized)),
+        "error adding policy attribute"
+    )
 }
 
 /// # Safety
@@ -130,32 +165,17 @@ pub unsafe extern "C" fn h_remove_policy_attribute(
     current_policy_len: i32,
     attribute: *const i8,
 ) -> i32 {
-    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
-    let mut policy = ffi_unwrap!(
-        Policy::parse_and_convert(policy_bytes),
-        "error deserializing policy"
-    );
-
-    let attr_string = ffi_read_string!("attribute", attribute);
-    let attr = ffi_unwrap!(
-        Attribute::try_from(attr_string.as_str()),
-        "error parsing attribute"
-    );
-
-    ffi_unwrap!(
-        policy.remove_attribute(&attr),
-        "error removing policy attribute"
-    );
-
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
-    ffi_write_bytes!(
-        "updated policy",
-        &policy_bytes,
+    update_policy!(
         updated_policy_ptr,
-        updated_policy_len
-    );
-
-    0
+        updated_policy_len,
+        current_policy_ptr,
+        current_policy_len,
+        attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.remove_attribute(&cc_attr),
+        "error removing policy attribute"
+    )
 }
 
 /// # Safety
@@ -167,32 +187,17 @@ pub unsafe extern "C" fn h_disable_policy_attribute(
     current_policy_len: i32,
     attribute: *const i8,
 ) -> i32 {
-    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
-    let mut policy = ffi_unwrap!(
-        Policy::parse_and_convert(policy_bytes),
-        "error deserializing policy"
-    );
-
-    let attr_string = ffi_read_string!("attribute", attribute);
-    let attr = ffi_unwrap!(
-        Attribute::try_from(attr_string.as_str()),
-        "error parsing attribute"
-    );
-
-    ffi_unwrap!(
-        policy.disable_attribute(&attr),
-        "error disabling policy attribute"
-    );
-
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
-    ffi_write_bytes!(
-        "updated policy",
-        &policy_bytes,
+    update_policy!(
         updated_policy_ptr,
-        updated_policy_len
-    );
-
-    0
+        updated_policy_len,
+        current_policy_ptr,
+        current_policy_len,
+        attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.disable_attribute(&cc_attr),
+        "error disabling policy attribute"
+    )
 }
 
 #[no_mangle]
@@ -204,34 +209,19 @@ pub unsafe extern "C" fn h_rename_policy_attribute(
     attribute: *const i8,
     new_attribute_name_ptr: *const i8,
 ) -> i32 {
-    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
-    let mut policy = ffi_unwrap!(
-        Policy::parse_and_convert(policy_bytes),
-        "error deserializing policy"
-    );
-
-    let attr_string = ffi_read_string!("attribute", attribute);
-    let attr = ffi_unwrap!(
-        Attribute::try_from(attr_string.as_str()),
-        "error parsing attribute"
-    );
-
     let new_attribute_name = ffi_read_string!("new attribute name", new_attribute_name_ptr);
 
-    ffi_unwrap!(
-        policy.rename_attribute(&attr, &new_attribute_name),
-        "error renaming policy attribute"
-    );
-
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
-    ffi_write_bytes!(
-        "updated policy",
-        &policy_bytes,
+    update_policy!(
         updated_policy_ptr,
-        updated_policy_len
-    );
-
-    0
+        updated_policy_len,
+        current_policy_ptr,
+        current_policy_len,
+        attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.rename_attribute(&cc_attr, &new_attribute_name),
+        "error renaming policy attribute"
+    )
 }
 
 /// # Safety
@@ -243,28 +233,17 @@ pub unsafe extern "C" fn h_rotate_attribute(
     current_policy_len: i32,
     attribute: *const i8,
 ) -> i32 {
-    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
-    let mut policy = ffi_unwrap!(
-        Policy::parse_and_convert(policy_bytes),
-        "error deserializing policy"
-    );
-    let attr_string = ffi_read_string!("attribute", attribute);
-    let attr = ffi_unwrap!(
-        Attribute::try_from(attr_string.as_str()),
-        "error parsing attribute"
-    );
-
-    ffi_unwrap!(policy.rotate(&attr), "error rotating policy");
-
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
-    ffi_write_bytes!(
-        "updated policy",
-        &policy_bytes,
+    update_policy!(
         updated_policy_ptr,
-        updated_policy_len
-    );
-
-    0
+        updated_policy_len,
+        current_policy_ptr,
+        current_policy_len,
+        attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.rotate(&cc_attr),
+        "error rotating policy"
+    )
 }
 
 /// # Safety
@@ -276,31 +255,17 @@ pub unsafe extern "C" fn h_clear_old_attribute_values(
     current_policy_len: i32,
     attribute: *const i8,
 ) -> i32 {
-    let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
-    let mut policy = ffi_unwrap!(
-        Policy::parse_and_convert(policy_bytes),
-        "error deserializing policy"
-    );
-    let attr_string = ffi_read_string!("attribute", attribute);
-    let attr = ffi_unwrap!(
-        Attribute::try_from(attr_string.as_str()),
-        "error parsing attribute"
-    );
-
-    ffi_unwrap!(
-        policy.clear_old_attribute_values(&attr),
-        "error clearing old rotations policy"
-    );
-
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
-    ffi_write_bytes!(
-        "updated policy",
-        &policy_bytes,
+    update_policy!(
         updated_policy_ptr,
-        updated_policy_len
-    );
-
-    0
+        updated_policy_len,
+        current_policy_ptr,
+        current_policy_len,
+        attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.clear_old_attribute_values(&cc_attr),
+        "error clearing old rotations policy"
+    )
 }
 
 /// # Safety

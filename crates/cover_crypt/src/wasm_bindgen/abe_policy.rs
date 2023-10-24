@@ -2,22 +2,49 @@ use cosmian_cover_crypt::abe_policy::{Attribute, DimensionBuilder, EncryptionHin
 use js_sys::{Array, Boolean, JsString, Reflect};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
+/// This macro handles deserializing the policy from JS, deserializing an
+/// attribute from JS, and performing a specified action on the policy. It also
+/// ensures proper error handling and serialization of the updated policy into
+/// the response.
+///
+///
+/// # Parameters
+///
+/// - `$policy_bytes`: The input policy bytes that will be updated.
+/// - `$attr_bytes`: The attribute to be processed.
+/// - `$cc_policy`: A placeholder name for the deserialized policy.
+/// - `$cc_attr`: A placeholder name for the deserialized attribute.
+/// - `$action`: The action to perform on the policy.
+/// - `$error_msg`: The error message to display in case of failures.
+///
+/// # Returns
+///
+/// The serialized updated Policy.
+/// ```
 macro_rules! update_policy {
-    ($policy:expr, $attribute:expr, $action:ident, $error_msg:expr) => {{
-        let mut cc_policy = wasm_unwrap!(
-            Policy::parse_and_convert(&$policy),
+    (
+        $policy_bytes:ident,
+        $attr_bytes:ident,
+        $cc_policy:ident,
+        $cc_attr:ident,
+        $action:expr,
+        $error_msg:expr
+    ) => {{
+        let mut $cc_policy = wasm_unwrap!(
+            Policy::parse_and_convert(&$policy_bytes),
             "Error deserializing the policy"
         );
-        let attr = wasm_unwrap!(
-            Attribute::try_from(String::from(JsString::from($attribute)).as_str()),
+        let $cc_attr = wasm_unwrap!(
+            Attribute::try_from(String::from(JsString::from($attr_bytes)).as_str()),
             "Error deserializing the attribute"
         );
-        wasm_unwrap!(cc_policy.$action(&attr), $error_msg);
+
+        wasm_unwrap!($action, $error_msg);
         wasm_unwrap!(
-            serde_json::to_writer(&mut $policy, &cc_policy),
+            serde_json::to_writer(&mut $policy_bytes, &$cc_policy),
             "Error serializing the policy into the response"
         );
-        Ok($policy)
+        Ok($policy_bytes)
     }};
 }
 
@@ -118,30 +145,14 @@ pub fn webassembly_add_attribute(
     attribute: String,
     is_hybridized: bool,
 ) -> Result<Vec<u8>, JsValue> {
-    let mut cc_policy = wasm_unwrap!(
-        Policy::parse_and_convert(&policy),
-        "Error deserializing the policy"
-    );
-    let attr = wasm_unwrap!(
-        Attribute::try_from(String::from(JsString::from(attribute)).as_str()),
-        "Error deserializing the attribute"
-    );
-    wasm_unwrap!(
-        cc_policy.add_attribute(
-            attr,
-            if is_hybridized {
-                EncryptionHint::Hybridized
-            } else {
-                EncryptionHint::Classic
-            }
-        ),
+    update_policy!(
+        policy,
+        attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.add_attribute(cc_attr, EncryptionHint::new(is_hybridized)),
         "Error adding attribute to the policy"
-    );
-    wasm_unwrap!(
-        serde_json::to_writer(&mut policy, &cc_policy),
-        "Error serializing the policy into the response"
-    );
-    Ok(policy)
+    )
 }
 
 #[wasm_bindgen]
@@ -152,7 +163,9 @@ pub fn webassembly_remove_attribute(
     update_policy!(
         policy,
         attribute,
-        remove_attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.remove_attribute(&cc_attr),
         "Error removing attribute from the policy"
     )
 }
@@ -165,7 +178,9 @@ pub fn webassembly_disable_attribute(
     update_policy!(
         policy,
         attribute,
-        disable_attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.disable_attribute(&cc_attr),
         "Error disabling attribute from the policy"
     )
 }
@@ -176,24 +191,15 @@ pub fn webassembly_rename_attribute(
     attribute: String,
     new_attribute_name: String,
 ) -> Result<Vec<u8>, JsValue> {
-    let mut cc_policy = wasm_unwrap!(
-        Policy::parse_and_convert(&policy),
-        "Error deserializing the policy"
-    );
-    let attr = wasm_unwrap!(
-        Attribute::try_from(String::from(JsString::from(attribute)).as_str()),
-        "Error deserializing the attribute"
-    );
     let new_name = String::from(JsString::from(new_attribute_name));
-    wasm_unwrap!(
-        cc_policy.rename_attribute(&attr, &new_name),
+    update_policy!(
+        policy,
+        attribute,
+        cc_policy,
+        cc_attr,
+        cc_policy.rename_attribute(&cc_attr, &new_name),
         "Error renaming attribute from the policy"
-    );
-    wasm_unwrap!(
-        serde_json::to_writer(&mut policy, &cc_policy),
-        "Error serializing the policy into the response"
-    );
-    Ok(policy)
+    )
 }
 
 /// Rotates attributes, changing their underlying values with that of an unused
@@ -241,7 +247,7 @@ pub fn webassembly_clear_old_attribute_values(
         "Error deserializing the policy"
     );
 
-    // Rotate attributes of the current policy
+    // Remove old attribute values from the policy
     for attr in attributes.values() {
         let attribute = wasm_unwrap!(
             Attribute::try_from(String::from(JsString::from(attr?)).as_str()),
@@ -249,7 +255,7 @@ pub fn webassembly_clear_old_attribute_values(
         );
         wasm_unwrap!(
             cc_policy.clear_old_attribute_values(&attribute),
-            "Error clearing old rotations from the policy"
+            "Error clearing old attribute values from the policy"
         );
     }
 
