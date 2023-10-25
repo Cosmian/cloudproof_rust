@@ -9,11 +9,15 @@ use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_b
 ///
 /// # Parameters
 ///
-/// TODO:
-/// - `$cc_policy`: A placeholder name for the deserialized policy.
-/// - `$cc_attr`: A placeholder name for the deserialized attribute.
-/// - `$action`: The action to perform on the policy.
-/// - `$error_msg`: The error message to display in case of failures.
+/// - `$updated_policy_ptr`: output serialized updated policy.
+/// - `$updated_policy_len`: output serialized updated policy length.
+/// - `$current_policy_ptr`: serialized policy to update.
+/// - `$current_policy_len`: serialized policy length to update.
+/// - `$attr_bytes`: serialized attribute to be processed.
+/// - `$cc_policy`: placeholder name for the deserialized policy.
+/// - `$cc_attr`: placeholder name for the deserialized attribute.
+/// - `$action`: action to perform on the policy.
+/// - `$error_msg`: error message to display in case of failures.
 ///
 /// # Returns
 ///

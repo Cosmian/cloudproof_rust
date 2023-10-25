@@ -10,12 +10,12 @@ use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 ///
 /// # Parameters
 ///
-/// - `$policy_bytes`: The input policy bytes that will be updated.
-/// - `$attr_bytes`: The attribute to be processed.
-/// - `$cc_policy`: A placeholder name for the deserialized policy.
-/// - `$cc_attr`: A placeholder name for the deserialized attribute.
-/// - `$action`: The action to perform on the policy.
-/// - `$error_msg`: The error message to display in case of failures.
+/// - `$policy_bytes`: serialized policy to update.
+/// - `$attr_bytes`: serialized attribute to be processed.
+/// - `$cc_policy`: placeholder name for the deserialized policy.
+/// - `$cc_attr`: placeholder name for the deserialized attribute.
+/// - `$action`: action to perform on the policy.
+/// - `$error_msg`: error message to display in case of failures.
 ///
 /// # Returns
 ///
@@ -40,11 +40,11 @@ macro_rules! update_policy {
         );
 
         wasm_unwrap!($action, $error_msg);
-        wasm_unwrap!(
-            serde_json::to_writer(&mut $policy_bytes, &$cc_policy),
-            "Error serializing the policy into the response"
-        );
-        Ok($policy_bytes)
+        serde_json::to_vec(&$cc_policy).map_err(|e| {
+            JsValue::from_str(&format!(
+                "Error serializing the policy into the response: {e}"
+            ))
+        })
     }};
 }
 
@@ -103,7 +103,7 @@ pub fn webassembly_policy() -> Result<Vec<u8>, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn webassembly_add_axis(mut policy: Vec<u8>, axis: String) -> Result<Vec<u8>, JsValue> {
+pub fn webassembly_add_axis(policy: Vec<u8>, axis: String) -> Result<Vec<u8>, JsValue> {
     let mut cc_policy = wasm_unwrap!(
         Policy::parse_and_convert(&policy),
         "Error deserializing the policy"
@@ -115,15 +115,15 @@ pub fn webassembly_add_axis(mut policy: Vec<u8>, axis: String) -> Result<Vec<u8>
         )),
         "Error adding axis to the policy"
     );
-    wasm_unwrap!(
-        serde_json::to_writer(&mut policy, &cc_policy),
-        "Error serializing the policy into the response"
-    );
-    Ok(policy)
+    serde_json::to_vec(&cc_policy).map_err(|e| {
+        JsValue::from_str(&format!(
+            "Error serializing the policy into the response: {e}"
+        ))
+    })
 }
 
 #[wasm_bindgen]
-pub fn webassembly_remove_axis(mut policy: Vec<u8>, axis_name: &str) -> Result<Vec<u8>, JsValue> {
+pub fn webassembly_remove_axis(policy: Vec<u8>, axis_name: &str) -> Result<Vec<u8>, JsValue> {
     let mut cc_policy = wasm_unwrap!(
         Policy::parse_and_convert(&policy),
         "Error deserializing the policy"
@@ -132,16 +132,16 @@ pub fn webassembly_remove_axis(mut policy: Vec<u8>, axis_name: &str) -> Result<V
         cc_policy.remove_dimension(axis_name),
         "Error removing axis from the policy"
     );
-    wasm_unwrap!(
-        serde_json::to_writer(&mut policy, &cc_policy),
-        "Error serializing the policy into the response"
-    );
-    Ok(policy)
+    serde_json::to_vec(&cc_policy).map_err(|e| {
+        JsValue::from_str(&format!(
+            "Error serializing the policy into the response: {e}"
+        ))
+    })
 }
 
 #[wasm_bindgen]
 pub fn webassembly_add_attribute(
-    mut policy: Vec<u8>,
+    policy: Vec<u8>,
     attribute: String,
     is_hybridized: bool,
 ) -> Result<Vec<u8>, JsValue> {
@@ -157,7 +157,7 @@ pub fn webassembly_add_attribute(
 
 #[wasm_bindgen]
 pub fn webassembly_remove_attribute(
-    mut policy: Vec<u8>,
+    policy: Vec<u8>,
     attribute: String,
 ) -> Result<Vec<u8>, JsValue> {
     update_policy!(
@@ -172,7 +172,7 @@ pub fn webassembly_remove_attribute(
 
 #[wasm_bindgen]
 pub fn webassembly_disable_attribute(
-    mut policy: Vec<u8>,
+    policy: Vec<u8>,
     attribute: String,
 ) -> Result<Vec<u8>, JsValue> {
     update_policy!(
@@ -187,7 +187,7 @@ pub fn webassembly_disable_attribute(
 
 #[wasm_bindgen]
 pub fn webassembly_rename_attribute(
-    mut policy: Vec<u8>,
+    policy: Vec<u8>,
     attribute: String,
     new_attribute_name: String,
 ) -> Result<Vec<u8>, JsValue> {
@@ -212,7 +212,7 @@ pub fn webassembly_rename_attribute(
 #[wasm_bindgen]
 pub fn webassembly_rotate_attributes(
     attributes: Attributes,
-    mut policy: Vec<u8>,
+    policy: Vec<u8>,
 ) -> Result<Vec<u8>, JsValue> {
     let attributes = Array::from(&JsValue::from(attributes));
     let mut cc_policy = wasm_unwrap!(
@@ -229,17 +229,17 @@ pub fn webassembly_rotate_attributes(
         wasm_unwrap!(cc_policy.rotate(&attribute), "Error rotating the policy");
     }
 
-    wasm_unwrap!(
-        serde_json::to_writer(&mut policy, &cc_policy),
-        "Error serializing the policy into the response"
-    );
-    Ok(policy)
+    serde_json::to_vec(&cc_policy).map_err(|e| {
+        JsValue::from_str(&format!(
+            "Error serializing the policy into the response: {e}"
+        ))
+    })
 }
 
 #[wasm_bindgen]
 pub fn webassembly_clear_old_attribute_values(
     attributes: Attributes,
-    mut policy: Vec<u8>,
+    policy: Vec<u8>,
 ) -> Result<Vec<u8>, JsValue> {
     let attributes = Array::from(&JsValue::from(attributes));
     let mut cc_policy = wasm_unwrap!(
@@ -259,9 +259,9 @@ pub fn webassembly_clear_old_attribute_values(
         );
     }
 
-    wasm_unwrap!(
-        serde_json::to_writer(&mut policy, &cc_policy),
-        "Error serializing the policy into the response"
-    );
-    Ok(policy)
+    serde_json::to_vec(&cc_policy).map_err(|e| {
+        JsValue::from_str(&format!(
+            "Error serializing the policy into the response: {e}"
+        ))
+    })
 }
