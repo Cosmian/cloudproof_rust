@@ -149,8 +149,8 @@ class Policy:
         Args:
             attribute (Attribute)
         """
-    def clear_old_rotations(self, attribute: Attribute) -> None:
-        """Removes old rotations value of an attribute
+    def clear_old_attribute_values(self, attribute: Attribute) -> None:
+        """Removes old attribute values of an attribute
 
         Args:
             attribute (Attribute)

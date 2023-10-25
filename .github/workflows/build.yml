@@ -17,6 +17,6 @@ jobs:
       findex-cloud-version: 0.1.0
       branch-java: feat/edit_policy
       branch-js: feat/edit_policy
-      branch-flutter: develop
+      branch-flutter: feat/edit_policy
       branch-python: feat/edit_policy
     secrets: inherit

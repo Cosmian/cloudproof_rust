@@ -85,11 +85,11 @@ class TestPolicy(unittest.TestCase):
         self.assertEqual(new_france_value, 8)
         self.assertEqual(policy.attribute_values(france_attribute), [8, 1])
         # clear rotation
-        policy.clear_old_rotations(france_attribute)
+        policy.clear_old_attribute_values(france_attribute)
         self.assertEqual(policy.attribute_values(france_attribute), [8])
         # clearing rotation of non existing attribute will raise an Error
         with self.assertRaises(Exception):
-            policy.clear_old_rotations(Attribute('Department', 'Missing'))
+            policy.clear_old_attribute_values(Attribute('Department', 'Missing'))
 
     def test_edit_policy(self) -> None:
         # Create and initialize policy
