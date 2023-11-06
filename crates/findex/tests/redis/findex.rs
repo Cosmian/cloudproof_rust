@@ -158,11 +158,7 @@ async fn assert_french_search(
     for location in locations {
         let bytes: &[u8] = location;
         let index = u16::from_be_bytes(bytes.try_into().unwrap());
-        assert!(
-            expected_values.contains(&index),
-            "index {} not found",
-            index
-        );
+        assert!(expected_values.contains(&index), "index {index} not found");
     }
 }
 
