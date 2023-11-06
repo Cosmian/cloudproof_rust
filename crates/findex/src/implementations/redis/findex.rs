@@ -45,7 +45,7 @@ impl FindexRedis {
     /// The conditional upsert script used to
     /// only update a table if the previous value matches ARGV[2].
     /// When the value does not match, the previous value is returned
-    const CONDITIONAL_UPSERT_SCRIPT: &'static str = r#"
+    const CONDITIONAL_UPSERT_SCRIPT: &'static str = r"
         local value=redis.call('GET',ARGV[1])
         if((value==false) or (not(value == false) and (ARGV[2] == value))) then
             redis.call('SET', ARGV[1], ARGV[3])
@@ -53,7 +53,7 @@ impl FindexRedis {
         else
             return value
         end;
-    "#;
+    ";
 
     /// Connect to a Redis server
     ///

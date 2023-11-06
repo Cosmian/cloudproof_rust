@@ -13,8 +13,8 @@ members = [
 resolver = "1"
 
 [workspace.dependencies]
-async-trait = "0.1.73"
-base64 = "0.21.4"
+async-trait = "0.1.74"
+base64 = "0.21.5"
 cosmian_crypto_core = "9.3.0"
 cosmian_ffi_utils = "0.1.2"
 hex = "0.4.3"
@@ -26,7 +26,7 @@ tracing = "0.1"
 tracing-log = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-tree = "0.2"
-wasm-bindgen = "0.2.87"
+wasm-bindgen = "0.2.88"
 
 [profile.release]
 lto = true

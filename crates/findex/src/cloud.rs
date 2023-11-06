@@ -213,7 +213,7 @@ impl FromStr for Token {
             let prefix = bytes[pos];
             let callback =
                 <Callback>::try_from(prefix).map_err(|()| FindexCloudError::MalformedToken {
-                    error: format!("unknown prefix {prefix:?} at keys section offset {}", pos),
+                    error: format!("unknown prefix {prefix:?} at keys section offset {pos}"),
                 })?;
             pos += 1;
 

@@ -90,10 +90,7 @@ impl Hasher {
                 }
                 hasher.update(data);
                 // Convert hash output to a fixed size array
-                let output = hasher
-                    .finalize()
-                    .try_into()
-                    .expect("Sha256 hash should be 32 bytes long.");
+                let output = hasher.finalize().into();
 
                 Ok(output)
             }

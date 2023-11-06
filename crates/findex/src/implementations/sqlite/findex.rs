@@ -121,7 +121,7 @@ impl FindexCallbacks<Error, UID_LENGTH> for SqliteFindex {
             .lock()
             .expect("Rusqlite connection lock poisoned");
         let tx = cnx.transaction()?;
-        for (uid, value) in items.iter() {
+        for (uid, value) in &*items {
             tx.execute(
                 "INSERT INTO chain_table (uid, value) VALUES (?1, ?2)",
                 [uid.to_vec(), value.clone()],

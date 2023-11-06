@@ -12,11 +12,6 @@ macro_rules! impl_key_byte {
     ($py_type:ty, $rust_type:ty) => {
         #[pymethods]
         impl $py_type {
-            /// Clones the key
-            pub fn deep_copy(&self) -> Self {
-                Self(self.0.clone())
-            }
-
             /// Converts key to bytes
             pub fn to_bytes(&self, py: Python) -> PyResult<Py<PyBytes>> {
                 Ok(PyBytes::new(
