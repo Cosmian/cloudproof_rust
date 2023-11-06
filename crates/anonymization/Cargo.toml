@@ -29,7 +29,7 @@ cosmian_crypto_core = { workspace = true }
 hex = { workspace = true }
 rand = { workspace = true }
 rand_distr = "0.4"
-regex = "1.9"
+regex = "1.10"
 sha2 = "0.10"
 tiny-keccak = { version = "2.0.2", features = ["sha3"] }
 
@@ -40,4 +40,4 @@ wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"
-wasm-bindgen-test = "0.3.37"
+wasm-bindgen-test = "0.3.38"

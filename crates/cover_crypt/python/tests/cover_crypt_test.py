@@ -4,10 +4,10 @@ import unittest
 from cloudproof_cover_crypt import (
     Attribute,
     CoverCrypt,
+    MasterPublicKey,
     MasterSecretKey,
     Policy,
     PolicyAxis,
-    MasterPublicKey,
     SymmetricKey,
     UserSecretKey,
 )
@@ -15,7 +15,7 @@ from cloudproof_cover_crypt import (
 
 class TestPolicy(unittest.TestCase):
     def policy(self) -> Policy:
-        policy = Policy(100)
+        policy = Policy()
         policy.add_axis(
             PolicyAxis(
                 'Country',
@@ -52,7 +52,7 @@ class TestPolicy(unittest.TestCase):
         )
         self.assertEqual(
             country_axis.to_string(),
-            'Country: [AxisAttributeProperties { name: "France", encryption_hint: Classic }, AxisAttributeProperties { name: "UK", encryption_hint: Classic }, AxisAttributeProperties { name: "Spain", encryption_hint: Classic }, AxisAttributeProperties { name: "Germany", encryption_hint: Classic }], hierarchical: false',
+            'Country: [AttributeBuilder { name: "France", encryption_hint: Classic }, AttributeBuilder { name: "UK", encryption_hint: Classic }, AttributeBuilder { name: "Spain", encryption_hint: Classic }, AttributeBuilder { name: "Germany", encryption_hint: Classic }], hierarchical: false',
         )
         secrecy_axis = PolicyAxis(
             'Secrecy',
@@ -61,7 +61,7 @@ class TestPolicy(unittest.TestCase):
         )
         self.assertEqual(
             secrecy_axis.to_string(),
-            'Secrecy: [AxisAttributeProperties { name: "Low", encryption_hint: Classic }, AxisAttributeProperties { name: "Medium", encryption_hint: Classic }, AxisAttributeProperties { name: "High", encryption_hint: Hybridized }], hierarchical: true',
+            'Secrecy: [AttributeBuilder { name: "Low", encryption_hint: Classic }, AttributeBuilder { name: "Medium", encryption_hint: Classic }, AttributeBuilder { name: "High", encryption_hint: Hybridized }], hierarchical: true',
         )
 
         self.assertTrue(PolicyAxis('Test', [], False).is_empty())
@@ -84,6 +84,88 @@ class TestPolicy(unittest.TestCase):
         new_france_value = policy.attribute_current_value(france_attribute)
         self.assertEqual(new_france_value, 8)
         self.assertEqual(policy.attribute_values(france_attribute), [8, 1])
+        # clear rotation
+        policy.clear_old_attribute_values(france_attribute)
+        self.assertEqual(policy.attribute_values(france_attribute), [8])
+        # clearing rotation of non existing attribute will raise an Error
+        with self.assertRaises(Exception):
+            policy.clear_old_attribute_values(Attribute('Department', 'Missing'))
+
+    def test_edit_policy(self) -> None:
+        # Create and initialize policy
+        policy = self.policy()
+        self.assertEqual(len(policy.attributes()), 7)
+
+        # Rename R&D to Research
+        policy.rename_attribute(Attribute('Country', 'Spain'), 'Espagne')
+
+        # Try renaming Research to already used name MKG
+        with self.assertRaises(Exception):
+            policy.rename_attribute(Attribute('Country', 'Japan'), 'Japon')
+        self.assertEqual(len(policy.attributes()), 7)
+
+        # Add new attribute Japan
+        new_attr = Attribute('Country', 'Japan')
+        policy.add_attribute(new_attr, False)
+        self.assertEqual(len(policy.attributes()), 8)
+
+        # Try adding already existing attribute
+        duplicate_attr = Attribute('Country', 'France')
+        with self.assertRaises(Exception):
+            policy.add_attribute(duplicate_attr, False)
+
+        # Try adding attribute to non-existing dimension
+        missing_dimension = Attribute('Missing', 'dimension')
+        with self.assertRaises(Exception):
+            policy.add_attribute(missing_dimension, False)
+
+        # Remove research attribute
+        delete_attr = Attribute('Country', 'Espagne')
+        policy.remove_attribute(delete_attr)
+        self.assertEqual(len(policy.attributes()), 7)
+
+        # Duplicate remove
+        with self.assertRaises(Exception):
+            policy.remove_attribute(delete_attr)
+
+        # Missing dimension remove
+        with self.assertRaises(Exception):
+            policy.remove_attribute(missing_dimension)
+
+        # Remove all attributes from a dimension
+        policy.remove_attribute(new_attr)
+        policy.remove_attribute(Attribute('Country', 'France'))
+        policy.remove_attribute(Attribute('Country', 'UK'))
+        policy.remove_attribute(Attribute('Country', 'Germany'))
+        self.assertEqual(len(policy.attributes()), 3)
+
+        # Add new dimension
+        new_dimension = PolicyAxis(
+            'DimensionTest',
+            [
+                ('Attr1', False),
+                ('Attr2', False),
+            ],
+            False,
+        )
+        policy.add_axis(new_dimension)
+        self.assertEqual(len(policy.attributes()), 5)
+
+        # Remove the new dimension
+        policy.remove_axis('DimensionTest')
+        self.assertEqual(len(policy.attributes()), 3)
+
+        # Try removing non-existing dimension
+        with self.assertRaises(Exception):
+            policy.remove_axis('MissingDim')
+
+        # Try modifying hierarchical dimension
+        with self.assertRaises(Exception):
+            policy.remove_attribute(Attribute('Secrecy', 'Top Secret'))
+
+        # Removing a hierarchical dimension is permitted
+        policy.remove_axis('Secrecy')
+        self.assertEqual(len(policy.attributes()), 0)
 
     def test_policy_cloning_serialization(self) -> None:
         policy = self.policy()
@@ -111,7 +193,7 @@ class TestKeyGeneration(unittest.TestCase):
         secrecy_axis = PolicyAxis(
             'Secrecy', [('Low', False), ('Medium', False), ('High', True)], True
         )
-        self.policy = Policy(100)
+        self.policy = Policy()
         self.policy.add_axis(country_axis)
         self.policy.add_axis(secrecy_axis)
 
@@ -119,13 +201,6 @@ class TestKeyGeneration(unittest.TestCase):
         self.msk, self.pk = self.cc.generate_master_keys(self.policy)
 
     def test_master_key_serialization(self) -> None:
-        # test deep copy
-        copy_msk = self.msk.deep_copy()
-        self.assertIsInstance(copy_msk, MasterSecretKey)
-
-        copy_pk = self.pk.deep_copy()
-        self.assertIsInstance(copy_pk, MasterPublicKey)
-
         # test serialization
         msk_bytes = self.msk.to_bytes()
         self.assertIsInstance(MasterSecretKey.from_bytes(msk_bytes), MasterSecretKey)
@@ -143,13 +218,23 @@ class TestKeyGeneration(unittest.TestCase):
             'Secrecy::High && (Country::France || Country::Spain)',
             self.policy,
         )
-        # test deep copy
-        copy_usk = self.msk.deep_copy()
-        self.assertIsInstance(copy_usk, MasterSecretKey)
 
         # test serialization
         usk_bytes = usk.to_bytes()
-        self.assertIsInstance(UserSecretKey.from_bytes(usk_bytes), UserSecretKey)
+        deserialized_usk = UserSecretKey.from_bytes(usk_bytes)
+        self.assertIsInstance(deserialized_usk, UserSecretKey)
+
+        # test KMAC authenticity of the deserialized key
+        france_attribute = Attribute('Country', 'France')
+        self.policy.rotate(france_attribute)
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+        self.cc.refresh_user_secret_key(
+            deserialized_usk,
+            'Secrecy::High && (Country::France || Country::Spain)',
+            self.msk,
+            self.policy,
+            keep_old_accesses=True,
+        )
 
         with self.assertRaises(Exception):
             UserSecretKey.from_bytes(b'wrong data')
@@ -179,7 +264,7 @@ class TestEncryption(unittest.TestCase):
         secrecy_axis = PolicyAxis(
             'Secrecy', [('Low', False), ('Medium', False), ('High', True)], True
         )
-        self.policy = Policy(100)
+        self.policy = Policy()
         self.policy.add_axis(country_axis)
         self.policy.add_axis(secrecy_axis)
 
@@ -253,7 +338,6 @@ class TestEncryption(unittest.TestCase):
         )
 
         france_attribute = Attribute('Country', 'France')
-        # new_policy = deepcopy(self.policy)
         self.policy.rotate(france_attribute)
 
         self.cc.update_master_keys(self.policy, self.msk, self.pk)
@@ -330,6 +414,141 @@ class TestEncryption(unittest.TestCase):
             decrypted_sym_key, ciphertext, self.authenticated_data
         )
         self.assertEqual(bytes(decrypted_data), self.plaintext)
+
+    def test_add_attribute(self) -> None:
+        # User secret key
+        decryption_policy = 'Secrecy::Low'
+        low_secret_usk = self.cc.generate_user_secret_key(
+            self.msk, decryption_policy, self.policy
+        )
+
+        # Add sales department
+        self.policy.add_attribute(Attribute('Country', 'Japan'), False)
+
+        # Update the master keys
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
+        # Encrypt
+        plaintext = b'My secret data'
+        ciphertext = self.cc.encrypt(
+            self.policy,
+            'Secrecy::Low && Country::Japan',
+            self.pk,
+            plaintext,
+        )
+
+        # User cannot decrypt new message without refreshing its key
+        with self.assertRaises(Exception):
+            self.cc.decrypt(low_secret_usk, ciphertext)
+
+        self.cc.refresh_user_secret_key(
+            low_secret_usk, decryption_policy, self.msk, self.policy, False
+        )
+
+        decrypted_text, _ = self.cc.decrypt(low_secret_usk, ciphertext)
+        self.assertEqual(decrypted_text, plaintext)
+
+    def test_delete_attribute(self) -> None:
+        # User secret key
+        decryption_policy = 'Secrecy::High && (Country::France || Country::UK)'
+        usk = self.cc.generate_user_secret_key(self.msk, decryption_policy, self.policy)
+
+        # Encrypt
+        plaintext = b'My secret data'
+        ciphertext = self.cc.encrypt(
+            self.policy,
+            'Secrecy::High && Country::France',
+            self.pk,
+            plaintext,
+        )
+
+        # Remove the attribute
+        self.policy.remove_attribute(Attribute('Country', 'France'))
+
+        # Update the master keys
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
+        # Decrypt with old key
+        decrypted_text, _ = self.cc.decrypt(usk, ciphertext)
+        self.assertEqual(decrypted_text, plaintext)
+
+        # Refreshing the user key will remove access to removed partitions
+        new_decryption_policy = 'Secrecy::High && Country::UK'
+        self.cc.refresh_user_secret_key(
+            usk, new_decryption_policy, self.msk, self.policy, True
+        )
+        with self.assertRaises(Exception):
+            self.cc.decrypt(usk, ciphertext)
+
+    def test_disable_attribute(self) -> None:
+        # User secret key
+        decryption_policy = 'Secrecy::High && Country::France'
+        usk = self.cc.generate_user_secret_key(self.msk, decryption_policy, self.policy)
+
+        # Encrypt
+        plaintext = b'My secret data'
+        ciphertext = self.cc.encrypt(
+            self.policy,
+            'Secrecy::High && Country::France',
+            self.pk,
+            plaintext,
+        )
+
+        # Disable the attribute
+        self.policy.disable_attribute(Attribute('Country', 'France'))
+
+        # Update the master keys
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
+        # Can no longer encrypt for this attribute
+        with self.assertRaises(Exception):
+            self.cc.encrypt(
+                self.policy,
+                'Secrecy::High && Country::France',
+                self.pk,
+                b'Test',
+            )
+
+        # Refreshing the user key will keep access to the attribute
+        new_decryption_policy = 'Secrecy::High && Country::France'
+        self.cc.refresh_user_secret_key(
+            usk, new_decryption_policy, self.msk, self.policy, False
+        )
+        decrypted_text, _ = self.cc.decrypt(usk, ciphertext)
+        self.assertEqual(decrypted_text, plaintext)
+
+        # Rotating the disabled attribute
+        self.policy.rotate(Attribute('Country', 'France'))
+        # Update the master keys without error
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
+    def test_rename_attribute(self) -> None:
+        # User secret key
+        decryption_policy = 'Secrecy::High && Country::Spain'
+        usk = self.cc.generate_user_secret_key(self.msk, decryption_policy, self.policy)
+
+        # Encrypt
+        plaintext = b'My secret data'
+        ciphertext = self.cc.encrypt(
+            self.policy,
+            'Secrecy::High && Country::Spain',
+            self.pk,
+            plaintext,
+        )
+
+        # Disable the attribute
+        self.policy.rename_attribute(Attribute('Country', 'Spain'), 'Espagne')
+
+        # Update the master keys
+        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+
+        # Refreshing the user key will keep access to the attribute
+        new_decryption_policy = 'Secrecy::High && Country::Espagne'
+        self.cc.refresh_user_secret_key(
+            usk, new_decryption_policy, self.msk, self.policy, False
+        )
+        decrypted_text, _ = self.cc.decrypt(usk, ciphertext)
+        self.assertEqual(decrypted_text, plaintext)
 
 
 if __name__ == '__main__':

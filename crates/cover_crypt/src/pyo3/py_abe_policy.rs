@@ -1,7 +1,7 @@
 use std::result::Result;
 
 use cosmian_cover_crypt::abe_policy::{
-    Attribute as AttributeRust, EncryptionHint, Policy as PolicyRust, PolicyAxis as PolicyAxisRust,
+    Attribute as AttributeRust, DimensionBuilder, EncryptionHint, Policy as PolicyRust,
 };
 use pyo3::{
     exceptions::{PyException, PyTypeError, PyValueError},
@@ -16,6 +16,7 @@ use pyo3::{
 ///     axis (str): policy axis the attributes belongs to
 ///     name (str): unique attribute name within this axis
 #[pyclass]
+#[derive(Clone)]
 pub struct Attribute(AttributeRust);
 
 #[pymethods]
@@ -30,7 +31,7 @@ impl Attribute {
     /// Returns:
     ///     str
     pub fn get_axis(&self) -> &str {
-        &self.0.axis
+        &self.0.dimension
     }
 
     /// Gets the attribute name.
@@ -75,7 +76,7 @@ impl Attribute {
 /// and encryption hint
 ///         hierarchical (bool): set the axis to be hierarchical
 #[pyclass]
-pub struct PolicyAxis(PolicyAxisRust);
+pub struct PolicyAxis(DimensionBuilder);
 
 #[pymethods]
 impl PolicyAxis {
@@ -101,7 +102,7 @@ impl PolicyAxis {
             })
             .collect::<Result<_, _>>()?;
 
-        Ok(Self(PolicyAxisRust::new(name, attributes, hierarchical)))
+        Ok(Self(DimensionBuilder::new(name, attributes, hierarchical)))
     }
 
     /// Returns the number of attributes belonging to this axis.
@@ -177,15 +178,53 @@ impl Policy {
     /// creations (revocation + addition) allowed.
     /// Default maximum of attribute creations is u32::MAX
     #[new]
-    #[pyo3(signature = (max_attribute_creations = 4_294_967_295))]
-    fn new(max_attribute_creations: u32) -> Self {
-        Self(PolicyRust::new(max_attribute_creations))
+    fn new() -> Self {
+        Self(PolicyRust::new())
     }
 
     /// Adds the given policy axis to the policy.
     pub fn add_axis(&mut self, axis: &PolicyAxis) -> PyResult<()> {
         self.0
-            .add_axis(axis.0.clone())
+            .add_dimension(axis.0.clone())
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Removes the given axis from the policy.
+    pub fn remove_axis(&mut self, axis_name: &str) -> PyResult<()> {
+        self.0
+            .remove_dimension(axis_name)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Adds the given attribute to the policy.
+    pub fn add_attribute(&mut self, attribute: Attribute, is_hybridized: bool) -> PyResult<()> {
+        self.0
+            .add_attribute(attribute.0, EncryptionHint::new(is_hybridized))
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Removes the given attribute from the policy
+    /// Encrypting and decrypting for this attribute will no longer be possible
+    /// once the keys are updated.
+    pub fn remove_attribute(&mut self, attribute: &Attribute) -> PyResult<()> {
+        self.0
+            .remove_attribute(&attribute.0)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Marks an attribute as read only.
+    /// The corresponding attribute key will be removed from the public key.
+    /// But the decryption key will be kept to allow reading old ciphertext.
+    pub fn disable_attribute(&mut self, attribute: &Attribute) -> PyResult<()> {
+        self.0
+            .disable_attribute(&attribute.0)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Changes the name of an attribute.
+    pub fn rename_attribute(&mut self, attribute: &Attribute, new_name: &str) -> PyResult<()> {
+        self.0
+            .rename_attribute(&attribute.0, new_name)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
@@ -194,6 +233,13 @@ impl Policy {
     pub fn rotate(&mut self, attribute: &Attribute) -> PyResult<()> {
         self.0
             .rotate(&attribute.0)
+            .map_err(|e| PyException::new_err(e.to_string()))
+    }
+
+    /// Removes old rotations id of an attribute.
+    pub fn clear_old_attribute_values(&mut self, attr: &Attribute) -> PyResult<()> {
+        self.0
+            .clear_old_attribute_values(&attr.0)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2023-11-06
+
+### Features
+
+- Expose policy editing functions in Covercrypt and bump cloudproof_cover_crypt version to 13.0.0
+
 ## [2.2.5] - 2023-09-28
 
 ### Features
