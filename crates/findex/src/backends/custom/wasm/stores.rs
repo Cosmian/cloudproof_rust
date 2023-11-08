@@ -28,7 +28,7 @@ use crate::{
 /// | compact |  ET + CT  |           |  ET + CT  |  ET + CT  |       ET      |
 /// +---------+-----------+-----------+-----------+-----------+---------------+
 /// ```
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 #[wasm_bindgen]
 pub struct WasmCallbacks {
     dump_tokens: Option<DumpTokens>,

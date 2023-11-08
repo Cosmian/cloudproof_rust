@@ -21,6 +21,8 @@ use wasm_bindgen::JsValue;
     feature = "ffi"
 ))]
 use crate::ser_de::SerializationError;
+#[cfg(feature = "backend-ffi")]
+use crate::ErrorCode;
 
 #[derive(Debug)]
 pub enum BackendError {
@@ -30,7 +32,7 @@ pub enum BackendError {
     Redis(RedisError),
     MissingCallback(String),
     #[cfg(feature = "backend-ffi")]
-    Ffi(String, i32),
+    Ffi(String, ErrorCode),
     #[cfg(feature = "backend-python")]
     Python(String),
     #[cfg(feature = "backend-rest")]

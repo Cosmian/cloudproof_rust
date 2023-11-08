@@ -18,7 +18,8 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 name = "cloudproof"
 
 [features]
-cloud = ["cloudproof_findex/cloud"]
+findex-redis = ["cloudproof_findex/backend-redis"]
+findex-sqlite = ["cloudproof_findex/backend-sqlite"]
 default = [
   "cloudproof_aesgcm/default",
   "cloudproof_anonymization/default",
@@ -35,6 +36,7 @@ ffi = [
   "cloudproof_findex/ffi",
   "cloudproof_fpe/ffi",
 ]
+
 [dependencies]
 ######
 # Watchout: for convenience in development mode, we can set one of those following dependencies such as:

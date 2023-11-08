@@ -1,4 +1,4 @@
-//! Meta crate in order to merge other crates
+//! Meta crate used to merge other crates
 
 #[cfg(feature = "ffi")]
 pub use cloudproof_aesgcm::ffi as aesgcm_ffi;

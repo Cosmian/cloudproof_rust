@@ -174,35 +174,35 @@ class Key:
 
 class PythonCallbacks:
     """Callback structure used to instantiate a Findex backend."""
+
     @staticmethod
     def new() -> PythonCallbacks:
         """Initialize a new callback structure."""
-
     def set_fetch(self, callback: object):
         """Sets the fetch callback."""
-
     def set_upsert(self, callback: object):
         """Sets the upsert callback."""
-
     def set_insert(self, callback: object):
         """Sets the insert callback."""
-
     def set_delete(self, callback: object):
         """Sets the delete callback."""
-
     def set_dump_tokens(self, callback: object):
         """Sets the dump_tokens callback."""
 
 class AuthorizationToken:
     @staticmethod
-    def new(index_id: str, findex_key: Key, fetch_entries_key: Key,
-            fetch_chains_key: Key, upsert_entries_key: Key,
-            insert_chains_key: Key) -> AuthorizationToken:
+    def new(
+        index_id: str,
+        findex_key: Key,
+        fetch_entries_key: Key,
+        fetch_chains_key: Key,
+        upsert_entries_key: Key,
+        insert_chains_key: Key,
+    ) -> AuthorizationToken:
         """Create a new token from the given elements.
 
         Returns:
             Authorization token"""
-
     @staticmethod
     def random(index: str) -> AuthorizationToken:
         """Generate a new random authorization token.
@@ -210,21 +210,18 @@ class AuthorizationToken:
         Returns:
             AuthorizationToken
         """
-
     def generate_reduced_token_string(self, is_read: bool, is_write: bool) -> str:
         """Generate a token string with the given reduced permissions.
 
         Returns:
             str
         """
-
     def __str__(self) -> str:
         """Convert the authorization token to string.
 
         Returns:
             str
         """
-
 
 class Findex:
     @staticmethod
@@ -234,7 +231,6 @@ class Findex:
         Returns:
             Findex
         """
-
     @staticmethod
     def new_with_redis_backend(entry_url: str, chain_url: str) -> Findex:
         """Instantiate a new Findex instance using Redis backend.
@@ -242,7 +238,6 @@ class Findex:
         Returns:
             Findex
         """
-
     @staticmethod
     def new_with_rest_backend(token: str, url: str) -> Findex:
         """Instantiate a new Findex instance using REST backend.
@@ -250,16 +245,15 @@ class Findex:
         Returns:
             Findex
         """
-
     @staticmethod
-    def new_with_custom_backend(entry_callbacks: PythonCallbacks,
-                                chain_callbacks: PythonCallbacks) -> Findex:
+    def new_with_custom_backend(
+        entry_callbacks: PythonCallbacks, chain_callbacks: PythonCallbacks
+    ) -> Findex:
         """Instantiate a new Findex instance using custom backend.
 
         Returns:
             Findex
         """
-
     def add(
         self,
         key: Key,
@@ -270,7 +264,6 @@ class Findex:
 
         Returns:
             The set of new keywords."""
-
     def delete(
         self,
         key: Key,
@@ -281,7 +274,6 @@ class Findex:
 
         Returns:
             The set of new keywords."""
-
     def search(
         self,
         key: Key,
@@ -293,7 +285,6 @@ class Findex:
 
         Returns:
             The values indexed for those tokens."""
-
     def compact(
         self,
         key: Key,

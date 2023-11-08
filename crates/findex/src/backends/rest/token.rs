@@ -154,7 +154,7 @@ impl AuthorizationToken {
                 "Write access needs read access.".to_string(),
             ))?,
             (false, false) => {
-                self.seeds.drain();
+                self.seeds.clear();
             }
         }
 

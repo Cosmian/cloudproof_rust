@@ -19,7 +19,17 @@ pub mod redis;
 #[cfg(feature = "backend-sqlite")]
 pub mod sqlite;
 
-#[cfg(test)]
+#[cfg(all(
+    test,
+    any(
+        feature = "backend-ffi",
+        feature = "backend-python",
+        feature = "backend-redis",
+        feature = "backend-rest",
+        feature = "backend-sqlite",
+        feature = "backend-wasm",
+    )
+))]
 mod tests;
 
 pub use error::BackendError;

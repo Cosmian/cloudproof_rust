@@ -1,33 +1,42 @@
 //! Defines the Findex FFI API.
 
-use std::collections::{HashMap, HashSet};
-#[cfg(feature = "cloud")]
-use std::str::FromStr;
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+    sync::Mutex,
+};
 
 use cosmian_crypto_core::{
     bytes_ser_de::Serializer, reexport::rand_core::SeedableRng, CsRng, FixedSizeCBytes,
     RandomFixedSizeCBytes, SymmetricKey,
 };
-#[cfg(feature = "cloud")]
+
 use cosmian_ffi_utils::ffi_read_string;
 use cosmian_ffi_utils::{
     error::{h_get_error, set_last_error, FfiError},
-    ffi_bail, ffi_read_bytes, ffi_unwrap, ffi_write_bytes,
+    ffi_read_bytes, ffi_unwrap, ffi_write_bytes,
 };
 use cosmian_findex::{
     Error as FindexError, IndexedValue, IndexedValueToKeywordsMap, Keyword, Keywords, Label,
     Location, USER_KEY_LENGTH,
 };
+use lazy_static::lazy_static;
 use tracing::trace;
 
-#[cfg(feature = "cloud")]
-use crate::backends::rest::{AuthorizationToken, CallbackPrefix};
+use crate::{
+    backends::{
+        rest::{AuthorizationToken, CallbackPrefix},
+        BackendError,
+    },
+    ser_de::ffi_ser_de::get_upsert_output_size,
+    ErrorCode,
+};
+
 #[cfg(debug_assertions)]
 use crate::logger::log_init;
 use crate::{
     backends::custom::ffi::{
         Delete, DumpTokens, Fetch, FfiCallbacks, FilterObsoleteData, Insert, Interrupt, Upsert,
-        MAX_LEB128_ENCODING_SIZE,
     },
     ser_de::ffi_ser_de::{
         deserialize_indexed_values, deserialize_keyword_set, deserialize_location_set,
@@ -36,59 +45,34 @@ use crate::{
     BackendConfiguration, InstantiatedFindex,
 };
 
-/// Re-export the `cosmian_ffi` `h_get_error` function to clients with the old
-/// `get_last_error` name The `h_get_error` is available inside the final lib
-/// (but tools like `ffigen` seems to not parse it…) Maybe we can find a
-/// solution by changing the function name inside the clients.
-///
-/// # Safety
-///
-/// It's unsafe.
-#[no_mangle]
-pub unsafe extern "C" fn get_last_error(error_ptr: *mut i8, error_len: *mut i32) -> i32 {
-    h_get_error(error_ptr, error_len)
+lazy_static! {
+    static ref FINDEX_INSTANCES: Mutex::<HashMap::<i32, (SymmetricKey<USER_KEY_LENGTH>, Label, InstantiatedFindex)>> =
+        Mutex::new(HashMap::new());
 }
 
-/// Recursively searches Findex graphs for values indexed by the given keywords.
+/// Creates a new Findex instance using a custom FFI backend.
 ///
-/// # Serialization
-///
-/// Le output is serialized as follows:
-///
-/// `LEB128(n_keywords) || LEB128(keyword_1)
-///     || keyword_1 || LEB128(n_associated_results)
-///     || LEB128(associated_result_1) || associated_result_1
-///     || ...`
-///
-/// # Parameters
-///
-/// - `search_results`          : (output) search result
-/// - `key`                     : Findex key
-/// - `label`                   : public information used to derive UIDs
-/// - `keywords`                : serialized list of keywords
-/// - `entry_table_number`      : number of different entry tables
-/// - `interrupt`               : user interrupt called at each search iteration
-/// - `fetch_entry_callback`    : callback used to fetch the Entry Table
-/// - `fetch_chain_callback`    : callback used to fetch the Chain Table
+/// The new instance is stored in a cache and the handle returned.
 ///
 /// # Safety
 ///
 /// Cannot be safe since using FFI.
 #[no_mangle]
 #[tracing::instrument(ret, skip_all)]
-pub unsafe extern "C" fn h_search(
-    search_results_ptr: *mut u8,
-    search_results_len: *mut i32,
+pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
+    findex_handle: *mut i32,
     key_ptr: *const u8,
-    key_len: u32,
+    key_len: i32,
     label_ptr: *const u8,
-    label_len: u32,
-    keywords_ptr: *const u8,
-    keywords_len: u32,
+    label_len: i32,
     entry_table_number: u32,
-    interrupt: Interrupt,
-    fetch_entry_callback: Fetch,
-    fetch_chain_callback: Fetch,
+    fetch_entry: Fetch,
+    fetch_chain: Fetch,
+    upsert_entry: Upsert,
+    insert_chain: Insert,
+    delete_entry: Delete,
+    delete_chain: Delete,
+    dump_tokens: DumpTokens,
 ) -> i32 {
     #[cfg(debug_assertions)]
     log_init();
@@ -104,17 +88,149 @@ pub unsafe extern "C" fn h_search(
     let label = Label::from(label_bytes);
     trace!("Label successfully parsed: label: {label}");
 
+    let config = BackendConfiguration::Ffi(
+        FfiCallbacks {
+            table_number: entry_table_number as usize,
+            fetch: Some(fetch_entry),
+            upsert: Some(upsert_entry),
+            insert: None,
+            delete: Some(delete_entry),
+            dump_tokens: Some(dump_tokens),
+        },
+        FfiCallbacks {
+            // Only one Chain table is allowed.
+            table_number: 1,
+            fetch: Some(fetch_chain),
+            upsert: None,
+            insert: Some(insert_chain),
+            delete: Some(delete_chain),
+            dump_tokens: None,
+        },
+    );
+
+    let rt = ffi_unwrap!(
+        tokio::runtime::Runtime::new(),
+        "error creating Tokio runtime"
+    );
+    let findex = ffi_unwrap!(
+        rt.block_on(InstantiatedFindex::new(config)),
+        "error instantiating Findex with custom backend"
+    );
+
+    let mut cache = FINDEX_INSTANCES
+        .lock()
+        .expect("Findex instance cache lock poisoned.");
+    let handle = ffi_unwrap!(
+        <i32>::try_from(cache.len()),
+        "findex instance cache capacity overflow"
+    );
+
+    cache.insert(handle, (key, label, findex));
+
+    *findex_handle = handle;
+
+    ErrorCode::Success.into()
+}
+
+/// Instantiate a Findex using a REST backend.
+///
+/// # Parameters
+///
+/// - `label`   : label used by Findex
+/// - `token`   : token containing authentication keys
+/// - `url`     : REST server URL
+///
+/// # Safety
+///
+/// Cannot be safe since using FFI.
+#[no_mangle]
+#[tracing::instrument(ret, skip_all)]
+pub unsafe extern "C" fn h_instantiate_with_rest_backend(
+    findex_handle: *mut i32,
+    label_ptr: *const u8,
+    label_len: i32,
+    token_ptr: *const i8,
+    url_ptr: *const i8,
+) -> i32 {
+    #[cfg(debug_assertions)]
+    log_init();
+
+    let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
+    let label = Label::from(label_bytes);
+    trace!("Label successfully parsed: label: {label}");
+
+    let token = ffi_read_string!("token", token_ptr);
+    trace!("Authorization token read: {token}");
+    let authorization_token = ffi_unwrap!(
+        crate::backends::rest::AuthorizationToken::from_str(&token),
+        "authorization token conversion failed"
+    );
+
+    let base_url = if url_ptr.is_null() {
+        String::new()
+    } else {
+        ffi_read_string!("REST server URL", url_ptr)
+    };
+
+    let config = BackendConfiguration::Rest(authorization_token.clone(), base_url);
+
+    let rt = ffi_unwrap!(
+        tokio::runtime::Runtime::new(),
+        "error creating Tokio runtime"
+    );
+    let findex = ffi_unwrap!(
+        rt.block_on(InstantiatedFindex::new(config)),
+        "error instantiating Findex with REST backend"
+    );
+
+    let mut cache = FINDEX_INSTANCES
+        .lock()
+        .expect("Findex instance cache lock poisoned.");
+    let handle = ffi_unwrap!(
+        <i32>::try_from(cache.len()),
+        "findex instance cache capacity overflow"
+    );
+    cache.insert(handle, (authorization_token.findex_key, label, findex));
+
+    *findex_handle = handle;
+
+    ErrorCode::Success.into()
+}
+
+/// Searches the index for the given keywords.
+///
+/// At each search recursion, the passed `interrupt` function is called with the results from the
+/// current recursion level. The search is interrupted is `true` is returned.
+///
+/// # Parameters
+///
+/// - `results`         : (output) search result
+/// - `findex_handle`   : Findex handle on the instance cache
+/// - `keywords`        : serialized list of keywords
+/// - `interrupt`       : user interrupt called at each search iteration
+///
+/// # Safety
+///
+/// Cannot be safe since using FFI.
+#[no_mangle]
+#[tracing::instrument(ret, skip_all)]
+pub unsafe extern "C" fn h_search(
+    results_ptr: *mut u8,
+    results_len: *mut i32,
+    findex_handle: i32,
+    keywords_ptr: *const u8,
+    keywords_len: i32,
+    interrupt: Interrupt,
+) -> i32 {
+    #[cfg(debug_assertions)]
+    log_init();
+
     let keywords = ffi_unwrap!(
         deserialize_keyword_set(ffi_read_bytes!("keywords", keywords_ptr, keywords_len)),
         "error deserializing keywords"
     );
     let keywords = Keywords::from(keywords);
     trace!("Keywords successfully parsed: keywords: {keywords}");
-
-    if entry_table_number == 0 {
-        ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
-    }
-    trace!("Entry table number: {entry_table_number}");
 
     let user_interrupt = |res: HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>| async move {
         trace!("user interrupt input: {res:?}");
@@ -125,46 +241,34 @@ pub unsafe extern "C" fn h_search(
         Ok(is_interrupted)
     };
 
+    let cache = FINDEX_INSTANCES
+        .lock()
+        .expect("Findex instance cache lock poisoned.");
+    let (key, label, findex) = ffi_unwrap!(
+        cache
+            .get(&findex_handle)
+            .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
+        "cannot get a hold on the Findex instance"
+    );
+
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime"
     );
 
-    let config = BackendConfiguration::Ffi(
-        FfiCallbacks {
-            table_number: entry_table_number as usize,
-            fetch: Some(fetch_entry_callback),
-            upsert: None,
-            insert: None,
-            delete: None,
-            dump_tokens: None,
-        },
-        FfiCallbacks {
-            // Only one Chain table is allowed.
-            table_number: 1,
-            fetch: Some(fetch_chain_callback),
-            upsert: None,
-            insert: None,
-            delete: None,
-            dump_tokens: None,
-        },
-    );
+    let res = rt.block_on(findex.search(key, label, keywords, &user_interrupt));
 
-    let findex = ffi_unwrap!(
-        rt.block_on(InstantiatedFindex::new(config)),
-        "error instantiating Findex"
-    );
-
-    let results = match rt.block_on(findex.search(&key, &label, keywords, &user_interrupt)) {
-        Ok(results) => results,
-        Err(FindexError::Callback(e)) => {
-            set_last_error(FfiError::Generic(e.to_string()));
-            // return e.to_error_code(); TODO
-            return 1;
+    let results = match res {
+        Ok(res) => res,
+        Err(FindexError::Callback(BackendError::Ffi(msg, code))) => {
+            set_last_error(FfiError::Generic(format!(
+                "backend error during `search` operation: {msg}"
+            )));
+            return code.into();
         }
         Err(e) => {
-            set_last_error(FfiError::Generic(e.to_string()));
-            return 1;
+            set_last_error(FfiError::Generic(format!("findex `search` error: {e}")));
+            return ErrorCode::Findex.into();
         }
     };
 
@@ -188,136 +292,187 @@ pub unsafe extern "C" fn h_search(
     }
     let serialized_uids = serializer.finalize();
 
-    ffi_write_bytes!(
-        "search results",
-        &serialized_uids,
-        search_results_ptr,
-        search_results_len
-    );
+    ffi_write_bytes!("search results", &serialized_uids, results_ptr, results_len);
 
-    0
+    ErrorCode::Success.into()
 }
 
-/// Index the given values for the given keywords. After upserting, any
-/// search for such a keyword will result in finding (at least) the
-/// corresponding value.
-///
-/// # Serialization
-///
-/// The list of values to index for the associated keywords should be serialized
-/// as follows:
-///
-/// `LEB128(n_values) || serialized_value_1
-///     || LEB128(n_associated_keywords) || serialized_keyword_1 || ...`
-///
-/// where values serialized as follows:
-///
-/// `LEB128(value_bytes.len() + 1) || base64(prefix || value_bytes)`
-///
-/// with `prefix` being `l` for a `Location` and `w` for a `NextKeyword`, and
-/// where keywords are serialized as follows:
-///
-/// `LEB128(keyword_bytes.len()) || base64(keyword_bytes)`
-///
-/// The results are serialized as follows:
-///
-/// `LEB128(n_values) || serialized_value_1 || ... || serialized_value_n`
-///
-/// and `serialized_value_i` is serialized as follows:
-/// `LEB128(keyword_bytes.len()) || keyword_bytes`
+/// Adds the given associations to the index.
 ///
 /// # Parameters
 ///
-/// - `upsert_results`  : Returns the list of new keywords added to the index
-/// - `key`      : Findex key
-/// - `label`           : additional information used to derive Entry Table UIDs
-/// TODO (TBZ): explain the serialization in the doc
-/// - `additions`       : serialized list of new indexed values
-/// - `deletions`       : serialized list of removed indexed values
-/// - `entry_table_number` : number of different entry tables
-/// - `fetch_entry`     : callback used to fetch the Entry Table
-/// - `upsert_entry`    : callback used to upsert lines in the Entry Table
-/// - `insert_chain`    : callback used to insert lines in the Chain Table
+/// - `results`         : (output) list of new keywords added to the index
+/// - `findex_handle`   : Findex handle on the instance cache
+/// - `associations`    : map of values to sets of keywords
 ///
 /// # Safety
 ///
 /// Cannot be safe since using FFI.
 #[no_mangle]
 #[tracing::instrument(ret, skip_all)]
-pub unsafe extern "C" fn h_upsert(
-    upsert_results_ptr: *mut i8,
-    upsert_results_len: *mut i32,
-    key_ptr: *const u8,
-    key_len: i32,
-    label_ptr: *const u8,
-    label_len: i32,
-    additions_ptr: *const i8,
-    additions_len: i32,
-    deletions_ptr: *const i8,
-    deletions_len: i32,
-    entry_table_number: u32,
-    fetch_entry: Fetch, // TODO: create init function to pass callbacks
-    upsert_entry: Upsert,
-    insert_chain: Insert,
+pub unsafe extern "C" fn h_add(
+    results_ptr: *mut u8,
+    results_len: *mut i32,
+    findex_handle: i32,
+    associations_ptr: *const u8,
+    associations_len: i32,
 ) -> i32 {
     #[cfg(debug_assertions)]
     log_init();
 
-    let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
-    let key = ffi_unwrap!(
-        SymmetricKey::try_from_slice(key_bytes),
-        "error re-serializing findex key"
-    );
-    trace!("Key successfully parsed");
+    let associations_bytes = ffi_read_bytes!("associations", associations_ptr, associations_len);
+    let associations = IndexedValueToKeywordsMap::from(ffi_unwrap!(
+        deserialize_indexed_values(associations_bytes),
+        "failed deserialize indexed values (associations)"
+    ));
 
-    if entry_table_number == 0 {
-        ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
+    let output_size = get_upsert_output_size(&associations);
+    if *results_len < output_size as i32 {
+        set_last_error(FfiError::Generic(format!(
+            "The pre-allocated add results buffer is too small; need {} bytes, allocated {}",
+            output_size, results_len as i32
+        )));
+        *results_len = output_size as i32;
+        return ErrorCode::BufferTooSmall.into();
     }
-    trace!("Entry table number: {entry_table_number}");
+
+    let cache = FINDEX_INSTANCES
+        .lock()
+        .expect("Findex instance cache lock poisoned.");
+
+    let (key, label, findex) = ffi_unwrap!(
+        cache
+            .get(&findex_handle)
+            .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
+        "cannot get a hold on the Findex instance"
+    );
+
+    trace!("instantiated Findex: {findex:?}");
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime"
     );
 
-    let config = BackendConfiguration::Ffi(
-        FfiCallbacks {
-            table_number: entry_table_number as usize,
-            fetch: Some(fetch_entry),
-            upsert: Some(upsert_entry),
-            insert: None,
-            delete: None,
-            dump_tokens: None,
-        },
-        FfiCallbacks {
-            // Only one Chain table is allowed.
-            table_number: 1,
-            fetch: None,
-            upsert: None,
-            insert: Some(insert_chain),
-            delete: None,
-            dump_tokens: None,
-        },
+    let res = rt.block_on(findex.add(key, label, associations));
+
+    let new_keywords = match res {
+        Ok(new_keywords) => new_keywords,
+        Err(FindexError::Callback(BackendError::Ffi(msg, code))) => {
+            set_last_error(FfiError::Generic(format!(
+                "backend error during `add` operation: {msg}"
+            )));
+            return code.into();
+        }
+        Err(e) => {
+            set_last_error(FfiError::Generic(format!("findex `add` error: {e}")));
+            return ErrorCode::Findex.into();
+        }
+    };
+
+    // Serialize the results.
+    let serialized_keywords = ffi_unwrap!(
+        serialize_keyword_set(&new_keywords),
+        "serialize new keywords"
     );
 
-    let mut findex = ffi_unwrap!(
-        rt.block_on(InstantiatedFindex::new(config)),
-        "error instantiating Findex"
+    ffi_write_bytes!(
+        "add results",
+        &serialized_keywords,
+        results_ptr,
+        results_len
     );
+
+    ErrorCode::Success.into()
+}
+
+/// Removes the given associations from the index.
+///
+/// # Parameters
+///
+/// - `results`         : Returns the list of new keywords added to the index
+/// - `findex_handle`   : Findex handle on the instance cache
+/// - `associations`    : map of values to sets of keywords
+///
+/// # Safety
+///
+/// Cannot be safe since using FFI.
+#[no_mangle]
+#[tracing::instrument(ret, skip_all)]
+pub unsafe extern "C" fn h_delete(
+    results_ptr: *mut u8,
+    results_len: *mut i32,
+    findex_handle: i32,
+    associations_ptr: *const u8,
+    associations_len: i32,
+) -> i32 {
+    #[cfg(debug_assertions)]
+    log_init();
+
+    let associations_bytes = ffi_read_bytes!("associations", associations_ptr, associations_len);
+    let associations = IndexedValueToKeywordsMap::from(ffi_unwrap!(
+        deserialize_indexed_values(associations_bytes),
+        "failed deserialize indexed values (associations)"
+    ));
+
+    let output_size = get_upsert_output_size(&associations);
+    if *results_len < output_size as i32 {
+        set_last_error(FfiError::Generic(format!(
+            "The pre-allocated add results buffer is too small; need {} bytes, allocated {}",
+            output_size, results_len as i32
+        )));
+        *results_len = output_size as i32;
+        return ErrorCode::BufferTooSmall.into();
+    }
+
+    let cache = FINDEX_INSTANCES
+        .lock()
+        .expect("Findex instance cache lock poisoned.");
+
+    let (key, label, findex) = ffi_unwrap!(
+        cache
+            .get(&findex_handle)
+            .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
+        "cannot get a hold on the Findex instance"
+    );
+
     trace!("instantiated Findex: {findex:?}");
 
-    ffi_upsert(
-        &mut findex,
-        &key,
-        upsert_results_ptr,
-        upsert_results_len,
-        label_ptr,
-        label_len,
-        additions_ptr,
-        additions_len,
-        deletions_ptr,
-        deletions_len,
-    )
+    let rt = ffi_unwrap!(
+        tokio::runtime::Runtime::new(),
+        "error creating Tokio runtime"
+    );
+
+    let res = rt.block_on(findex.delete(key, label, associations));
+
+    let new_keywords = match res {
+        Ok(new_keywords) => new_keywords,
+        Err(FindexError::Callback(BackendError::Ffi(msg, code))) => {
+            set_last_error(FfiError::Generic(format!(
+                "backend error during `delete` operation: {msg}"
+            )));
+            return code.into();
+        }
+        Err(e) => {
+            set_last_error(FfiError::Generic(format!("findex `delete` error: {e}")));
+            return ErrorCode::Findex.into();
+        }
+    };
+
+    // Serialize the results.
+    let serialized_keywords = ffi_unwrap!(
+        serialize_keyword_set(&new_keywords),
+        "serialize new keywords"
+    );
+
+    ffi_write_bytes!(
+        "delete results",
+        &serialized_keywords,
+        results_ptr,
+        results_len
+    );
+
+    ErrorCode::Success.into()
 }
 
 /// Replaces all the Index Entry Table UIDs and values. New UIDs are derived
@@ -333,18 +488,11 @@ pub unsafe extern "C" fn h_upsert(
 ///
 /// # Parameters
 ///
-/// - `old_key`                         : old Findex key
-/// - `new_key`                         : new Findex key
-/// - `new_label`                       : public information used to derive UIDs
-/// - `num_reindexing_before_full_set`  : number of compact operation needed to
-///   compact all the Chain Table
-/// - `entry_table_number`               : number of different entry tables
-/// - `fetch_entry`                     : callback used to fetch the Entry Table
-/// - `fetch_chain`                     : callback used to fetch the Chain Table
-/// - `update_lines`                    : callback used to update lines in both
-///   tables
-/// - `list_removed_locations`          : callback used to list removed
-///   locations among the ones given
+/// - `findex_handle`           : Findex handle on the instance cache
+/// - `new_key`                 : new Findex key
+/// - `new_label`               : public information used to derive UIDs
+/// - `filter_obsolete_data`    : callback used to filter out obsolete data
+///   among indexed data
 ///
 /// # Safety
 ///
@@ -352,42 +500,38 @@ pub unsafe extern "C" fn h_upsert(
 #[no_mangle]
 #[tracing::instrument(ret, skip_all)]
 pub unsafe extern "C" fn h_compact(
-    // TODO: add FFI tests on h_search, h_upsert, h_compact
-    old_key_ptr: *const u8,
-    old_key_len: i32,
+    findex_handle: i32,
     new_key_ptr: *const u8,
     new_key_len: i32,
-    old_label_ptr: *const u8,
-    old_label_len: i32,
     new_label_ptr: *const u8,
     new_label_len: i32,
     n_compact_to_full: u32,
-    entry_table_number: u32,
-    fetch_entry: Fetch,
-    fetch_chain: Fetch,
-    upsert_entry: Upsert,
-    insert_chain: Insert,
-    delete_entry: Delete,
-    delete_chain: Delete,
-    dump_tokens_entry: DumpTokens,
     filter_obsolete_data: FilterObsoleteData,
 ) -> i32 {
     #[cfg(debug_assertions)]
-    log_init(); //TODO: memo: warning, findex-cloud is broken with this refactor
+    log_init();
 
-    if n_compact_to_full == 0 {
-        ffi_bail!("The parameter n_compact_to_full must be strictly positive. Found 0");
-    }
+    let filter = |locations: HashSet<Location>| async {
+        let move_locations = locations;
+        let bytes = serialize_location_set(&move_locations)
+            .map_err(|e| format!("error serializing locations: {e}"))?;
+        let mut res = vec![0; bytes.len()];
+        let mut res_length = res.len() as u32;
+        let err = (filter_obsolete_data)(
+            res.as_mut_ptr(),
+            &mut res_length,
+            bytes.as_ptr(),
+            bytes.len() as u32,
+        );
 
-    if entry_table_number == 0 {
-        ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
-    }
+        if err != 0 {
+            set_last_error(FfiError::Generic(format!("filter callback error: {err}")));
+            return Err(String::from("Filter error."));
+        }
 
-    let old_key_bytes = ffi_read_bytes!("key", old_key_ptr, old_key_len);
-    let old_key = ffi_unwrap!(
-        SymmetricKey::try_from_slice(old_key_bytes),
-        "error deserializing old findex key"
-    );
+        deserialize_location_set(&res)
+            .map_err(|e| format!("error deserializing filtered locations: {e}"))
+    };
 
     let new_key_bytes = ffi_read_bytes!("new key", new_key_ptr, new_key_len);
     let new_key = ffi_unwrap!(
@@ -395,306 +539,52 @@ pub unsafe extern "C" fn h_compact(
         "error deserializing new findex key"
     );
 
-    let old_label_bytes = ffi_read_bytes!("old label", old_label_ptr, old_label_len);
-    let old_label = Label::from(old_label_bytes);
-
     let new_label_bytes = ffi_read_bytes!("new label", new_label_ptr, new_label_len);
     let new_label = Label::from(new_label_bytes);
 
-    let rt = ffi_unwrap!(
-        tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
+    let mut cache = FINDEX_INSTANCES
+        .lock()
+        .expect("Findex instance cache lock poisoned.");
+
+    let (old_key, old_label, findex) = ffi_unwrap!(
+        cache
+            .get_mut(&findex_handle)
+            .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
+        "cannot get a hold on the Findex instance"
     );
-
-    let config = BackendConfiguration::Ffi(
-        FfiCallbacks {
-            table_number: entry_table_number as usize,
-            fetch: Some(fetch_entry),
-            upsert: Some(upsert_entry),
-            insert: None,
-            delete: Some(delete_entry),
-            dump_tokens: Some(dump_tokens_entry),
-        },
-        FfiCallbacks {
-            // Only one Chain table is allowed.
-            table_number: 1,
-            fetch: Some(fetch_chain),
-            upsert: None,
-            insert: Some(insert_chain),
-            delete: Some(delete_chain),
-            dump_tokens: None,
-        },
-    );
-
-    let findex = ffi_unwrap!(
-        rt.block_on(InstantiatedFindex::new(config)),
-        "error instantiating Findex"
-    );
-
-    let filter = |locations: HashSet<Location>| async move {
-        let bytes = serialize_location_set(&locations).map_err(|e| e.to_string())?;
-        let mut res = vec![0; bytes.len()];
-        let mut res_length = res.len() as u32;
-        (filter_obsolete_data)(
-            res.as_mut_ptr(),
-            &mut res_length,
-            bytes.as_ptr(),
-            bytes.len() as u32,
-        );
-        let res = deserialize_location_set(&res).map_err(|e| e.to_string())?;
-        Ok(res)
-    };
-
-    trace!("instantiated Findex: {findex:?}");
-    ffi_unwrap!(
-        rt.block_on(findex.compact(
-            &old_key,
-            &new_key,
-            &old_label,
-            &new_label,
-            n_compact_to_full as usize,
-            &filter
-        )),
-        "error waiting for the compact operation to return"
-    );
-
-    0
-}
-
-/// Recursively searches Findex graphs for values indexed by the given keywords.
-///
-/// # Serialization
-///
-/// Le output is serialized as follows:
-///
-/// `LEB128(n_keywords) || LEB128(keyword_1)
-///     || keyword_1 || LEB128(n_associated_results)
-///     || LEB128(associated_result_1) || associated_result_1
-///     || ...`
-///
-/// # Parameters
-///
-/// - `search_results`          : (output) search result
-/// - `token`                   : FindexREST token
-/// - `label`                   : public information used to derive UIDs
-/// - `keywords`                : `serde` serialized list of base64 keywords
-/// - `base_url`                : FindexREST server URL (with http prefix and
-///   port if required). If null, use the default FindexREST server.
-/// - `interrupt`               : user interrupt called at each search iteration
-///
-/// # Safety
-///
-/// Cannot be safe since using FFI.
-#[cfg(feature = "cloud")]
-#[no_mangle]
-#[tracing::instrument(ret, skip_all)]
-pub unsafe extern "C" fn h_search_cloud(
-    search_results_ptr: *mut i8,
-    search_results_len: *mut i32,
-    token_ptr: *const i8,
-    label_ptr: *const u8,
-    label_len: i32,
-    keywords_ptr: *const u8,
-    keywords_len: u32,
-    base_url_ptr: *const i8,
-    interrupt: Interrupt,
-) -> i32 {
-    #[cfg(debug_assertions)]
-    log_init();
-
-    let token = ffi_read_string!("token", token_ptr);
-    let authorization_token = ffi_unwrap!(
-        AuthorizationToken::from_str(&token),
-        "authorization token conversion failed"
-    );
-
-    let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
-    let label = Label::from(label_bytes);
-    trace!("Label successfully parsed: label: {label}");
-
-    let keywords = ffi_unwrap!(
-        deserialize_keyword_set(ffi_read_bytes!("keywords", keywords_ptr, keywords_len)),
-        "error deserializing keywords"
-    );
-    let keywords = Keywords::from(keywords);
-    trace!("Keywords successfully parsed: keywords: {keywords}");
-
-    let base_url = if base_url_ptr.is_null() {
-        String::new()
-    } else {
-        ffi_read_string!("base url", base_url_ptr)
-    };
-
-    let config = BackendConfiguration::Rest(authorization_token.clone(), base_url.clone());
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime"
     );
 
-    let findex = ffi_unwrap!(
-        rt.block_on(InstantiatedFindex::new(config)),
-        "error instantiating Findex"
-    );
-
     trace!("instantiated Findex: {findex:?}");
+    let res = rt.block_on(findex.compact(
+        old_key,
+        &new_key,
+        old_label,
+        &new_label,
+        n_compact_to_full as usize,
+        &filter,
+    ));
 
-    let user_interrupt = |res: HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>| async move {
-        trace!("user interrupt input: {res:?}");
-        let bytes = serialize_intermediate_results(&res).map_err(|e| e.to_string())?;
-        let length = <u32>::try_from(bytes.len()).map_err(|e| e.to_string())?;
-        let is_interrupted = 1 == (interrupt)(bytes.as_ptr(), length);
-        trace!("user interrupt output: {is_interrupted:?}");
-        Ok(is_interrupted)
-    };
-
-    trace!("user interrupt callback converted to rust callback");
-
-    let results = match rt.block_on(findex.search(
-        &authorization_token.findex_key,
-        &label,
-        keywords,
-        &user_interrupt,
-    )) {
-        Ok(results) => results,
-        Err(FindexError::Callback(e)) => {
-            set_last_error(FfiError::Generic(e.to_string()));
-            // return e.to_error_code(); TODO
-            return 1;
+    match res {
+        Err(FindexError::Callback(BackendError::Ffi(msg, code))) => {
+            set_last_error(FfiError::Generic(format!(
+                "backend error during `compact` operation: {msg}"
+            )));
+            code.into()
         }
         Err(e) => {
-            set_last_error(FfiError::Generic(e.to_string()));
-            return 1;
+            set_last_error(FfiError::Generic(format!("findex `compact` error: {e}")));
+            ErrorCode::Findex.into()
         }
-    };
-
-    // Serialize the results.
-    // We should be able to use the output buffer as the `Serializer` sink to avoid
-    // to copy the buffer (right now the `crypto_core` serializer doesn't provide a
-    // constructor from an existing slice) <https://github.com/Cosmian/findex/issues/20>
-    let mut serializer = Serializer::new();
-    ffi_unwrap!(
-        serializer.write_leb128_u64(results.len() as u64),
-        "error serializing length"
-    );
-    for (keyword, locations) in results {
-        ffi_unwrap!(serializer.write_vec(&keyword), "error serializing keyword");
-        let serialized_location_set =
-            ffi_unwrap!(serialize_location_set(&locations), "error serializing set");
-        ffi_unwrap!(
-            serializer.write_array(&serialized_location_set),
-            "error serializing locations"
-        );
+        Ok(()) => {
+            *old_key = new_key;
+            *old_label = new_label;
+            ErrorCode::Success.into()
+        }
     }
-    let serialized_uids = serializer.finalize();
-
-    ffi_write_bytes!(
-        "search results",
-        &serialized_uids,
-        search_results_ptr,
-        search_results_len
-    );
-
-    0
-}
-
-/// Index the given values for the given keywords. After upserting, any
-/// search for such a keyword will result in finding (at least) the
-/// corresponding value.
-///
-/// # Serialization
-///
-/// The list of values to index for the associated keywords should be serialized
-/// as follows:
-///
-/// `LEB128(n_values) || serialized_value_1
-///     || LEB128(n_associated_keywords) || serialized_keyword_1 || ...`
-///
-/// where values serialized as follows:
-///
-/// `LEB128(value_bytes.len() + 1) || base64(prefix || value_bytes)`
-///
-/// with `prefix` being `l` for a `Location` and `w` for a `NextKeyword`, and
-/// where keywords are serialized as follows:
-///
-/// `LEB128(keyword_bytes.len()) || base64(keyword_bytes)`
-///
-/// The results are serialized as follows:
-///
-/// `LEB128(n_values) || serialized_value_1 || ... || serialized_value_n`
-///
-/// and `serialized_value_i` is serialized as follows:
-/// `LEB128(keyword_bytes.len()) || keyword_bytes`
-///
-/// # Parameters
-///
-/// - `upsert_results` : Returns the list of new keywords added to the index
-/// - `token`          : FindexREST authorization token
-/// - `label`          : additional information used to derive Entry Table UIDs
-/// - `additions`      : serialized list of new indexed values
-/// - `deletions`      : serialized list of removed indexed values
-/// - `base_url`       : FindexREST server URL (with http prefix and port if
-///   required). If null, use the default FindexREST server.
-///
-/// # Safety
-///
-/// Cannot be safe since using FFI.
-#[cfg(feature = "cloud")]
-#[no_mangle]
-#[tracing::instrument(ret, skip_all)]
-pub unsafe extern "C" fn h_upsert_cloud(
-    upsert_results_ptr: *mut i8,
-    upsert_results_len: *mut i32,
-    token_ptr: *const i8,
-    label_ptr: *const u8,
-    label_len: i32,
-    additions_ptr: *const i8,
-    additions_len: i32,
-    deletions_ptr: *const i8,
-    deletions_len: i32,
-    base_url_ptr: *const i8,
-) -> i32 {
-    #[cfg(debug_assertions)]
-    log_init();
-
-    let token = ffi_read_string!("token", token_ptr);
-    trace!("Authorization token read: {token}");
-    let authorization_token = ffi_unwrap!(
-        crate::backends::rest::AuthorizationToken::from_str(&token),
-        "authorization token conversion failed"
-    );
-
-    let base_url = if base_url_ptr.is_null() {
-        String::new()
-    } else {
-        ffi_read_string!("base url", base_url_ptr)
-    };
-
-    let config = BackendConfiguration::Rest(authorization_token.clone(), base_url.clone());
-
-    let rt = ffi_unwrap!(
-        tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
-    );
-
-    let mut findex = ffi_unwrap!(
-        rt.block_on(InstantiatedFindex::new(config)),
-        "error instantiating Findex"
-    );
-    trace!("instantiated Findex: {findex:?}");
-
-    ffi_upsert(
-        &mut findex,
-        &authorization_token.findex_key,
-        upsert_results_ptr,
-        upsert_results_len,
-        label_ptr,
-        label_len,
-        additions_ptr,
-        additions_len,
-        deletions_ptr,
-        deletions_len,
-    )
 }
 
 /// Generate a new Findex token from the provided index ID and signature seeds,
@@ -707,7 +597,6 @@ pub unsafe extern "C" fn h_upsert_cloud(
 /// # Safety
 ///
 /// Cannot be safe since using FFI.
-#[cfg(feature = "cloud")]
 #[no_mangle]
 #[tracing::instrument(ret, skip_all)]
 pub unsafe extern "C" fn h_generate_new_token(
@@ -793,128 +682,19 @@ pub unsafe extern "C" fn h_generate_new_token(
         token_ptr,
         token_len
     );
-    0
+
+    ErrorCode::Success.into()
 }
 
-fn get_upsert_output_size(
-    additions: &HashMap<IndexedValue<Keyword, Location>, Keywords>,
-    deletions: &HashMap<IndexedValue<Keyword, Location>, Keywords>,
-) -> usize {
-    // Since `h_upsert` returns the set of keywords that have been inserted (and
-    // deleted), caller MUST know in advance how much memory is needed before
-    // calling `h_upsert`. In order to centralize into Rust the computation of the
-    // allocation size, 2 calls to `h_upsert` are required:
-    // - the first call is made with `upsert_results_len` with a 0 value. No
-    //   indexation at all is done. It simply returns an upper bound estimation of
-    //   the allocation size considering the maps `additions` and `deletions`.
-    // - the second call takes this returned value for `upsert_results_len`
-    additions
-        .values()
-        .flat_map(|set| set.iter().map(|e| e.len() + MAX_LEB128_ENCODING_SIZE))
-        .sum::<usize>()
-        + deletions
-            .values()
-            .flat_map(|set| set.iter().map(|e| e.len() + MAX_LEB128_ENCODING_SIZE))
-            .sum::<usize>()
-}
-
-/// Helper to merge the cloud and non-cloud implementations
+/// Re-export the `cosmian_ffi` `h_get_error` function to clients with the old
+/// `get_last_error` name The `h_get_error` is available inside the final lib
+/// (but tools like `ffigen` seems to not parse it…) Maybe we can find a
+/// solution by changing the function name inside the clients.
 ///
 /// # Safety
 ///
 /// Cannot be safe since using FFI.
-#[tracing::instrument(ret, skip_all)]
-unsafe extern "C" fn ffi_upsert(
-    // TODO: remove this function?
-    findex: &mut InstantiatedFindex,
-    key: &SymmetricKey<USER_KEY_LENGTH>,
-    upsert_results_ptr: *mut i8,
-    upsert_results_len: *mut i32,
-    label_ptr: *const u8,
-    label_len: i32,
-    additions_ptr: *const i8,
-    additions_len: i32,
-    deletions_ptr: *const i8,
-    deletions_len: i32,
-) -> i32 {
-    let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
-    let label = Label::from(label_bytes);
-    trace!("Label successfully parsed: label: {label}");
-
-    let additions_bytes = ffi_read_bytes!("additions", additions_ptr, additions_len);
-    let additions = IndexedValueToKeywordsMap::from(ffi_unwrap!(
-        deserialize_indexed_values(additions_bytes),
-        "failed deserialize indexed values (additions)"
-    ));
-    trace!("additions successfully parsed: additions: {additions}");
-
-    let deletions_bytes = ffi_read_bytes!("deletions", deletions_ptr, deletions_len);
-    trace!("deletions read bytes OK: deletions_bytes: {deletions_bytes:?}");
-    let a = ffi_unwrap!(
-        deserialize_indexed_values(deletions_bytes),
-        "failed deserialize indexed values (deletions)"
-    );
-    trace!("deletions read bytes OK: deletions_map: {a:?}");
-    let deletions = IndexedValueToKeywordsMap::from(a);
-    trace!("deletions successfully parsed: deletions: {deletions}");
-
-    let output_size = get_upsert_output_size(&additions, &deletions);
-    if *upsert_results_len < output_size as i32 {
-        set_last_error(FfiError::Generic(format!(
-            "The pre-allocated upsert_result buffer is too small; need {} bytes, allocated {}",
-            output_size, upsert_results_len as i32
-        )));
-        *upsert_results_len = output_size as i32;
-        trace!("The pre-allocated upsert_result buffer is too small; need {output_size} bytes");
-        return 1;
-    }
-
-    let rt = ffi_unwrap!(
-        tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
-    );
-
-    // We want to forward error code returned by callbacks to the parent caller to
-    // do error management client side.
-    let new_keywords = match rt.block_on(findex.add(key, &label, additions)) {
-        Ok(new_keywords) => new_keywords,
-        Err(FindexError::Callback(e)) => {
-            set_last_error(FfiError::Generic(e.to_string()));
-            // return e.to_error_code();TODO
-            return 1;
-        }
-        Err(e) => {
-            set_last_error(FfiError::Generic(e.to_string()));
-            return 1;
-        }
-    };
-
-    // Serialize the results.
-    let serialized_keywords = ffi_unwrap!(
-        serialize_keyword_set(&new_keywords),
-        "serialize new keywords"
-    );
-
-    // Deletions
-    let _deleted_keywords = match rt.block_on(findex.delete(key, &label, deletions)) {
-        Ok(deleted_keywords) => deleted_keywords,
-        Err(FindexError::Callback(e)) => {
-            set_last_error(FfiError::Generic(e.to_string()));
-            // return e.to_error_code();TODO
-            return 1;
-        }
-        Err(e) => {
-            set_last_error(FfiError::Generic(e.to_string()));
-            return 1;
-        }
-    };
-
-    ffi_write_bytes!(
-        "upsert results",
-        &serialized_keywords,
-        upsert_results_ptr,
-        upsert_results_len
-    );
-
-    0
+#[no_mangle]
+pub unsafe extern "C" fn get_last_error(error_ptr: *mut i8, error_len: *mut i32) -> i32 {
+    h_get_error(error_ptr, error_len)
 }

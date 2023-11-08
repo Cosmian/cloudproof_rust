@@ -5,14 +5,16 @@ on: push
 
 jobs:
   cargo-nursery-base:
-    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@develop
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@findex_ffi_instance
     with:
       toolchain: stable
+      exclusions: --exclude=cloudproof_findex
 
   cargo-doc:
-    uses: Cosmian/reusable_workflows/.github/workflows/cargo-doc.yml@develop
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-doc.yml@findex_ffi_instance
     with:
       toolchain: stable
+      exclusions: --exclude=cloudproof_findex
 
   test_and_dry_publish:
     runs-on: ubuntu-latest
@@ -28,14 +30,34 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-semver-
-          restore-keys: ${{ runner.os }}-cargo-semver-
+          key: ${{ runner.os }}-cargo-individual-tests-
+          restore-keys: ${{ runner.os }}-individual-tests-
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-06-27
+          toolchain: stable
           override: true
 
       - name: Run python tests
         run: |
           bash scripts/test_python.sh
+
+      - name: FFI Static analysis for cloudproof_findex
+        run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features ffi -- -D warnings
+
+      - name: Wasm Static analysis for cloudproof_findex
+        run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features wasm_bindgen -- -D warnings
+
+      - name: Python Static analysis for cloudproof_findex
+        run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features python -- -D warnings
+
+      - name: FFI tests for cloudproof_findex
+        run: |
+          cargo test --release --workspace -p cloudproof_findex --all-targets --features ffi
+
+      - name: Wasm tests for cloudproof_findex
+        run: |
+          cargo test --release --workspace -p cloudproof_findex --all-targets --features wasm_bindgen
