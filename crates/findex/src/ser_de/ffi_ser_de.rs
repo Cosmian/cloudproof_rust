@@ -1,20 +1,23 @@
 use std::collections::{HashMap, HashSet};
 
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializer};
-use cosmian_findex::{EncryptedValue, IndexedValue, Keyword, Location, Token};
+use cosmian_findex::{
+    EncryptedValue, IndexedValue, Keyword, Location, Token, TokenToEncryptedValueMap,
+    TokenWithEncryptedValueList, Tokens,
+};
 
 use crate::ser_de::SerializationError;
 
-pub fn serialize_token_set(set: &HashSet<Token>) -> Result<Vec<u8>, SerializationError> {
+pub fn serialize_token_set(set: &Tokens) -> Result<Vec<u8>, SerializationError> {
     let mut ser = Serializer::with_capacity(set.len());
     ser.write_leb128_u64(set.len() as u64)?;
-    for element in set {
+    for element in set.iter() {
         ser.write_array(element)?;
     }
     Ok(ser.finalize().to_vec())
 }
 
-pub fn deserialize_token_set(bytes: &[u8]) -> Result<HashSet<Token>, SerializationError> {
+pub fn deserialize_token_set(bytes: &[u8]) -> Result<Tokens, SerializationError> {
     let mut de = Deserializer::new(bytes);
     let length = usize::try_from(de.read_leb128_u64()?)?;
     let mut set = HashSet::with_capacity(length);
@@ -22,7 +25,7 @@ pub fn deserialize_token_set(bytes: &[u8]) -> Result<HashSet<Token>, Serializati
         set.insert(Token::from(de.read_array()?));
     }
     if de.value().is_empty() {
-        Ok(set)
+        Ok(Tokens::from(set))
     } else {
         Err(SerializationError(
             "Remaining bytes after set deserialization".to_string(),
@@ -61,27 +64,38 @@ pub fn serialize_location_set(set: &HashSet<Location>) -> Result<Vec<u8>, Serial
     let mut ser = Serializer::with_capacity(set.len());
     ser.write_leb128_u64(set.len() as u64)?;
     for element in set {
-        ser.write_leb128_u64(element.len() as u64)?;
-        ser.write_array(element)?;
+        ser.write_vec(element)?;
     }
     Ok(ser.finalize().to_vec())
 } //TODO: merge functions
 
+pub fn deserialize_location_set(bytes: &[u8]) -> Result<HashSet<Location>, SerializationError> {
+    let mut de = Deserializer::new(bytes);
+    let length = <usize>::try_from(de.read_leb128_u64()?)?;
+    let mut res = HashSet::with_capacity(length);
+    for _ in 0..length {
+        let location = Location::from(de.read_vec()?);
+        res.insert(location);
+    }
+    Ok(res)
+} //TODO: merge functions
+
+//
 pub fn serialize_edx_lines<const VALUE_LENGTH: usize>(
-    set: &HashMap<Token, EncryptedValue<VALUE_LENGTH>>,
+    map: &TokenToEncryptedValueMap<VALUE_LENGTH>,
 ) -> Result<Vec<u8>, SerializationError> {
-    let mut ser = Serializer::with_capacity(set.len());
-    ser.write_leb128_u64(set.len() as u64)?;
-    for (uid, value) in set {
+    let mut ser = Serializer::with_capacity(map.len());
+    ser.write_leb128_u64(map.len() as u64)?;
+    for (uid, value) in map.iter() {
         ser.write_array(uid)?;
-        ser.write_vec(&<Vec<u8>>::from(value))?;
+        ser.write_vec(&<Vec<u8>>::from(value))?; // TODO: use write_array
     }
     Ok(ser.finalize().to_vec())
 }
 
 pub fn deserialize_edx_lines<const VALUE_LENGTH: usize>(
     bytes: &[u8],
-) -> Result<Vec<(Token, EncryptedValue<VALUE_LENGTH>)>, SerializationError> {
+) -> Result<TokenWithEncryptedValueList<VALUE_LENGTH>, SerializationError> {
     let mut de = Deserializer::new(bytes);
     let length = <usize>::try_from(de.read_leb128_u64()?)?;
     let mut items = Vec::with_capacity(length);
@@ -90,7 +104,7 @@ pub fn deserialize_edx_lines<const VALUE_LENGTH: usize>(
         let value = EncryptedValue::<VALUE_LENGTH>::try_from(de.read_vec()?.as_slice())?;
         items.push((key, value));
     }
-    Ok(items)
+    Ok(TokenWithEncryptedValueList::from(items))
 }
 
 pub fn serialize_indexed_values(
@@ -99,7 +113,7 @@ pub fn serialize_indexed_values(
     let mut ser = Serializer::with_capacity(map.len());
     ser.write_leb128_u64(map.len() as u64)?;
     for (iv, keywords) in map {
-        ser.write_vec(<Vec<u8>>::from(iv.clone()).as_slice())?;
+        ser.write_vec(<Vec<u8>>::from(iv).as_slice())?;
         ser.write_leb128_u64(keywords.len() as u64)?;
         for element in keywords {
             ser.write_leb128_u64(element.len() as u64)?;
@@ -128,13 +142,31 @@ pub fn deserialize_indexed_values(
     Ok(items)
 }
 
+pub fn serialize_intermediate_results(
+    res: &HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>,
+) -> Result<Vec<u8>, SerializationError> {
+    let mut ser = Serializer::with_capacity(res.len());
+    ser.write_leb128_u64(res.len() as u64)?;
+    for (keyword, indexed_values) in res {
+        ser.write_vec(keyword.as_ref())?;
+        ser.write_leb128_u64(indexed_values.len() as u64)?;
+        for iv in indexed_values {
+            ser.write_vec(<Vec<u8>>::from(iv).as_slice())?;
+        }
+    }
+    Ok(ser.finalize().to_vec())
+}
+
 #[cfg(test)]
 mod tests {
+
+    use cosmian_findex::{Token, Tokens};
+
     use super::*;
 
     #[test]
     fn test_uid_set_serialization() {
-        let uids = HashSet::from_iter([
+        let uids = Tokens::from_iter([
             Token::from([0; Token::LENGTH]),
             Token::from([1; Token::LENGTH]),
             Token::from([2; Token::LENGTH]),
@@ -232,8 +264,9 @@ mod tests {
             ),
         ]);
 
-        let serialized_lines = serialize_edx_lines(&edx_lines).unwrap();
-        let res = deserialize_edx_lines::<{ Token::LENGTH }>(&serialized_lines).unwrap();
+        let serialized_lines =
+            serialize_edx_lines(&TokenToEncryptedValueMap::from(edx_lines.clone())).unwrap();
+        let res = deserialize_edx_lines(&serialized_lines).unwrap();
         assert_eq!(edx_lines, res.into_iter().collect());
     }
 }

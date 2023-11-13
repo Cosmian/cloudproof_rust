@@ -1,11 +1,10 @@
 //! Implementations of Findex Entry Table and Chain Table backends using
 //! different database technologies.
 
-mod callback_prefix;
 mod error;
 
-#[cfg(feature = "backend-cloud")]
-pub mod cloud;
+#[cfg(feature = "backend-rest")]
+pub mod rest;
 
 #[cfg(any(
     feature = "backend-wasm",
@@ -23,12 +22,6 @@ pub mod sqlite;
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(
-    feature = "backend-ffi",
-    feature = "backend-cloud",
-    feature = "backend-wasm"
-))]
-pub use callback_prefix::CallbackPrefix;
 pub use error::BackendError;
 
 /// The backend prefix is used in serialization to identify the targeted
@@ -36,7 +29,7 @@ pub use error::BackendError;
 pub enum BackendPrefix {
     Sqlite,
     Redis,
-    Cloud,
+    Rest,
     Ffi,
     Wasm,
     Python,
@@ -47,7 +40,7 @@ impl From<&BackendPrefix> for u8 {
         match prefix {
             BackendPrefix::Sqlite => 0,
             BackendPrefix::Redis => 1,
-            BackendPrefix::Cloud => 2,
+            BackendPrefix::Rest => 2,
             BackendPrefix::Ffi => 3,
             BackendPrefix::Wasm => 4,
             BackendPrefix::Python => 5,
@@ -62,7 +55,7 @@ impl TryFrom<u8> for BackendPrefix {
         match prefix {
             0 => Ok(Self::Sqlite),
             1 => Ok(Self::Redis),
-            2 => Ok(Self::Cloud),
+            2 => Ok(Self::Rest),
             3 => Ok(Self::Ffi),
             4 => Ok(Self::Wasm),
             5 => Ok(Self::Python),

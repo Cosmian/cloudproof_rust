@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use cosmian_findex::{EncryptedValue, Token};
+use cosmian_findex::{EncryptedValue, Token, TokenToEncryptedValueMap, Tokens};
 use js_sys::{Array, JsString, Object, Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, JsValue};
 
@@ -40,9 +40,9 @@ fn get_js_type(value: &JsValue) -> String {
 }
 
 /// Converts the given set of UIDs into a Js array.
-pub fn uids_to_js_array(uids: &HashSet<Token>) -> Result<Array, SerializationError> {
+pub fn uids_to_js_array(uids: &Tokens) -> Result<Array, SerializationError> {
     let js_uids = Array::new();
-    for uid in uids {
+    for uid in uids.iter() {
         let js_uid = unsafe { Uint8Array::new(&Uint8Array::view(uid)) };
         js_uids.push(&js_uid);
     }
@@ -50,7 +50,7 @@ pub fn uids_to_js_array(uids: &HashSet<Token>) -> Result<Array, SerializationErr
 }
 
 /// Converts the given Js value (as Js array) into a set of UIDs.
-pub fn js_value_to_uids(js_value: &JsValue) -> Result<HashSet<Token>, SerializationError> {
+pub fn js_value_to_uids(js_value: &JsValue) -> Result<Tokens, SerializationError> {
     if !Array::is_array(js_value) {
         return Err(SerializationError(format!(
             "{} found while an array was expected",
@@ -61,11 +61,9 @@ pub fn js_value_to_uids(js_value: &JsValue) -> Result<HashSet<Token>, Serializat
 
     let mut res = HashSet::with_capacity(js_array.length() as usize);
     for uid in js_array {
-        res.insert(<Token>::try_from(
-            Uint8Array::from(uid).to_vec().as_slice(),
-        )?);
+        res.insert(Token::try_from(Uint8Array::from(uid).to_vec().as_slice())?);
     }
-    Ok(res)
+    Ok(Tokens::from(res))
 }
 
 /// Converts the given Js value (as Js array) into set of EDX lines.
@@ -96,7 +94,7 @@ pub fn js_value_to_edx_lines<const VALUE_LENGTH: usize>(
         let value = get_bytes_from_object_property(&obj, "value")?;
 
         edx_lines.push((
-            <Token>::try_from(uid.as_slice()).map_err(|uid| {
+            Token::try_from(uid.as_slice()).map_err(|uid| {
                 SerializationError(format!(
                     "`uid` at position {i} ({uid:?}) is not a valid UID"
                 ))
@@ -114,7 +112,7 @@ pub fn js_value_to_edx_lines<const VALUE_LENGTH: usize>(
 
 /// Converts the given set of EDX lines into a Js array.
 pub fn edx_lines_to_js_array<const VALUE_LENGTH: usize>(
-    edx_lines: &HashMap<Token, EncryptedValue<VALUE_LENGTH>>,
+    edx_lines: &TokenToEncryptedValueMap<VALUE_LENGTH>,
 ) -> Result<Array, SerializationError> {
     let res = Array::new_with_length(edx_lines.len() as u32);
     for (index, (uid, value)) in edx_lines.iter().enumerate() {
@@ -128,14 +126,15 @@ pub fn edx_lines_to_js_array<const VALUE_LENGTH: usize>(
 
 #[cfg(test)]
 mod tests {
-    use cosmian_findex::TokenToEncryptedValueMap;
+
+    use cosmian_findex::{Token, Tokens};
     use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
 
     #[wasm_bindgen_test]
     fn test_uid_set_serialization() {
-        let uids = HashSet::from_iter([
+        let uids = Tokens::from_iter([
             Token::from([0; Token::LENGTH]),
             Token::from([1; Token::LENGTH]),
             Token::from([2; Token::LENGTH]),
@@ -151,57 +150,54 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn test_edx_lines_serialization() {
-        let uids = TokenToEncryptedValueMap::from_iter([
-            (
-                Token::from([0; Token::LENGTH]),
-                EncryptedValue::try_from(
-                    vec![0; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
-                )
-                .unwrap(),
-            ),
-            (
-                Token::from([1; Token::LENGTH]),
-                EncryptedValue::try_from(
-                    vec![1; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
-                )
-                .unwrap(),
-            ),
-            (
-                Token::from([2; Token::LENGTH]),
-                EncryptedValue::try_from(
-                    vec![2; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
-                )
-                .unwrap(),
-            ),
-            (
-                Token::from([3; Token::LENGTH]),
-                EncryptedValue::try_from(
-                    vec![3; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
-                )
-                .unwrap(),
-            ),
-            (
-                Token::from([4; Token::LENGTH]),
-                EncryptedValue::try_from(
-                    vec![4; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
-                )
-                .unwrap(),
-            ),
-            (
-                Token::from([5; Token::LENGTH]),
-                EncryptedValue::try_from(
-                    vec![5; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
-                )
-                .unwrap(),
-            ),
-        ]);
+        let uids: cosmian_findex::TokenToEncryptedValueMap<{ Token::LENGTH }> =
+            TokenToEncryptedValueMap::from_iter([
+                (
+                    Token::from([0; Token::LENGTH]),
+                    EncryptedValue::try_from(
+                        vec![0; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
+                    )
+                    .unwrap(),
+                ),
+                (
+                    Token::from([1; Token::LENGTH]),
+                    EncryptedValue::try_from(
+                        vec![1; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
+                    )
+                    .unwrap(),
+                ),
+                (
+                    Token::from([2; Token::LENGTH]),
+                    EncryptedValue::try_from(
+                        vec![2; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
+                    )
+                    .unwrap(),
+                ),
+                (
+                    Token::from([3; Token::LENGTH]),
+                    EncryptedValue::try_from(
+                        vec![3; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
+                    )
+                    .unwrap(),
+                ),
+                (
+                    Token::from([4; Token::LENGTH]),
+                    EncryptedValue::try_from(
+                        vec![4; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
+                    )
+                    .unwrap(),
+                ),
+                (
+                    Token::from([5; Token::LENGTH]),
+                    EncryptedValue::try_from(
+                        vec![5; EncryptedValue::<{ Token::LENGTH }>::LENGTH].as_slice(),
+                    )
+                    .unwrap(),
+                ),
+            ]);
 
         let js_uids = edx_lines_to_js_array(&uids).unwrap();
         let res = js_value_to_edx_lines(&JsValue::from(&js_uids)).unwrap();
-        assert_eq!(
-            uids,
-            res.into_iter()
-                .collect::<TokenToEncryptedValueMap<{EncryptedValue::<{ Token::LENGTH }>::LENGTH}>>()
-        );
+        assert_eq!(uids, res.into_iter().collect());
     }
 }

@@ -19,7 +19,12 @@ cosmian_crypto_core = { version = "9.3.0", default-features = false }
 cosmian_ffi_utils = "0.1.2"
 hex = "0.4.3"
 js-sys = "0.3"
-pyo3 = { version = "0.19.2", features = ["extension-module", "abi3", "abi3-py37", "generate-import-lib"] }
+pyo3 = { version = "0.20.0", features = [
+  "extension-module",
+  "abi3",
+  "abi3-py37",
+  "generate-import-lib",
+] }
 rand = "0.8"
 thiserror = "1.0"
 tracing = "0.1"

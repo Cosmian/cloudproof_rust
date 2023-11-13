@@ -20,7 +20,7 @@ fn test_encrypt_decrypt() {
         ciphertext.to_vec(),
         key.to_vec(),
         nonce.to_vec(),
-        authentication_data.clone(),
+        authentication_data,
     )
     .unwrap();
     assert_eq!(plaintext.to_vec(), cleartext.to_vec());

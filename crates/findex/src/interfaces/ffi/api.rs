@@ -1,8 +1,15 @@
 //! Defines the Findex FFI API.
 
 use std::collections::{HashMap, HashSet};
+#[cfg(feature = "cloud")]
+use std::str::FromStr;
 
-use cosmian_crypto_core::{bytes_ser_de::Serializer, FixedSizeCBytes, SymmetricKey};
+use cosmian_crypto_core::{
+    bytes_ser_de::Serializer, reexport::rand_core::SeedableRng, CsRng, FixedSizeCBytes,
+    RandomFixedSizeCBytes, SymmetricKey,
+};
+#[cfg(feature = "cloud")]
+use cosmian_ffi_utils::ffi_read_string;
 use cosmian_ffi_utils::{
     error::{h_get_error, set_last_error, FfiError},
     ffi_bail, ffi_read_bytes, ffi_unwrap, ffi_write_bytes,
@@ -13,13 +20,17 @@ use cosmian_findex::{
 };
 use tracing::trace;
 
+#[cfg(feature = "cloud")]
+use crate::backends::rest::{AuthorizationToken, CallbackPrefix};
 #[cfg(debug_assertions)]
 use crate::logger::log_init;
 use crate::{
-    backends::custom::ffi::{Delete, DumpTokens, Fetch, FfiCallbacks, Insert, Upsert},
+    backends::custom::ffi::{
+        Delete, DumpTokens, Fetch, FfiCallbacks, FilterObsoleteData, Insert, Interrupt, Upsert,
+    },
     ser_de::ffi_ser_de::{
-        deserialize_indexed_values, deserialize_keyword_set, serialize_keyword_set,
-        serialize_location_set,
+        deserialize_indexed_values, deserialize_keyword_set, deserialize_location_set,
+        serialize_intermediate_results, serialize_keyword_set, serialize_location_set,
     },
     BackendConfiguration, InstantiatedFindex,
 };
@@ -35,26 +46,6 @@ use crate::{
 #[no_mangle]
 pub unsafe extern "C" fn get_last_error(error_ptr: *mut i8, error_len: *mut i32) -> i32 {
     h_get_error(error_ptr, error_len)
-}
-
-pub async fn no_interrupt(
-    _: HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>,
-) -> Result<bool, String>
-where
-    HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>: std::fmt::Debug,
-    Result<bool, String>: std::fmt::Debug,
-{
-    Ok(false)
-}
-
-pub async fn no_filter_obsolete_data(
-    locations: HashSet<Location>,
-) -> Result<HashSet<Location>, String>
-where
-    HashSet<Location>: std::fmt::Debug,
-    Result<HashSet<Location>, String>: std::fmt::Debug,
-{
-    Ok(locations)
 }
 
 /// Recursively searches Findex graphs for values indexed by the given keywords.
@@ -75,8 +66,7 @@ where
 /// - `label`                   : public information used to derive UIDs
 /// - `keywords`                : serialized list of keywords
 /// - `entry_table_number`      : number of different entry tables
-/// - `progress_callback`       : callback used to retrieve intermediate results
-///   and transmit user interrupt
+/// - `interrupt`               : user interrupt called at each search iteration
 /// - `fetch_entry_callback`    : callback used to fetch the Entry Table
 /// - `fetch_chain_callback`    : callback used to fetch the Chain Table
 ///
@@ -95,6 +85,7 @@ pub unsafe extern "C" fn h_search(
     keywords_ptr: *const u8,
     keywords_len: u32,
     entry_table_number: u32,
+    interrupt: Interrupt,
     fetch_entry_callback: Fetch,
     fetch_chain_callback: Fetch,
 ) -> i32 {
@@ -124,8 +115,14 @@ pub unsafe extern "C" fn h_search(
     }
     trace!("Entry table number: {entry_table_number}");
 
-    let _user_interrupt =
-        |_res: HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>| async { false }; //TODO
+    let user_interrupt = |res: HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>| async move {
+        trace!("user interrupt input: {res:?}");
+        let bytes = serialize_intermediate_results(&res).map_err(|e| e.to_string())?;
+        let length = <u32>::try_from(bytes.len()).map_err(|e| e.to_string())?;
+        let is_interrupted = 1 == (interrupt)(bytes.as_ptr(), length);
+        trace!("user interrupt output: = {is_interrupted}");
+        Ok(is_interrupted)
+    };
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
@@ -142,6 +139,7 @@ pub unsafe extern "C" fn h_search(
             dump_tokens: None,
         },
         FfiCallbacks {
+            // Only one Chain table is allowed.
             table_number: 1,
             fetch: Some(fetch_chain_callback),
             upsert: None,
@@ -156,7 +154,7 @@ pub unsafe extern "C" fn h_search(
         "error instantiating Findex"
     );
 
-    let results = match rt.block_on(findex.search(&key, &label, keywords, &no_interrupt)) {
+    let results = match rt.block_on(findex.search(&key, &label, keywords, &user_interrupt)) {
         Ok(results) => results,
         Err(FindexError::Callback(e)) => {
             set_last_error(FfiError::Generic(e.to_string()));
@@ -288,6 +286,7 @@ pub unsafe extern "C" fn h_upsert(
             dump_tokens: None,
         },
         FfiCallbacks {
+            // Only one Chain table is allowed.
             table_number: 1,
             fetch: None,
             upsert: None,
@@ -301,6 +300,7 @@ pub unsafe extern "C" fn h_upsert(
         rt.block_on(InstantiatedFindex::new(config)),
         "error instantiating Findex"
     );
+    trace!("instantiated Findex: {findex:?}");
 
     ffi_upsert(
         &mut findex,
@@ -366,6 +366,7 @@ pub unsafe extern "C" fn h_compact(
     delete_entry: Delete,
     delete_chain: Delete,
     dump_tokens_entry: DumpTokens,
+    filter_obsolete_data: FilterObsoleteData,
 ) -> i32 {
     #[cfg(debug_assertions)]
     log_init(); //TODO: memo: warning, findex-cloud is broken with this refactor
@@ -411,6 +412,7 @@ pub unsafe extern "C" fn h_compact(
             dump_tokens: Some(dump_tokens_entry),
         },
         FfiCallbacks {
+            // Only one Chain table is allowed.
             table_number: 1,
             fetch: Some(fetch_chain),
             upsert: None,
@@ -425,6 +427,21 @@ pub unsafe extern "C" fn h_compact(
         "error instantiating Findex"
     );
 
+    let filter = |locations: HashSet<Location>| async move {
+        let bytes = serialize_location_set(&locations).map_err(|e| e.to_string())?;
+        let mut res = vec![0; bytes.len()];
+        let mut res_length = res.len() as u32;
+        (filter_obsolete_data)(
+            res.as_mut_ptr(),
+            &mut res_length,
+            bytes.as_ptr(),
+            bytes.len() as u32,
+        );
+        let res = deserialize_location_set(&res).map_err(|e| e.to_string())?;
+        Ok(res)
+    };
+
+    trace!("instantiated Findex: {findex:?}");
     ffi_unwrap!(
         rt.block_on(findex.compact(
             &old_key,
@@ -432,7 +449,7 @@ pub unsafe extern "C" fn h_compact(
             &old_label,
             &new_label,
             n_compact_to_full as usize,
-            &no_filter_obsolete_data
+            &filter
         )),
         "error waiting for the compact operation to return"
     );
@@ -454,11 +471,12 @@ pub unsafe extern "C" fn h_compact(
 /// # Parameters
 ///
 /// - `search_results`          : (output) search result
-/// - `token`                   : Findex cloud token
+/// - `token`                   : FindexREST token
 /// - `label`                   : public information used to derive UIDs
 /// - `keywords`                : `serde` serialized list of base64 keywords
-/// - `base_url`                : base URL for Findex Cloud (with http prefix
-///   and port if required). If null, use the default Findex Cloud server.
+/// - `base_url`                : FindexREST server URL (with http prefix and
+///   port if required). If null, use the default FindexREST server.
+/// - `interrupt`               : user interrupt called at each search iteration
 ///
 /// # Safety
 ///
@@ -475,14 +493,15 @@ pub unsafe extern "C" fn h_search_cloud(
     keywords_ptr: *const u8,
     keywords_len: u32,
     base_url_ptr: *const i8,
+    interrupt: Interrupt,
 ) -> i32 {
     #[cfg(debug_assertions)]
     log_init();
 
     let token = ffi_read_string!("token", token_ptr);
     let authorization_token = ffi_unwrap!(
-        crate::backends::cloud::Token::from_str(&token),
-        "conversion failed of findex cloud authorization token"
+        AuthorizationToken::from_str(&token),
+        "authorization token conversion failed"
     );
 
     let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
@@ -490,28 +509,19 @@ pub unsafe extern "C" fn h_search_cloud(
     trace!("Label successfully parsed: label: {label}");
 
     let keywords = ffi_unwrap!(
-        deserialize_keywords_set(ffi_read_bytes!("keywords", keywords_ptr, keywords_len)),
+        deserialize_keyword_set(ffi_read_bytes!("keywords", keywords_ptr, keywords_len)),
         "error deserializing keywords"
     );
     let keywords = Keywords::from(keywords);
     trace!("Keywords successfully parsed: keywords: {keywords}");
 
     let base_url = if base_url_ptr.is_null() {
-        None
+        String::new()
     } else {
-        Some(ffi_read_string!("base url", base_url_ptr))
+        ffi_read_string!("base url", base_url_ptr)
     };
 
-    let config = BackendConfiguration::Cloud(
-        ffi_unwrap!(
-            CloudParameters::from(&token, base_url.clone()),
-            "create cloud parameters failed (entry)"
-        ),
-        ffi_unwrap!(
-            CloudParameters::from(&token, base_url.clone()),
-            "create cloud parameters failed (chain)"
-        ),
-    );
+    let config = BackendConfiguration::Rest(authorization_token.clone(), base_url.clone());
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
@@ -525,13 +535,22 @@ pub unsafe extern "C" fn h_search_cloud(
 
     trace!("instantiated Findex: {findex:?}");
 
-    // let key = findex.token.findex_key.clone();
+    let user_interrupt = |res: HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>| async move {
+        trace!("user interrupt input: {res:?}");
+        let bytes = serialize_intermediate_results(&res).map_err(|e| e.to_string())?;
+        let length = <u32>::try_from(bytes.len()).map_err(|e| e.to_string())?;
+        let is_interrupted = 1 == (interrupt)(bytes.as_ptr(), length);
+        trace!("user interrupt output: {is_interrupted:?}");
+        Ok(is_interrupted)
+    };
+
+    trace!("user interrupt callback converted to rust callback");
 
     let results = match rt.block_on(findex.search(
         &authorization_token.findex_key,
         &label,
         keywords,
-        &no_interrupt,
+        &user_interrupt,
     )) {
         Ok(results) => results,
         Err(FindexError::Callback(e)) => {
@@ -606,12 +625,12 @@ pub unsafe extern "C" fn h_search_cloud(
 /// # Parameters
 ///
 /// - `upsert_results` : Returns the list of new keywords added to the index
-/// - `token`          : Findex Cloud token
+/// - `token`          : FindexREST authorization token
 /// - `label`          : additional information used to derive Entry Table UIDs
 /// - `additions`      : serialized list of new indexed values
 /// - `deletions`      : serialized list of removed indexed values
-/// - `base_url`       : base URL for Findex Cloud (with http prefix and port if
-///   required). If null, use the default Findex Cloud server.
+/// - `base_url`       : FindexREST server URL (with http prefix and port if
+///   required). If null, use the default FindexREST server.
 ///
 /// # Safety
 ///
@@ -637,26 +656,17 @@ pub unsafe extern "C" fn h_upsert_cloud(
     let token = ffi_read_string!("token", token_ptr);
     trace!("Authorization token read: {token}");
     let authorization_token = ffi_unwrap!(
-        crate::backends::cloud::Token::from_str(&token),
-        "conversion failed of findex cloud authorization token"
+        crate::backends::rest::AuthorizationToken::from_str(&token),
+        "authorization token conversion failed"
     );
 
     let base_url = if base_url_ptr.is_null() {
-        None
+        String::new()
     } else {
-        Some(ffi_read_string!("base url", base_url_ptr))
+        ffi_read_string!("base url", base_url_ptr)
     };
 
-    let config = BackendConfiguration::Cloud(
-        ffi_unwrap!(
-            CloudParameters::from(&token, base_url.clone()),
-            "create cloud parameters failed (entry)"
-        ),
-        ffi_unwrap!(
-            CloudParameters::from(&token, base_url.clone()),
-            "create cloud parameters failed (chain)"
-        ),
-    );
+    let config = BackendConfiguration::Rest(authorization_token.clone(), base_url.clone());
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
@@ -697,84 +707,88 @@ pub unsafe extern "C" fn h_upsert_cloud(
 #[no_mangle]
 #[tracing::instrument(ret, skip_all)]
 pub unsafe extern "C" fn h_generate_new_token(
-    _token_ptr: *mut u8,
-    _token_len: *mut i32,
-    _index_id_ptr: *const i8,
-    // index_id: u32,
-    _fetch_entries_seed_ptr: *const u8,
-    _fetch_entries_seed_len: i32,
-    _fetch_chains_seed_ptr: *const u8,
-    _fetch_chains_seed_len: i32,
-    _upsert_entries_seed_ptr: *const u8,
-    _upsert_entries_seed_len: i32,
-    _insert_chains_seed_ptr: *const u8,
-    _insert_chains_seed_len: i32,
+    token_ptr: *mut u8,
+    token_len: *mut i32,
+    index_id_ptr: *const i8,
+    fetch_entries_seed_ptr: *const u8,
+    fetch_entries_seed_len: i32,
+    fetch_chains_seed_ptr: *const u8,
+    fetch_chains_seed_len: i32,
+    upsert_entries_seed_ptr: *const u8,
+    upsert_entries_seed_len: i32,
+    insert_chains_seed_ptr: *const u8,
+    insert_chains_seed_len: i32,
 ) -> i32 {
     #[cfg(debug_assertions)]
     log_init();
 
-    // let index_id: String = ffi_read_string!("index id", index_id_ptr);
+    let index_id: String = ffi_read_string!("index id", index_id_ptr);
 
-    // let fetch_entries_seed = ffi_read_bytes!(
-    //     "fetch_entries_seed",
-    //     fetch_entries_seed_ptr,
-    //     fetch_entries_seed_len
-    // );
-    // let fetch_chains_seed = ffi_read_bytes!(
-    //     "fetch_chains_seed",
-    //     fetch_chains_seed_ptr,
-    //     fetch_chains_seed_len
-    // );
-    // let upsert_entries_seed = ffi_read_bytes!(
-    //     "upsert_entries_seed",
-    //     upsert_entries_seed_ptr,
-    //     upsert_entries_seed_len
-    // );
-    // let insert_chains_seed = ffi_read_bytes!(
-    //     "insert_chains_seed",
-    //     insert_chains_seed_ptr,
-    //     insert_chains_seed_len
-    // );
+    let fetch_entries_seed = ffi_read_bytes!(
+        "fetch_entries_seed",
+        fetch_entries_seed_ptr,
+        fetch_entries_seed_len
+    );
+    let fetch_chains_seed = ffi_read_bytes!(
+        "fetch_chains_seed",
+        fetch_chains_seed_ptr,
+        fetch_chains_seed_len
+    );
+    let upsert_entries_seed = ffi_read_bytes!(
+        "upsert_entries_seed",
+        upsert_entries_seed_ptr,
+        upsert_entries_seed_len
+    );
+    let insert_chains_seed = ffi_read_bytes!(
+        "insert_chains_seed",
+        insert_chains_seed_ptr,
+        insert_chains_seed_len
+    );
 
-    // let mut seeds = HashMap::new();
-    // seeds.insert(
-    //     CallbackPrefix::Fetch,
-    //     ffi_unwrap!(
-    //         SymmetricKey::try_from_slice(fetch_entries_seed),
-    //         "fetch_entries_seed is of wrong size"
-    //     ),
-    // );
-    // seeds.insert(
-    //     CallbackPrefix::Fetch,
-    //     ffi_unwrap!(
-    //         SymmetricKey::try_from_slice(fetch_chains_seed),
-    //         "fetch_chains_seed is of wrong size"
-    //     ),
-    // );
-    // seeds.insert(
-    //     CallbackPrefix::Upsert,
-    //     ffi_unwrap!(
-    //         SymmetricKey::try_from_slice(upsert_entries_seed),
-    //         "upsert_entries_seed is of wrong size"
-    //     ),
-    // );
-    // seeds.insert(
-    //     CallbackPrefix::Insert,
-    //     ffi_unwrap!(
-    //         SymmetricKey::try_from_slice(insert_chains_seed),
-    //         "insert_chains_seed is of wrong size"
-    //     ),
-    // );
+    let mut seeds = HashMap::new();
+    seeds.insert(
+        CallbackPrefix::FetchEntry,
+        ffi_unwrap!(
+            SymmetricKey::try_from_slice(fetch_entries_seed),
+            "fetch_entries_seed is of wrong size"
+        ),
+    );
+    seeds.insert(
+        CallbackPrefix::FetchChain,
+        ffi_unwrap!(
+            SymmetricKey::try_from_slice(fetch_chains_seed),
+            "fetch_chains_seed is of wrong size"
+        ),
+    );
+    seeds.insert(
+        CallbackPrefix::Upsert,
+        ffi_unwrap!(
+            SymmetricKey::try_from_slice(upsert_entries_seed),
+            "upsert_entries_seed is of wrong size"
+        ),
+    );
+    seeds.insert(
+        CallbackPrefix::Insert,
+        ffi_unwrap!(
+            SymmetricKey::try_from_slice(insert_chains_seed),
+            "insert_chains_seed is of wrong size"
+        ),
+    );
 
-    // let token = AuthorizationToken::new(index_id, seeds);
+    let mut rng = CsRng::from_entropy();
+    let findex_key = SymmetricKey::new(&mut rng);
 
-    // ffi_write_bytes!(
-    //     "search results",
-    //     token.to_string().as_bytes(),
-    //     token_ptr,
-    //     token_len
-    // );
+    let token = ffi_unwrap!(
+        AuthorizationToken::new(index_id, findex_key, seeds),
+        "generate authorization token"
+    );
 
+    ffi_write_bytes!(
+        "search results",
+        token.to_string().as_bytes(),
+        token_ptr,
+        token_len
+    );
     0
 }
 
@@ -799,6 +813,7 @@ fn get_upsert_output_size(
             .flat_map(|set| set.iter().map(|e| e.len() + 8))
             .sum::<usize>()
 }
+
 /// Helper to merge the cloud and non-cloud implementations
 ///
 /// # Safety

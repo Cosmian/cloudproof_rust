@@ -39,6 +39,7 @@ pub struct PythonCallbacks {
 #[pymethods]
 impl PythonCallbacks {
     #[staticmethod]
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -95,9 +96,9 @@ impl PythonCallbacks {
                     .collect()
             })
         } else {
-            Err(BackendError::MissingCallback(format!(
-                "No attribute fetch is defined for `self`"
-            )))
+            Err(BackendError::MissingCallback(
+                "No attribute fetch is defined for `self`".to_string(),
+            ))
         }
     }
 
@@ -161,9 +162,9 @@ impl PythonCallbacks {
                     .collect()
             })
         } else {
-            Err(BackendError::MissingCallback(format!(
-                "No attribute upsert is defined for `self`"
-            )))
+            Err(BackendError::MissingCallback(
+                "No attribute upsert is defined for `self`".to_string(),
+            ))
         }
     }
 
@@ -174,7 +175,7 @@ impl PythonCallbacks {
         if let Some(insert) = &self.insert {
             Python::with_gil(|py| {
                 let py_new_links = PyDict::new(py);
-                for (key, value) in new_links.iter() {
+                for (key, value) in &new_links {
                     py_new_links
                         .set_item(
                             PyBytes::new(py, key),
@@ -192,9 +193,9 @@ impl PythonCallbacks {
                 Ok(())
             })
         } else {
-            Err(BackendError::MissingCallback(format!(
-                "No attribute upsert is defined for `self`"
-            )))
+            Err(BackendError::MissingCallback(
+                "No attribute upsert is defined for `self`".to_string(),
+            ))
         }
     }
 
@@ -211,9 +212,9 @@ impl PythonCallbacks {
                 Ok(())
             })
         } else {
-            Err(BackendError::MissingCallback(format!(
-                "No attribute upsert is defined for `self`"
-            )))
+            Err(BackendError::MissingCallback(
+                "No attribute upsert is defined for `self`".to_string(),
+            ))
         }
     }
 
@@ -230,9 +231,9 @@ impl PythonCallbacks {
                 Ok(py_result_table.into_iter().map(Token::from).collect())
             })
         } else {
-            Err(BackendError::MissingCallback(format!(
-                "No attribute dump_token is defined for `self`"
-            )))
+            Err(BackendError::MissingCallback(
+                "No attribute dump_token is defined for `self`".to_string(),
+            ))
         }
     }
 }

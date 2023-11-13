@@ -4,13 +4,14 @@
 // Used to avoid inserting `#[cfg(...)]` everywhere.
 #![allow(dead_code)]
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use base64::{engine::general_purpose, Engine};
 use cosmian_crypto_core::{CsRng, FixedSizeCBytes, RandomFixedSizeCBytes};
 use cosmian_findex::{
-    ChainTable, DxEnc, EdxStore, EntryTable, Findex, Index, IndexedValue, Keyword, Keywords, Label,
-    Location, UserKey, ENTRY_LENGTH, LINK_LENGTH,
+    ChainTable, DxEnc, EdxStore, EntryTable, Findex, Index, IndexedValue,
+    IndexedValueToKeywordsMap, Keyword, Keywords, Label, Location, UserKey, ENTRY_LENGTH,
+    LINK_LENGTH,
 };
 use faker_rand::{
     en_us::addresses::PostalCode,
@@ -116,28 +117,25 @@ pub async fn test_backend(config: BackendConfiguration) {
 
     const MAX_BATCH_SIZE: usize = 10;
     let n_batches = additions.len() / MAX_BATCH_SIZE;
+
     for i in 0..n_batches {
+        let additions: HashMap<IndexedValue<Keyword, Location>, HashSet<Keyword>> = additions
+            [i * MAX_BATCH_SIZE..(i + 1) * MAX_BATCH_SIZE]
+            .iter()
+            .cloned()
+            .collect();
         findex
-            .add(
-                &msk,
-                &label,
-                additions[i * MAX_BATCH_SIZE..(i + 1) * MAX_BATCH_SIZE]
-                    .iter()
-                    .cloned()
-                    .collect(),
-            )
+            .add(&msk, &label, IndexedValueToKeywordsMap::from(additions))
             .await
             .unwrap();
     }
+    let additions: HashMap<IndexedValue<Keyword, Location>, HashSet<Keyword>> = additions
+        [n_batches * MAX_BATCH_SIZE..]
+        .iter()
+        .cloned()
+        .collect();
     findex
-        .add(
-            &msk,
-            &label,
-            additions[n_batches * MAX_BATCH_SIZE..]
-                .iter()
-                .cloned()
-                .collect(),
-        )
+        .add(&msk, &label, IndexedValueToKeywordsMap::from(additions))
         .await
         .unwrap();
 
@@ -213,8 +211,8 @@ pub async fn test_backend(config: BackendConfiguration) {
 }
 
 pub async fn test_non_regression<
-    Etb: EdxStore<ENTRY_LENGTH, Error = BackendError>,
-    Ctb: EdxStore<LINK_LENGTH, Error = BackendError>,
+    Etb: EdxStore<ENTRY_LENGTH, Error = BackendError> + std::fmt::Debug,
+    Ctb: EdxStore<LINK_LENGTH, Error = BackendError> + std::fmt::Debug,
 >(
     entry_table_backend: Etb,
     chain_table_backend: Ctb,

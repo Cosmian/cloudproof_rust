@@ -9,6 +9,7 @@ use api::Findex;
 use pyo3::prelude::*;
 use types::{Key, Keyword, Label, Location};
 
+use self::types::AuthorizationToken;
 use crate::backends::custom::python::PythonCallbacks;
 
 #[pymodule]
@@ -19,6 +20,5 @@ fn cloudproof_findex(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Location>()?;
     m.add_class::<Keyword>()?;
     m.add_class::<PythonCallbacks>()?;
-
-    Ok(())
+    m.add_class::<AuthorizationToken>()
 }

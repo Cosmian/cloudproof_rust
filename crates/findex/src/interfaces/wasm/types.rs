@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use cosmian_findex::{IndexedValue, Keyword, Location};
+use cosmian_findex::{IndexedValue, Keyword, KeywordToDataMap, Keywords, Location};
 use js_sys::{Array, JsString, Object, Reflect, Uint8Array};
 use wasm_bindgen::{prelude::wasm_bindgen, JsCast, JsValue};
 
@@ -18,10 +18,10 @@ extern "C" {
     pub type SearchResults;
 }
 
-impl TryFrom<&HashMap<Keyword, HashSet<Location>>> for SearchResults {
+impl TryFrom<&KeywordToDataMap> for SearchResults {
     type Error = WasmError;
 
-    fn try_from(results: &HashMap<Keyword, HashSet<Location>>) -> Result<Self, Self::Error> {
+    fn try_from(results: &KeywordToDataMap) -> Result<Self, Self::Error> {
         let array = Array::new_with_length(results.len() as u32);
         for (i, (keyword, indexed_values)) in results.iter().enumerate() {
             let obj = Object::new();
@@ -81,7 +81,7 @@ impl TryFrom<HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>> for Int
             .map_err(|e| WasmError(format!("failed setting `keyword` into Js object: {e:?}")))?;
             let sub_array = Array::new_with_length((indexed_values.len()) as u32);
             for (j, value) in indexed_values.into_iter().enumerate() {
-                let js_array = Uint8Array::from(<Vec<u8>>::from(value).as_slice());
+                let js_array = Uint8Array::from(<Vec<u8>>::from(&value).as_slice());
                 sub_array.set(j as u32, js_array.into());
             }
             Reflect::set(&obj, &JsValue::from_str("results"), &sub_array).map_err(|e| {
@@ -132,7 +132,7 @@ impl TryFrom<IndexedData> for HashSet<Location> {
             .enumerate()
             .map(|(i, try_data)| {
                 try_data
-                    .map_err(|e| WasmError(format!("failed geting data at index {i}: {e:?}")))
+                    .map_err(|e| WasmError(format!("failed getting data at index {i}: {e:?}")))
                     .map(|data| Location::from(Uint8Array::from(data).to_vec()))
             })
             .collect()
@@ -156,10 +156,10 @@ extern "C" {
     pub type ArrayOfKeywords;
 }
 
-impl From<&HashSet<Keyword>> for ArrayOfKeywords {
-    fn from(keywords: &HashSet<Keyword>) -> Self {
+impl From<&Keywords> for ArrayOfKeywords {
+    fn from(keywords: &Keywords) -> Self {
         let array = Array::new();
-        for kw in keywords {
+        for kw in keywords.iter() {
             let js_kw = unsafe { Uint8Array::new(&Uint8Array::view(kw)) };
             array.push(&js_kw);
         }

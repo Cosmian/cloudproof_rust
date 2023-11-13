@@ -23,7 +23,7 @@ cosmian_crypto_core = { workspace = true, features = ["ecies", "sha3", "blake", 
 # Optional dependencies
 cosmian_ffi_utils = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
-pyo3 = { workspace = true, features = ["extension-module"], optional = true }
+pyo3 = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]

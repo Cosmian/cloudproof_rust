@@ -1,4 +1,4 @@
-//! SQLite implementation of the Findex backends.
+//! `SQLite` implementation of the Findex backends.
 
 use std::{collections::HashMap, ops::Deref, sync::RwLock};
 
@@ -9,7 +9,7 @@ use rusqlite::{params_from_iter, Connection, OptionalExtension};
 
 use crate::backends::BackendError;
 
-/// Implements the SQLite backend for the given `$type`, with values of size
+/// Implements the `SQLite` backend for the given `$type`, with values of size
 /// `$value_length`.
 macro_rules! impl_sqlite_backend {
     ($type:ident, $value_length:ident, $table_name:literal) => {
@@ -47,13 +47,13 @@ macro_rules! impl_sqlite_backend {
             type Error = BackendError;
 
             async fn dump_tokens(&self) -> Result<cosmian_findex::Tokens, Self::Error> {
-                let cnx = self.read().expect("poisonned mutex");
+                let cnx = self.read().expect("poisoned mutex");
 
                 let mut stmt = cnx.prepare(&format!("SELECT uid FROM {}", $table_name))?;
 
                 let rows = stmt.query_map([], |row| {
-                    let token: [u8; cosmian_findex::Token::LENGTH] = row.get(0)?;
-                    Ok(Token::from(token))
+                    let token = Token::from(row.get::<_, [u8; cosmian_findex::Token::LENGTH]>(0)?);
+                    Ok(token)
                 })?;
 
                 rows.collect::<Result<_, _>>().map_err(Self::Error::from)
@@ -64,7 +64,7 @@ macro_rules! impl_sqlite_backend {
                 tokens: cosmian_findex::Tokens,
             ) -> Result<cosmian_findex::TokenWithEncryptedValueList<$value_length>, Self::Error>
             {
-                let cnx = self.read().expect("poisonned mutex");
+                let cnx = self.read().expect("poisoned mutex");
                 let mut stmt = cnx.prepare(&format!(
                     "SELECT uid, nonce, ciphertext, tag FROM {} WHERE uid IN ({})",
                     $table_name,
@@ -105,7 +105,7 @@ macro_rules! impl_sqlite_backend {
                     .into_iter()
                     .map(|(token, new_value)| (token, (old_values.get(&token), new_value)));
 
-                let mut cnx = self.write().expect("poisonned mutex");
+                let mut cnx = self.write().expect("poisoned mutex");
                 let tx = cnx.transaction()?;
                 for (token, (old_value, new_value)) in modifications {
                     let token_bytes: [u8; Token::LENGTH] = token.into();
@@ -155,14 +155,16 @@ macro_rules! impl_sqlite_backend {
                 }
                 tx.commit()?;
 
-                Ok(conflicting_values.into())
+                Ok(cosmian_findex::TokenToEncryptedValueMap::from(
+                    conflicting_values,
+                ))
             }
 
             async fn insert(
                 &self,
                 items: cosmian_findex::TokenToEncryptedValueMap<$value_length>,
             ) -> Result<(), Self::Error> {
-                let mut cnx = self.write().expect("poisonned mutex");
+                let mut cnx = self.write().expect("poisoned mutex");
                 let tx = cnx.transaction()?;
                 for (token, value) in items {
                     tx.execute(
@@ -184,7 +186,7 @@ macro_rules! impl_sqlite_backend {
             }
 
             async fn delete(&self, tokens: cosmian_findex::Tokens) -> Result<(), Self::Error> {
-                let cnx = self.read().expect("poisonned mutex");
+                let cnx = self.read().expect("poisoned mutex");
                 let mut stmt = cnx.prepare(&format!(
                     "DELETE FROM {} WHERE uid IN ({})",
                     $table_name,

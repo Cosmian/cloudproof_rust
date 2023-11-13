@@ -16,9 +16,8 @@ use wasm_bindgen_futures::JsFuture;
 use super::types::InterruptInput;
 use crate::{
     backends::{
-        cloud::{CloudParameters, FindexToken},
         custom::wasm::WasmCallbacks,
-        CallbackPrefix,
+        rest::{AuthorizationToken, CallbackPrefix},
     },
     interfaces::wasm::{
         types::{ArrayOfKeywords, Filter, IndexedData, IndexedValuesAndKeywords, SearchResults},
@@ -48,14 +47,8 @@ impl WasmFindex {
 
     /// Instantiates a Findex object using REST backends, using the given token
     /// and URL.
-    pub async fn new_with_cloud_backend(
-        token: String,
-        url: Option<String>,
-    ) -> Result<WasmFindex, JsError> {
-        let config = BackendConfiguration::Cloud(
-            CloudParameters::new(FindexToken::from_str(&token)?, url.clone()),
-            CloudParameters::new(FindexToken::from_str(&token)?, url.clone()),
-        );
+    pub async fn new_with_rest_backend(token: String, url: String) -> Result<WasmFindex, JsError> {
+        let config = BackendConfiguration::Rest(AuthorizationToken::from_str(&token)?, url);
 
         InstantiatedFindex::new(config)
             .await
@@ -63,7 +56,10 @@ impl WasmFindex {
             .map_err(WasmError::from)
             .map_err(JsError::from)
     }
+}
 
+#[wasm_bindgen]
+impl WasmFindex {
     /// Searches this Findex instance for the given keywords.
     ///
     /// The interrupt is called at each search graph level with the level's
@@ -115,7 +111,7 @@ impl WasmFindex {
             .search(&key, &label, keywords.into(), &user_interrupt)
             .await?;
 
-        <SearchResults>::try_from(&res.into()).map_err(JsError::from)
+        <SearchResults>::try_from(&res).map_err(JsError::from)
     }
 
     /// Add the given values to this Findex index for the corresponding
@@ -126,6 +122,7 @@ impl WasmFindex {
         label: Uint8Array,
         additions: IndexedValuesAndKeywords,
     ) -> Result<ArrayOfKeywords, JsError> {
+        log::info!("add: entering");
         let key = SymmetricKey::try_from_slice(&key.to_vec())
             .map_err(|e| WasmError(format!("Findex add: failed parsing key: {e}")))?;
         let label = Label::from(label.to_vec());
@@ -136,8 +133,9 @@ impl WasmFindex {
                         "Findex add: failed parsing additions from WASM: {e:?}"
                     ))
                 })?;
+        log::info!("add: key, label and additions correctly parsed");
 
-        let res = self
+        let keywords = self
             .0
             .add(&key, &label, additions.into())
             .await
@@ -147,11 +145,8 @@ impl WasmFindex {
                 ))
             })?;
 
-        <ArrayOfKeywords>::try_from(&res.into()).map_err(|e| {
-            JsError::from(WasmError(format!(
-                "Findex add: could not convert new keywords to Js array: {e:?}"
-            )))
-        })
+        log::info!("add: exiting successfully: keywords: {}", keywords);
+        Ok(<ArrayOfKeywords>::from(&keywords))
     }
 
     /// Remove the given values from this Findex index for the corresponding
@@ -183,11 +178,7 @@ impl WasmFindex {
                 ))
             })?;
 
-        <ArrayOfKeywords>::try_from(&res.into()).map_err(|e| {
-            JsError::from(WasmError(format!(
-                "Findex delete: could not convert new keywords to Js array: {e:?}"
-            )))
-        })
+        Ok(<ArrayOfKeywords>::from(&res))
     }
 
     pub async fn compact(
@@ -251,11 +242,15 @@ impl WasmFindex {
 }
 
 #[wasm_bindgen]
-struct WasmToken(FindexToken);
+#[must_use]
+#[derive(Debug, Clone)]
+pub struct WasmToken(AuthorizationToken);
 
 #[wasm_bindgen]
-impl FindexToken {
-    pub fn random(index_id: u32) -> String {
+impl WasmToken {
+    /// Generates a new random token for the given index. This token holds new
+    /// authorization keys for all rights.
+    pub fn random(index_id: String) -> Result<String, JsError> {
         let mut rng = CsRng::from_entropy();
         let findex_key = SymmetricKey::new(&mut rng);
         let seeds = (0..4)
@@ -267,6 +262,56 @@ impl FindexToken {
             })
             .collect();
 
-        Self::new(index_id, findex_key, seeds).to_string()
+        Ok(Self(AuthorizationToken::new(index_id, findex_key, seeds)?)
+            .0
+            .to_string())
+    }
+
+    pub fn create(
+        index_id: String,
+        fetch_entries_key: Option<Uint8Array>,
+        fetch_chains_key: Option<Uint8Array>,
+        upsert_entries_key: Option<Uint8Array>,
+        insert_chains_key: Option<Uint8Array>,
+    ) -> Result<String, JsError> {
+        let mut rng = CsRng::from_entropy();
+        let findex_key = SymmetricKey::new(&mut rng);
+
+        let mut seeds = HashMap::new();
+        if let Some(key) = fetch_entries_key {
+            let key = SymmetricKey::try_from_slice(key.to_vec().as_slice())?;
+            seeds.insert(CallbackPrefix::FetchEntry, key);
+        }
+        if let Some(key) = fetch_chains_key {
+            let key = SymmetricKey::try_from_slice(key.to_vec().as_slice())?;
+            seeds.insert(CallbackPrefix::FetchChain, key);
+        }
+        if let Some(key) = upsert_entries_key {
+            let key = SymmetricKey::try_from_slice(key.to_vec().as_slice())?;
+            seeds.insert(CallbackPrefix::Upsert, key);
+        }
+        if let Some(key) = insert_chains_key {
+            let key = SymmetricKey::try_from_slice(key.to_vec().as_slice())?;
+            seeds.insert(CallbackPrefix::Insert, key);
+        }
+
+        let token = AuthorizationToken::new(index_id, findex_key, seeds)?;
+        Ok(token.to_string())
+    }
+
+    /// Generates a new authentication token with the given permissions.
+    ///
+    /// # Error
+    ///
+    /// Returns an error if the requested permissions are higher than the ones
+    /// associated to this token.
+    pub fn generate_reduced_token_string(
+        &self,
+        is_read: bool,
+        is_write: bool,
+    ) -> Result<WasmToken, JsError> {
+        let mut new_token: WasmToken = self.clone();
+        new_token.0.reduce_permissions(is_read, is_write)?;
+        Ok(new_token)
     }
 }

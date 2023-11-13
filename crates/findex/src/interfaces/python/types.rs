@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use std::{collections::HashMap, hash::Hash};
 
 use cosmian_crypto_core::{
     reexport::rand_core::SeedableRng, CsRng, FixedSizeCBytes, RandomFixedSizeCBytes, SymmetricKey,
@@ -8,6 +8,9 @@ use cosmian_findex::{
     Location as LocationRust, USER_KEY_LENGTH,
 };
 use pyo3::{prelude::*, pyclass::CompareOp, types::PyBytes};
+
+use crate::backends::rest::{AuthorizationToken as AuthorizationTokenRust, CallbackPrefix};
+
 fn truncate(s: String, max_chars: usize) -> String {
     match s.char_indices().nth(max_chars) {
         None => s,
@@ -153,5 +156,103 @@ impl Key {
     ///     bytes
     pub fn to_bytes(&self, py: Python) -> Py<PyBytes> {
         PyBytes::new(py, &self.0).into()
+    }
+}
+
+#[pyclass]
+#[derive(Debug)]
+pub struct AuthorizationToken(AuthorizationTokenRust);
+
+#[pymethods]
+impl AuthorizationToken {
+    /// Generates a new random token for the given index. This token holds new
+    /// authorization keys for all rights.
+    #[staticmethod]
+    pub fn random(index_id: String) -> PyResult<Self> {
+        let mut rng = CsRng::from_entropy();
+        let findex_key = SymmetricKey::new(&mut rng);
+        let seeds = (0..4)
+            .map(|prefix_id| {
+                (
+                    CallbackPrefix::try_from(prefix_id).expect("prefix IDs are correct"),
+                    SymmetricKey::new(&mut rng),
+                )
+            })
+            .collect();
+
+        Ok(Self(pyo3_unwrap!(
+            AuthorizationTokenRust::new(index_id, findex_key, seeds),
+            "error creating new token"
+        )))
+    }
+
+    #[staticmethod]
+    pub fn new(
+        index_id: String,
+        findex_key: &Key,
+        fetch_entries_key: Option<&Key>,
+        fetch_chains_key: Option<&Key>,
+        upsert_entries_key: Option<&Key>,
+        insert_chains_key: Option<&Key>,
+    ) -> PyResult<Self> {
+        let findex_key = pyo3_unwrap!(
+            SymmetricKey::try_from_slice(findex_key.0.as_bytes()),
+            "cannot parse Findex key from given bytes"
+        );
+
+        let mut seeds = HashMap::new();
+        if let Some(key) = fetch_entries_key {
+            let key = pyo3_unwrap!(
+                SymmetricKey::try_from_slice(key.0.as_bytes()),
+                "cannot parse fetch entries key from given bytes"
+            );
+            seeds.insert(CallbackPrefix::FetchEntry, key);
+        }
+        if let Some(key) = fetch_chains_key {
+            let key = pyo3_unwrap!(
+                SymmetricKey::try_from_slice(key.0.as_bytes()),
+                "cannot parse fetch chains key from given bytes"
+            );
+            seeds.insert(CallbackPrefix::FetchChain, key);
+        }
+        if let Some(key) = upsert_entries_key {
+            let key = pyo3_unwrap!(
+                SymmetricKey::try_from_slice(key.0.as_bytes()),
+                "cannot parse upsert entries key from given bytes"
+            );
+            seeds.insert(CallbackPrefix::Upsert, key);
+        }
+        if let Some(key) = insert_chains_key {
+            let key = pyo3_unwrap!(
+                SymmetricKey::try_from_slice(key.0.as_bytes()),
+                "cannot parse insert chains key from given bytes"
+            );
+            seeds.insert(CallbackPrefix::Insert, key);
+        }
+
+        Ok(Self(pyo3_unwrap!(
+            AuthorizationTokenRust::new(index_id, findex_key, seeds,),
+            "error creating new token"
+        )))
+    }
+
+    /// Generates a new authentication token with the given permissions.
+    ///
+    /// # Error
+    ///
+    /// Returns an error if the requested permissions are higher than the ones
+    /// associated to this token.
+    pub fn generate_reduced_token_string(&self, is_read: bool, is_write: bool) -> PyResult<Self> {
+        let mut new_token = self.0.clone();
+        pyo3_unwrap!(
+            new_token.reduce_permissions(is_read, is_write),
+            "when setting permissions"
+        );
+        Ok(Self(new_token))
+    }
+
+    /// Converts to string.
+    fn __str__(&self) -> PyResult<String> {
+        Ok(self.0.to_string())
     }
 }
