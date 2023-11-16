@@ -1,7 +1,7 @@
 //! Defines the FFI types for the callbacks used in Findex.
 
 use cosmian_findex::{EncryptedValue, Token, TokenToEncryptedValueMap, Tokens};
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::{
     backends::BackendError,
@@ -101,7 +101,7 @@ pub struct FfiCallbacks {
 ///
 /// `8` LEB128 bytes can encode numbers up to `2^56` which should be an upper
 /// bound on the number of table lines
-const MAX_LEB128_ENCODING_SIZE: usize = 8;
+pub const MAX_LEB128_ENCODING_SIZE: usize = 8;
 
 #[must_use]
 pub const fn get_serialized_edx_lines_size_bound<const VALUE_LENGTH: usize>(
@@ -115,11 +115,12 @@ pub const fn get_serialized_edx_lines_size_bound<const VALUE_LENGTH: usize>(
 }
 
 impl FfiCallbacks {
-    #[tracing::instrument(level = "trace", fields(tokens = %tokens), ret(Display), err, skip(self))]
+    #[instrument(ret(Display), err, skip_all)]
     pub(crate) async fn fetch<const LENGTH: usize>(
         &self,
         tokens: cosmian_findex::Tokens,
     ) -> Result<cosmian_findex::TokenWithEncryptedValueList<LENGTH>, BackendError> {
+        trace!("fetch: entering: tokens: {tokens}");
         debug!(
             "fetch: entering: tokens number: {}, table_number: {}",
             tokens.len(),
@@ -189,12 +190,14 @@ impl FfiCallbacks {
         }
     }
 
-    #[tracing::instrument(level = "trace", fields(old_values = %old_values, new_values = %new_values), ret(Display), err, skip(self))]
+    #[instrument(ret(Display), err, skip_all)]
     pub(crate) async fn upsert<const LENGTH: usize>(
         &self,
         old_values: cosmian_findex::TokenToEncryptedValueMap<LENGTH>,
         new_values: cosmian_findex::TokenToEncryptedValueMap<LENGTH>,
     ) -> Result<cosmian_findex::TokenToEncryptedValueMap<LENGTH>, BackendError> {
+        trace!("upsert: entering: old_values: {old_values}");
+        trace!("upsert: entering: new_values: {new_values}");
         debug!(
             "upsert: entering: old_values size: {} new_values size: {}",
             old_values.len(),
@@ -265,11 +268,13 @@ impl FfiCallbacks {
         }
     }
 
+    #[instrument(err, skip_all)]
     pub(crate) async fn insert<const LENGTH: usize>(
         &self,
         map: TokenToEncryptedValueMap<LENGTH>,
     ) -> Result<(), BackendError> {
-        tracing::debug!("insert: entering: map size: {}", map.len());
+        trace!("insert: entering: map: {map}");
+        debug!("insert: entering: map size: {}", map.len());
         if let Some(insert) = &self.insert {
             let serialized_map = serialize_edx_lines(&map)?;
             let serialized_map_len = <u32>::try_from(serialized_map.len())?;
@@ -277,7 +282,7 @@ impl FfiCallbacks {
             let err = (insert)(serialized_map.as_ptr(), serialized_map_len);
 
             if err == ErrorCode::Success.code() {
-                tracing::debug!(
+                debug!(
                     "insert: exiting successfully: number inserted {}",
                     map.len()
                 );
@@ -292,8 +297,10 @@ impl FfiCallbacks {
         }
     }
 
+    #[instrument(err, skip_all)]
     pub(crate) async fn delete(&self, tokens: Tokens) -> Result<(), BackendError> {
-        tracing::debug!("delete: entering: tokens number {}", tokens.len());
+        trace!("delete: entering: tokens: {tokens}");
+        debug!("delete: entering: tokens number {}", tokens.len());
         if let Some(delete) = &self.delete {
             let serialized_uids = serialize_token_set(&tokens)?;
             let serialized_uids_len = <u32>::try_from(serialized_uids.len())?;
@@ -302,7 +309,7 @@ impl FfiCallbacks {
                 return Err(BackendError::Ffi("FfiCallbacks delete".to_string(), err));
             }
 
-            tracing::debug!(
+            debug!(
                 "delete: exiting successfully: token number deleted {}",
                 tokens.len()
             );
@@ -314,6 +321,7 @@ impl FfiCallbacks {
         }
     }
 
+    #[instrument(ret(Display), err, skip_all)]
     pub(crate) async fn dump_tokens(&self) -> Result<Tokens, BackendError> {
         debug!("dump_tokens: entering");
         if let Some(dump_tokens) = &self.dump_tokens {

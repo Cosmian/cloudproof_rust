@@ -27,6 +27,7 @@ use crate::logger::log_init;
 use crate::{
     backends::custom::ffi::{
         Delete, DumpTokens, Fetch, FfiCallbacks, FilterObsoleteData, Insert, Interrupt, Upsert,
+        MAX_LEB128_ENCODING_SIZE,
     },
     ser_de::ffi_ser_de::{
         deserialize_indexed_values, deserialize_keyword_set, deserialize_location_set,
@@ -267,9 +268,12 @@ pub unsafe extern "C" fn h_upsert(
         SymmetricKey::try_from_slice(key_bytes),
         "error re-serializing findex key"
     );
+    trace!("Key successfully parsed");
+
     if entry_table_number == 0 {
         ffi_bail!("The parameter entry_table_number must be strictly positive. Found 0");
     }
+    trace!("Entry table number: {entry_table_number}");
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
@@ -806,11 +810,11 @@ fn get_upsert_output_size(
     // - the second call takes this returned value for `upsert_results_len`
     additions
         .values()
-        .flat_map(|set| set.iter().map(|e| e.len() + 8))
+        .flat_map(|set| set.iter().map(|e| e.len() + MAX_LEB128_ENCODING_SIZE))
         .sum::<usize>()
         + deletions
             .values()
-            .flat_map(|set| set.iter().map(|e| e.len() + 8))
+            .flat_map(|set| set.iter().map(|e| e.len() + MAX_LEB128_ENCODING_SIZE))
             .sum::<usize>()
 }
 
@@ -835,18 +839,24 @@ unsafe extern "C" fn ffi_upsert(
 ) -> i32 {
     let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
     let label = Label::from(label_bytes);
+    trace!("Label successfully parsed: label: {label}");
 
     let additions_bytes = ffi_read_bytes!("additions", additions_ptr, additions_len);
     let additions = IndexedValueToKeywordsMap::from(ffi_unwrap!(
         deserialize_indexed_values(additions_bytes),
         "failed deserialize indexed values (additions)"
     ));
+    trace!("additions successfully parsed: additions: {additions}");
 
     let deletions_bytes = ffi_read_bytes!("deletions", deletions_ptr, deletions_len);
-    let deletions = IndexedValueToKeywordsMap::from(ffi_unwrap!(
+    trace!("deletions read bytes OK: deletions_bytes: {deletions_bytes:?}");
+    let a = ffi_unwrap!(
         deserialize_indexed_values(deletions_bytes),
         "failed deserialize indexed values (deletions)"
-    ));
+    );
+    trace!("deletions read bytes OK: deletions_map: {a:?}");
+    let deletions = IndexedValueToKeywordsMap::from(a);
+    trace!("deletions successfully parsed: deletions: {deletions}");
 
     let output_size = get_upsert_output_size(&additions, &deletions);
     if *upsert_results_len < output_size as i32 {
@@ -855,6 +865,7 @@ unsafe extern "C" fn ffi_upsert(
             output_size, upsert_results_len as i32
         )));
         *upsert_results_len = output_size as i32;
+        trace!("The pre-allocated upsert_result buffer is too small; need {output_size} bytes");
         return 1;
     }
 

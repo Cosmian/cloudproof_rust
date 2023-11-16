@@ -18,6 +18,6 @@ jobs:
       branch-java: feature/findex_v6
       branch-js: feature/findex_v6
       branch-kms-js: test/kms_4_9
-      branch-flutter: develop
+      branch-flutter: feature/findex_v6
       branch-python: develop
     secrets: inherit

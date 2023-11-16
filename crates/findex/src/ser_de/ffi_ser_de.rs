@@ -126,14 +126,17 @@ pub fn serialize_indexed_values(
 pub fn deserialize_indexed_values(
     bytes: &[u8],
 ) -> Result<HashMap<IndexedValue<Keyword, Location>, HashSet<Keyword>>, SerializationError> {
+    if bytes.is_empty() {
+        return Ok(HashMap::new());
+    }
     let mut de = Deserializer::new(bytes);
     let length = <usize>::try_from(de.read_leb128_u64()?)?;
     let mut items = HashMap::with_capacity(length);
     for _ in 0..length {
         let iv = IndexedValue::try_from(de.read_vec()?.as_slice())?;
-        let length = usize::try_from(de.read_leb128_u64()?)?;
-        let mut set = HashSet::with_capacity(length);
-        for _ in 0..length {
+        let keywords_number = usize::try_from(de.read_leb128_u64()?)?;
+        let mut set = HashSet::with_capacity(keywords_number);
+        for _ in 0..keywords_number {
             set.insert(Keyword::from(de.read_vec()?));
         }
 
