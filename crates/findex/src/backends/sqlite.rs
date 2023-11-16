@@ -214,6 +214,8 @@ impl_sqlite_backend!(SqlChainBackend, LINK_LENGTH, "chain_table");
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use futures::executor::block_on;
 
     use super::*;
@@ -224,9 +226,9 @@ mod tests {
 
     #[test]
     fn test_sqlite_backend() {
-        let db_path = std::env::temp_dir().join("sqlite.db");
+        let db_path = Path::new("../../target/sqlite.db");
         if db_path.exists() {
-            std::fs::remove_file(&db_path).unwrap();
+            std::fs::remove_file(db_path).unwrap();
         }
         let config = BackendConfiguration::Sqlite(
             db_path.to_str().unwrap().to_string(),
