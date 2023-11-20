@@ -9,15 +9,16 @@ on:
 
 jobs:
   cloudproof_rust:
-    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
+    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@findex_ffi_instance
     with:
       project-name: cloudproof_rust
       toolchain: stable
       kms-version: 4.9.1
       findex-cloud-version: 0.3.1
-      branch-java: feature/findex_v6
+      branch-java: feature/use_findex_instance
       branch-js: feature/findex_v6
       branch-kms-js: v2.0.0
-      branch-flutter: feature/findex_v6
+      branch-flutter: feature/findex_ffi_instance
       branch-python: develop
+      exclusions: --exclude=cloudproof_findex
     secrets: inherit

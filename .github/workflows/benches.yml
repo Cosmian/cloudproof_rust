@@ -5,7 +5,7 @@ on: workflow_dispatch
 
 jobs:
   bench:
-    uses: Cosmian/reusable_workflows/.github/workflows/cargo-bench.yml@develop
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-bench.yml@findex_ffi_instance
     with:
       toolchain: stable
       force: true

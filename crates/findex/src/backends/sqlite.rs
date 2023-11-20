@@ -3,8 +3,7 @@
 use std::{collections::HashMap, ops::Deref, sync::RwLock};
 
 use async_trait::async_trait;
-use cosmian_crypto_core::Nonce;
-use cosmian_findex::{EdxStore, EncryptedValue, Token, ENTRY_LENGTH, LINK_LENGTH, NONCE_LENGTH};
+use cosmian_findex::{EdxStore, EncryptedValue, Token, ENTRY_LENGTH, LINK_LENGTH};
 use rusqlite::{params_from_iter, Connection, OptionalExtension};
 
 use crate::backends::BackendError;
@@ -21,9 +20,7 @@ macro_rules! impl_sqlite_backend {
                         &format!(
                             "CREATE TABLE IF NOT EXISTS {} (
                              uid               BLOB PRIMARY KEY,
-                             nonce             BLOB NOT NULL,
-                             ciphertext        BLOB NOT NULL,
-                             tag               BLOB NOT NULL
+                             value             BLOB NOT NULL
                          )",
                             $table_name
                         ),
@@ -66,7 +63,7 @@ macro_rules! impl_sqlite_backend {
             {
                 let cnx = self.read().expect("poisoned mutex");
                 let mut stmt = cnx.prepare(&format!(
-                    "SELECT uid, nonce, ciphertext, tag FROM {} WHERE uid IN ({})",
+                    "SELECT uid, value FROM {} WHERE uid IN ({})",
                     $table_name,
                     (0..tokens.len()).map(|_| "?").collect::<Vec<_>>().join(",")
                 ))?;
@@ -78,21 +75,26 @@ macro_rules! impl_sqlite_backend {
                     ),
                     |row| {
                         let token = row.get::<_, [u8; cosmian_findex::Token::LENGTH]>(0)?;
-                        let nonce = row.get::<_, [u8; NONCE_LENGTH]>(1)?;
-                        let ciphertext = row.get(2)?;
-                        let tag = row.get(3)?;
-                        Ok((
-                            Token::from(token),
-                            EncryptedValue {
-                                nonce: Nonce::from(nonce),
-                                ciphertext,
-                                tag,
-                            },
-                        ))
+                        let value =
+                            row.get::<_, [u8; EncryptedValue::<$value_length>::LENGTH]>(1)?;
+                        Ok((Token::from(token), value))
                     },
                 )?;
 
-                rows.collect::<Result<_, _>>().map_err(Self::Error::from)
+                rows.map(|res| {
+                    // TODO: this fix is needed since error from conversion to encrypted value is not
+                    // easily convertible inside the `query_map`.
+                    //
+                    // Two paths to go forward:
+                    // - find a way to convert the error inside `query_map`
+                    // - find a way to convert without failure (currently blocked since constant
+                    //   generics cannot be used in constant operations);
+                    let (token, value) = res?;
+                    let value = EncryptedValue::<$value_length>::try_from(value.as_slice())?;
+                    Ok::<_, Self::Error>((token, value))
+                })
+                .collect::<Result<_, _>>()
+                .map_err(Self::Error::from)
             }
 
             async fn upsert(
@@ -108,49 +110,28 @@ macro_rules! impl_sqlite_backend {
                 let mut cnx = self.write().expect("poisoned mutex");
                 let tx = cnx.transaction()?;
                 for (token, (old_value, new_value)) in modifications {
+                    let old_value = old_value.map(|v| <Vec<u8>>::from(v));
                     let token_bytes: [u8; Token::LENGTH] = token.into();
                     let indexed_value = tx
                         .query_row(
-                            &format!(
-                                "SELECT nonce, ciphertext, tag FROM {} WHERE uid = ?1",
-                                $table_name
-                            ),
+                            &format!("SELECT value FROM {} WHERE uid = ?1", $table_name),
                             [token_bytes],
-                            |row| {
-                                let nonce = row.get::<_, [u8; NONCE_LENGTH]>(0)?;
-                                let ciphertext = row.get(1)?;
-                                let tag = row.get(2)?;
-                                Ok(EncryptedValue {
-                                    nonce: Nonce::from(nonce),
-                                    ciphertext,
-                                    tag,
-                                })
-                            },
+                            |row| row.get::<_, Vec<u8>>(0),
                         )
                         .optional()?;
-                    if indexed_value.as_ref() == old_value {
+                    if indexed_value == old_value {
                         tx.execute(
-                            &format!(
-                                "REPLACE INTO {} (uid, nonce, ciphertext, tag) VALUES (?1, ?2, \
-                                 ?3, ?4)",
-                                $table_name,
-                            ),
-                            [
-                                &*token,
-                                new_value.nonce.0.as_slice(),
-                                new_value.ciphertext.as_slice(),
-                                new_value.tag.as_slice(),
-                            ],
+                            &format!("REPLACE INTO {} (uid, value) VALUES (?1, ?2)", $table_name),
+                            [&*token, &<Vec<u8>>::from(&new_value)],
                         )?;
                     } else {
-                        conflicting_values.insert(
-                            token,
-                            indexed_value.ok_or_else(|| {
-                                Self::Error::Other(
-                                    "Index values cannot be removed while upserting.".to_string(),
-                                )
-                            })?,
-                        );
+                        let indexed_value = indexed_value.ok_or_else(|| {
+                            Self::Error::Other(
+                                "Index values cannot be removed while upserting.".to_string(),
+                            )
+                        })?;
+                        conflicting_values
+                            .insert(token, EncryptedValue::try_from(indexed_value.as_slice())?);
                     }
                 }
                 tx.commit()?;
@@ -168,16 +149,8 @@ macro_rules! impl_sqlite_backend {
                 let tx = cnx.transaction()?;
                 for (token, value) in items {
                     tx.execute(
-                        &format!(
-                            "INSERT INTO {} (uid, nonce, ciphertext, tag) VALUES (?1, ?2, ?3, ?4)",
-                            $table_name
-                        ),
-                        [
-                            &*token,
-                            value.nonce.0.as_slice(),
-                            value.ciphertext.as_slice(),
-                            value.tag.as_slice(),
-                        ],
+                        &format!("INSERT INTO {} (uid, value) VALUES (?1, ?2)", $table_name),
+                        [&*token, &<Vec<u8>>::from(&value)],
                     )?;
                 }
                 tx.commit()?;
@@ -218,15 +191,14 @@ mod tests {
 
     use futures::executor::block_on;
 
-    use super::*;
     use crate::{
-        backends::tests::{test_backend, test_non_regression},
+        backends::tests::{test_backend, test_generate_non_regression_db, test_non_regression},
         BackendConfiguration,
     };
 
     #[test]
     fn test_sqlite_backend() {
-        let db_path = Path::new("../../target/sqlite.db");
+        let db_path = Path::new("../../target/sqlite_with_compact.db");
         if db_path.exists() {
             std::fs::remove_file(db_path).unwrap();
         }
@@ -239,9 +211,25 @@ mod tests {
 
     #[test]
     fn test_sqlite_non_regression() {
-        let db_path = "datasets/sqlite.db";
-        let entry_backend = SqlEntryBackend::new(db_path).unwrap();
-        let chain_backend = SqlChainBackend::new(db_path).unwrap();
-        block_on(test_non_regression(entry_backend, chain_backend));
+        // Test creating a new non-regression database.
+        let db_path = Path::new("../../target/sqlite.db");
+        if db_path.exists() {
+            std::fs::remove_file(db_path).unwrap();
+        }
+
+        let config = BackendConfiguration::Sqlite(
+            db_path.to_str().unwrap().to_string(),
+            db_path.to_str().unwrap().to_string(),
+        );
+        block_on(test_generate_non_regression_db(config.clone()));
+        block_on(test_non_regression(config));
+
+        // Test existing non-regression database.
+        let db_path = Path::new("datasets/sqlite.db");
+        let config = BackendConfiguration::Sqlite(
+            db_path.to_str().unwrap().to_string(),
+            db_path.to_str().unwrap().to_string(),
+        );
+        block_on(test_non_regression(config));
     }
 }

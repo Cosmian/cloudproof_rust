@@ -1,6 +1,5 @@
 //! This module defines the tests that are to be passed by each backend.
 
-#![cfg(test)]
 // Used to avoid inserting `#[cfg(...)]` everywhere.
 #![allow(dead_code)]
 
@@ -9,9 +8,7 @@ use std::collections::{HashMap, HashSet};
 use base64::{engine::general_purpose, Engine};
 use cosmian_crypto_core::{CsRng, FixedSizeCBytes, RandomFixedSizeCBytes};
 use cosmian_findex::{
-    ChainTable, DxEnc, EdxStore, EntryTable, Findex, Index, IndexedValue,
-    IndexedValueToKeywordsMap, Keyword, Keywords, Label, Location, UserKey, ENTRY_LENGTH,
-    LINK_LENGTH,
+    IndexedValue, IndexedValueToKeywordsMap, Keyword, Keywords, Label, Location, UserKey,
 };
 use faker_rand::{
     en_us::addresses::PostalCode,
@@ -84,14 +81,36 @@ fn get_users() -> Result<Vec<User>, BackendError> {
         .map_err(|e| BackendError::Serialization(e.to_string()))
 }
 
-/// This test:
-/// 1. Indexed each user using each one of its fields; upserts are done in
-///    several batches in order not to create a compact index.
-/// 2. Asserts that searching each for field of each user allows retrieving the
-///    corresponding user index.
-/// 3. Asserts that compact operations can be run on the backend.
-/// 4. Asserts that the correctness of the search as defined in step 2.
-pub async fn test_backend(config: BackendConfiguration) {
+/// Generate the key used in the tests. In case the test is a non-regression, the key from
+/// `dataset` is used. Otherwise a new random key is generated.
+fn get_key(is_non_regression: bool) -> UserKey {
+    if is_non_regression {
+        let bytes = general_purpose::STANDARD
+            .decode(std::fs::read_to_string("datasets/key.txt").unwrap())
+            .map_err(|e| BackendError::Other(e.to_string()))
+            .unwrap();
+        UserKey::try_from_slice(bytes.as_slice()).unwrap()
+    } else {
+        let mut rng = CsRng::from_entropy();
+        UserKey::new(&mut rng)
+    }
+}
+
+fn get_label(is_non_regression: bool) -> Label {
+    if is_non_regression {
+        Label::from(
+            std::fs::read_to_string("datasets/label.txt")
+                .unwrap()
+                .as_str(),
+        )
+    } else {
+        let mut rng = CsRng::from_entropy();
+        Label::random(&mut rng)
+    }
+}
+
+/// Indexes each user for each one of its fields.
+async fn insert_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label) {
     // 1. Index the position of each user by each one of its values.
     let users = get_users().unwrap();
     let additions = users
@@ -108,11 +127,6 @@ pub async fn test_backend(config: BackendConfiguration) {
         })
         .collect::<Vec<(IndexedValue<Keyword, Location>, HashSet<Keyword>)>>();
 
-    let findex = InstantiatedFindex::new(config).await.unwrap();
-    let mut rng = CsRng::from_entropy();
-    let msk = UserKey::new(&mut rng);
-    let label = Label::random(&mut rng);
-
     trace!("Upsert indexes.");
 
     const MAX_BATCH_SIZE: usize = 10;
@@ -125,7 +139,7 @@ pub async fn test_backend(config: BackendConfiguration) {
             .cloned()
             .collect();
         findex
-            .add(&msk, &label, IndexedValueToKeywordsMap::from(additions))
+            .add(key, label, IndexedValueToKeywordsMap::from(additions))
             .await
             .unwrap();
     }
@@ -135,61 +149,23 @@ pub async fn test_backend(config: BackendConfiguration) {
         .cloned()
         .collect();
     findex
-        .add(&msk, &label, IndexedValueToKeywordsMap::from(additions))
+        .add(key, label, IndexedValueToKeywordsMap::from(additions))
         .await
         .unwrap();
+}
 
-    trace!("Search indexes.");
+/// Asserts each user can be retrieved using each field it is indexed for.
+async fn find_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label) {
+    let users = get_users().unwrap();
 
     // Assert results are reachable from each indexing keyword.
     for (idx, user) in users.iter().enumerate() {
+        trace!("Search indexes.");
+
         let res = findex
             .search(
-                &msk,
-                &label,
-                Keywords::from_iter(
-                    user.values()
-                        .into_iter()
-                        .map(|word| Keyword::from(word.as_bytes())),
-                ),
-                &|_| async move { Ok(false) },
-            )
-            .await
-            .unwrap();
-
-        for word in user.values() {
-            let keyword = Keyword::from(word.as_bytes());
-            let location = Location::from((idx as i64).to_be_bytes().as_slice());
-            assert!(res.contains_key(&keyword));
-            let word_res = res.get(&keyword).unwrap();
-            assert!(word_res.contains(&location));
-        }
-    }
-
-    println!("Compact indexes.");
-
-    let new_msk = UserKey::new(&mut rng);
-    let new_label = Label::random(&mut rng);
-    findex
-        .compact(
-            &msk,
-            &new_msk,
-            &label,
-            &new_label,
-            1,
-            &|indexed_data| async { Ok(indexed_data) },
-        )
-        .await
-        .unwrap();
-
-    println!("Search indexes.");
-
-    // Assert results are reachable from each indexing keyword.
-    for (idx, user) in users.iter().enumerate() {
-        let res = findex
-            .search(
-                &new_msk,
-                &new_label,
+                key,
+                label,
                 Keywords::from_iter(
                     user.values()
                         .into_iter()
@@ -210,19 +186,52 @@ pub async fn test_backend(config: BackendConfiguration) {
     }
 }
 
-pub async fn test_non_regression<
-    Etb: EdxStore<ENTRY_LENGTH, Error = BackendError> + std::fmt::Debug,
-    Ctb: EdxStore<LINK_LENGTH, Error = BackendError> + std::fmt::Debug,
->(
-    entry_table_backend: Etb,
-    chain_table_backend: Ctb,
-) {
-    let key = general_purpose::STANDARD
-        .decode(include_str!("../../datasets/key.txt"))
-        .map_err(|e| BackendError::Other(e.to_string()))
+/// This test:
+/// 1. Indexed each user using each one of its fields; upserts are done in
+///    several batches in order not to create a compact index.
+/// 2. Asserts that searching each for field of each user allows retrieving the
+///    corresponding user index.
+/// 3. Asserts that compact operations can be run on the backend.
+/// 4. Asserts that the correctness of the search as defined in step 2.
+///
+/// The `.db` file produced by this test should be okay to use in the non-regression test.
+pub async fn test_backend(config: BackendConfiguration) {
+    let is_non_regression = false;
+
+    let findex = InstantiatedFindex::new(config).await.unwrap();
+    let key = get_key(is_non_regression);
+    let label = get_label(is_non_regression);
+
+    insert_users(&findex, &key, &label).await;
+
+    find_users(&findex, &key, &label).await;
+
+    let mut rng = CsRng::from_entropy();
+    let new_key = UserKey::new(&mut rng);
+    let new_label = Label::random(&mut rng);
+
+    println!("Compact indexes.");
+    findex
+        .compact(
+            &key,
+            &new_key,
+            &label,
+            &new_label,
+            1,
+            &|indexed_data| async { Ok(indexed_data) },
+        )
+        .await
         .unwrap();
-    let key = UserKey::try_from_slice(&key).unwrap();
-    let label = Label::from(include_bytes!("../../datasets/label.txt").to_vec());
+
+    println!("Search indexes.");
+
+    find_users(&findex, &new_key, &new_label).await;
+}
+
+pub async fn test_non_regression(config: BackendConfiguration) {
+    let is_non_regression = true;
+    let key = get_key(is_non_regression);
+    let label = get_label(is_non_regression);
 
     let mut expected_results: Vec<i64> =
         serde_json::from_str(include_str!("../../datasets/expected_db_uids.json"))
@@ -230,10 +239,7 @@ pub async fn test_non_regression<
             .unwrap();
     expected_results.sort_unstable();
 
-    let findex = Findex::<BackendError, _, _>::new(
-        EntryTable::setup(entry_table_backend),
-        ChainTable::setup(chain_table_backend),
-    );
+    let findex = InstantiatedFindex::new(config).await.unwrap();
 
     let keyword = Keyword::from("France".as_bytes());
     let results = findex
@@ -255,4 +261,15 @@ pub async fn test_non_regression<
     results.sort_unstable();
 
     assert_eq!(results, expected_results);
+}
+
+pub async fn test_generate_non_regression_db(config: BackendConfiguration) {
+    let is_non_regression = true;
+
+    let findex = InstantiatedFindex::new(config).await.unwrap();
+    let key = get_key(is_non_regression);
+    let label = get_label(is_non_regression);
+
+    insert_users(&findex, &key, &label).await;
+    find_users(&findex, &key, &label).await;
 }

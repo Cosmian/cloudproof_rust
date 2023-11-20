@@ -1,12 +1,13 @@
 //! Defines the FFI types for the callbacks used in Findex.
 
-use cosmian_findex::{EncryptedValue, Token, TokenToEncryptedValueMap, Tokens};
+use cosmian_findex::{Token, TokenToEncryptedValueMap, Tokens};
 use tracing::{debug, instrument, trace};
 
 use crate::{
     backends::BackendError,
     ser_de::ffi_ser_de::{
-        deserialize_edx_lines, deserialize_token_set, serialize_edx_lines, serialize_token_set,
+        deserialize_edx_lines, deserialize_token_set, get_serialized_edx_lines_size_bound,
+        serialize_edx_lines, serialize_token_set,
     },
     ErrorCode,
 };
@@ -87,7 +88,7 @@ pub type FilterObsoleteData = extern "C" fn(
 /// | compact |  ET + CT  |           |  ET + CT  |  ET + CT  |       ET      |
 /// +---------+-----------+-----------+-----------+-----------+---------------+
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FfiCallbacks {
     pub table_number: usize,
     pub fetch: Option<Fetch>,
@@ -95,23 +96,6 @@ pub struct FfiCallbacks {
     pub insert: Option<Insert>,
     pub delete: Option<Delete>,
     pub dump_tokens: Option<DumpTokens>,
-}
-
-/// Maximum number of bytes used by a LEB128 encoding.
-///
-/// `8` LEB128 bytes can encode numbers up to `2^56` which should be an upper
-/// bound on the number of table lines
-pub const MAX_LEB128_ENCODING_SIZE: usize = 8;
-
-#[must_use]
-pub const fn get_serialized_edx_lines_size_bound<const VALUE_LENGTH: usize>(
-    n_lines: usize,
-    n_tables: usize,
-) -> usize {
-    MAX_LEB128_ENCODING_SIZE
-        + n_lines
-            * n_tables
-            * (Token::LENGTH + EncryptedValue::<VALUE_LENGTH>::LENGTH + MAX_LEB128_ENCODING_SIZE)
 }
 
 impl FfiCallbacks {
@@ -126,67 +110,49 @@ impl FfiCallbacks {
             tokens.len(),
             self.table_number
         );
-        if let Some(fetch) = &self.fetch {
-            let allocation_size =
-                get_serialized_edx_lines_size_bound::<LENGTH>(tokens.len(), self.table_number);
-            trace!("fetch: output allocation_size: {}", allocation_size);
 
-            let mut output_bytes = vec![0_u8; allocation_size];
-            let output_ptr = output_bytes.as_mut_ptr().cast();
-            let mut output_len = u32::try_from(allocation_size)?;
+        let fetch = self
+            .fetch
+            .as_ref()
+            .ok_or_else(|| BackendError::MissingCallback("no fetch callback found".to_string()))?;
 
-            let serialized_tokens = serialize_token_set(&tokens)?;
-            trace!(
-                "fetch: serialized_tokens length: {}",
-                serialized_tokens.len()
+        let allocation_size =
+            get_serialized_edx_lines_size_bound::<LENGTH>(tokens.len(), self.table_number);
+        trace!("fetch: output allocation_size: {}", allocation_size);
+
+        let mut output_bytes = vec![0_u8; allocation_size];
+        let output_ptr = output_bytes.as_mut_ptr().cast();
+        let mut output_len = u32::try_from(allocation_size)?;
+
+        let serialized_tokens = serialize_token_set(&tokens)?;
+        let serialized_tokens_len = u32::try_from(serialized_tokens.len())?;
+
+        trace!(
+            "fetch: serialized_tokens length: {}",
+            serialized_tokens.len()
+        );
+
+        let err = (fetch)(
+            output_ptr,
+            &mut output_len,
+            serialized_tokens.as_ptr(),
+            serialized_tokens_len,
+        );
+
+        if err == 0 {
+            let res = unsafe {
+                std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize).to_vec()
+            };
+
+            let token_encrypted_value_list =
+                deserialize_edx_lines(&res).map_err(BackendError::from)?;
+            debug!(
+                "fetch: exiting successfully with {} values",
+                token_encrypted_value_list.len()
             );
-            let err = (fetch)(
-                output_ptr,
-                &mut output_len,
-                serialized_tokens.as_ptr(),
-                serialized_tokens.len() as u32,
-            );
-
-            match err {
-                0 => {
-                    let res = unsafe {
-                        std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize)
-                            .to_vec()
-                    };
-
-                    let token_encrypted_value_list =
-                        deserialize_edx_lines(&res).map_err(BackendError::from)?;
-                    debug!(
-                        "fetch: exiting successfully with {} values",
-                        token_encrypted_value_list.len()
-                    );
-                    Ok(token_encrypted_value_list)
-                }
-                1 => Err(BackendError::Ffi(
-                    format!("'{}' buffer too small", "fetch"),
-                    err,
-                )),
-                2 => Err(BackendError::Ffi(
-                    format!("'{}' missing callback", "fetch"),
-                    err,
-                )),
-                3 => Err(BackendError::Ffi(
-                    format!("'{}' serialization error", "fetch"),
-                    err,
-                )),
-                4 => Err(BackendError::Ffi(
-                    format!("'{}' backend error", "fetch"),
-                    err,
-                )),
-                _ => Err(BackendError::Ffi(
-                    format!("'{}' other error: {err}", "fetch"),
-                    err,
-                )),
-            }
+            Ok(token_encrypted_value_list)
         } else {
-            Err(BackendError::MissingCallback(
-                "no fetch callback found".to_string(),
-            ))
+            Err(BackendError::Ffi("fetch error".to_string(), err.into()))
         }
     }
 
@@ -203,68 +169,46 @@ impl FfiCallbacks {
             old_values.len(),
             new_values.len()
         );
-        if let Some(upsert) = &self.upsert {
-            let allocation_size =
-                get_serialized_edx_lines_size_bound::<LENGTH>(new_values.len(), self.table_number);
 
-            let mut output_bytes = vec![0_u8; allocation_size];
-            let output_ptr = output_bytes.as_mut_ptr().cast();
-            let mut output_len = u32::try_from(allocation_size)?;
+        let upsert = self
+            .upsert
+            .as_ref()
+            .ok_or_else(|| BackendError::MissingCallback("no upsert callback found".to_string()))?;
 
-            let serialized_old_values = serialize_edx_lines(&old_values)?;
-            let serialized_new_values = serialize_edx_lines(&new_values)?;
-            let serialized_old_values_len = <u32>::try_from(serialized_old_values.len())?;
-            let serialized_new_values_len = <u32>::try_from(serialized_new_values.len())?;
+        let allocation_size =
+            get_serialized_edx_lines_size_bound::<LENGTH>(new_values.len(), self.table_number);
 
-            let err = (upsert)(
-                output_ptr,
-                &mut output_len,
-                serialized_old_values.as_ptr(),
-                serialized_old_values_len,
-                serialized_new_values.as_ptr(),
-                serialized_new_values_len,
+        let mut output_bytes = vec![0_u8; allocation_size];
+        let output_ptr = output_bytes.as_mut_ptr().cast();
+        let mut output_len = u32::try_from(allocation_size)?;
+
+        let serialized_old_values = serialize_edx_lines(&old_values)?;
+        let serialized_new_values = serialize_edx_lines(&new_values)?;
+        let serialized_old_values_len = <u32>::try_from(serialized_old_values.len())?;
+        let serialized_new_values_len = <u32>::try_from(serialized_new_values.len())?;
+
+        let err = (upsert)(
+            output_ptr,
+            &mut output_len,
+            serialized_old_values.as_ptr(),
+            serialized_old_values_len,
+            serialized_new_values.as_ptr(),
+            serialized_new_values_len,
+        );
+
+        if err == 0 {
+            let res = unsafe {
+                std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize).to_vec()
+            };
+            let token_encrypted_value_map: cosmian_findex::TokenToEncryptedValueMap<LENGTH> =
+                deserialize_edx_lines(&res)?.into_iter().collect();
+            debug!(
+                "upsert: exiting successfully with {} values",
+                token_encrypted_value_map.len()
             );
-
-            match err {
-                0 => {
-                    let res = unsafe {
-                        std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize)
-                            .to_vec()
-                    };
-                    let token_encrypted_value_map: cosmian_findex::TokenToEncryptedValueMap<
-                        LENGTH,
-                    > = deserialize_edx_lines(&res)?.into_iter().collect();
-                    debug!(
-                        "upsert: exiting successfully with {} values",
-                        token_encrypted_value_map.len()
-                    );
-                    Ok(token_encrypted_value_map)
-                }
-                1 => Err(BackendError::Ffi(
-                    format!("'{}' buffer too small", "upsert"),
-                    err,
-                )),
-                2 => Err(BackendError::Ffi(
-                    format!("'{}' missing callback", "upsert"),
-                    err,
-                )),
-                3 => Err(BackendError::Ffi(
-                    format!("'{}' serialization error", "upsert"),
-                    err,
-                )),
-                4 => Err(BackendError::Ffi(
-                    format!("'{}' backend error", "upsert"),
-                    err,
-                )),
-                _ => Err(BackendError::Ffi(
-                    format!("'{}' other error: {err}", "upsert"),
-                    err,
-                )),
-            }
+            Ok(token_encrypted_value_map)
         } else {
-            Err(BackendError::MissingCallback(
-                "no upsert callback found".to_string(),
-            ))
+            Err(BackendError::Ffi("upsert error".to_string(), err.into()))
         }
     }
 
@@ -275,25 +219,25 @@ impl FfiCallbacks {
     ) -> Result<(), BackendError> {
         trace!("insert: entering: map: {map}");
         debug!("insert: entering: map size: {}", map.len());
-        if let Some(insert) = &self.insert {
-            let serialized_map = serialize_edx_lines(&map)?;
-            let serialized_map_len = <u32>::try_from(serialized_map.len())?;
 
-            let err = (insert)(serialized_map.as_ptr(), serialized_map_len);
+        let insert = self
+            .insert
+            .as_ref()
+            .ok_or_else(|| BackendError::MissingCallback("no insert callback found".to_string()))?;
 
-            if err == ErrorCode::Success.code() {
-                debug!(
-                    "insert: exiting successfully: number inserted {}",
-                    map.len()
-                );
-                Ok(())
-            } else {
-                Err(BackendError::Ffi("FfiCallbacks insert".to_string(), err))
-            }
+        let serialized_map = serialize_edx_lines(&map)?;
+        let serialized_map_len = <u32>::try_from(serialized_map.len())?;
+
+        let err = (insert)(serialized_map.as_ptr(), serialized_map_len).into();
+
+        if ErrorCode::Success == err {
+            tracing::debug!(
+                "insert: exiting successfully: number inserted {}",
+                map.len()
+            );
+            Ok(())
         } else {
-            Err(BackendError::MissingCallback(
-                "no insert callback found".to_string(),
-            ))
+            Err(BackendError::Ffi("insert error".to_string(), err))
         }
     }
 
@@ -301,60 +245,63 @@ impl FfiCallbacks {
     pub(crate) async fn delete(&self, tokens: Tokens) -> Result<(), BackendError> {
         trace!("delete: entering: tokens: {tokens}");
         debug!("delete: entering: tokens number {}", tokens.len());
-        if let Some(delete) = &self.delete {
-            let serialized_uids = serialize_token_set(&tokens)?;
-            let serialized_uids_len = <u32>::try_from(serialized_uids.len())?;
-            let err = (delete)(serialized_uids.as_ptr(), serialized_uids_len);
-            if err != ErrorCode::Success.code() {
-                return Err(BackendError::Ffi("FfiCallbacks delete".to_string(), err));
-            }
+        let delete = self
+            .delete
+            .as_ref()
+            .ok_or_else(|| BackendError::MissingCallback("no delete callback found".to_string()))?;
 
-            debug!(
+        let serialized_uids = serialize_token_set(&tokens)?;
+        let serialized_uids_len = <u32>::try_from(serialized_uids.len())?;
+
+        let err = (delete)(serialized_uids.as_ptr(), serialized_uids_len).into();
+
+        if ErrorCode::Success == err {
+            tracing::debug!(
                 "delete: exiting successfully: token number deleted {}",
                 tokens.len()
             );
             Ok(())
         } else {
-            Err(BackendError::MissingCallback(
-                "no delete callback found".to_string(),
-            ))
+            Err(BackendError::Ffi("delete error".to_string(), err))
         }
     }
 
     #[instrument(ret(Display), err, skip_all)]
     pub(crate) async fn dump_tokens(&self) -> Result<Tokens, BackendError> {
         debug!("dump_tokens: entering");
-        if let Some(dump_tokens) = &self.dump_tokens {
-            let mut allocation_size = 1_000_000 * Token::LENGTH;
-            let mut is_first_try = true;
 
-            loop {
-                let mut output_bytes = vec![0_u8; allocation_size];
-                let output_ptr = output_bytes.as_mut_ptr().cast::<u8>();
-                let mut output_len = u32::try_from(allocation_size)?;
+        let dump_tokens = self.dump_tokens.as_ref().ok_or_else(|| {
+            BackendError::MissingCallback("no dump_tokens callback found".to_string())
+        })?;
 
-                let err = (dump_tokens)(output_ptr, &mut output_len);
+        let mut allocation_size = 1_000_000 * Token::LENGTH;
+        let mut output_bytes = vec![0_u8; allocation_size];
+        let output_ptr = output_bytes.as_mut_ptr().cast::<u8>();
+        let mut output_len = u32::try_from(allocation_size)?;
 
-                if err == ErrorCode::Success.code() {
-                    let tokens_bytes = unsafe {
-                        std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize)
-                    };
-                    let tokens = deserialize_token_set(tokens_bytes).map_err(BackendError::from)?;
-                    debug!("dump_tokens: exiting with {} tokens", tokens.len());
-                    return Ok(tokens);
-                } else if is_first_try && err == ErrorCode::BufferTooSmall.code() {
-                    allocation_size = output_len as usize;
-                    is_first_try = false;
-                } else {
-                    return Err(BackendError::Ffi(
-                        "FfiCallbacks token dump".to_string(),
-                        err,
-                    ));
-                }
-            }
+        let mut err = (dump_tokens)(output_ptr, &mut output_len).into();
+
+        if ErrorCode::BufferTooSmall == err {
+            // Second try in case not enough memory was allocated.
+            // Use the length returned by the first function call.
+            allocation_size = output_len as usize;
+            let mut output_bytes = vec![0_u8; allocation_size];
+            let output_ptr = output_bytes.as_mut_ptr().cast::<u8>();
+            let mut output_len = u32::try_from(allocation_size)?;
+            err = (dump_tokens)(output_ptr, &mut output_len).into();
+        }
+
+        if ErrorCode::Success == err {
+            // TODO: why not directly use `output_bytes`?
+            let tokens_bytes =
+                unsafe { std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize) };
+            let tokens = deserialize_token_set(tokens_bytes).map_err(BackendError::from)?;
+            debug!("dump_tokens: exiting with {} tokens", tokens.len());
+            Ok(tokens)
         } else {
-            Err(BackendError::MissingCallback(
-                "no dump_tokens callback found".to_string(),
+            Err(BackendError::Ffi(
+                "FfiCallbacks token dump".to_string(),
+                err,
             ))
         }
     }

@@ -1,4 +1,4 @@
 maturin>=1.0,<2.0
 mypy>=1.0,<2.0
-types-requests
 requests
+types-requests

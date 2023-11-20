@@ -128,6 +128,7 @@ impl InstantiatedFindex {
     }
 
     /// Wrapper around Findex [`keygen`](Index::keygen) for static dispatch.
+    #[must_use]
     pub fn keygen(&self) -> UserKey {
         match self {
             #[cfg(feature = "backend-sqlite")]

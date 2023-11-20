@@ -11,6 +11,7 @@ use crate::backends::rest::AuthorizationToken;
 ///
 /// Inner parameters go by pair. The first ones are used to instantiate the
 /// Entry Table while the second ones are used to instantiate the Chain Table.
+#[derive(Clone)]
 pub enum BackendConfiguration {
     /// REST backends require an authorization token and a server URL.
     #[cfg(feature = "backend-rest")]

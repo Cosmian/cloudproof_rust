@@ -2,12 +2,48 @@ use std::collections::{HashMap, HashSet};
 
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializer};
 use cosmian_findex::{
-    EncryptedValue, IndexedValue, Keyword, Location, Token, TokenToEncryptedValueMap,
+    EncryptedValue, IndexedValue, Keyword, Keywords, Location, Token, TokenToEncryptedValueMap,
     TokenWithEncryptedValueList, Tokens,
 };
 
 use crate::ser_de::SerializationError;
 
+/// Maximum number of bytes used by a LEB128 encoding.
+///
+/// `8` LEB128 bytes can encode numbers up to `2^56` which should be an upper
+/// bound on the number of table lines
+const MAX_LEB128_ENCODING_SIZE: usize = 8;
+
+#[must_use]
+pub const fn get_serialized_edx_lines_size_bound<const VALUE_LENGTH: usize>(
+    n_lines: usize,
+    n_tables: usize,
+) -> usize {
+    MAX_LEB128_ENCODING_SIZE
+        + n_lines
+            * n_tables
+            * (Token::LENGTH + MAX_LEB128_ENCODING_SIZE + EncryptedValue::<VALUE_LENGTH>::LENGTH)
+}
+
+#[must_use]
+pub fn get_upsert_output_size(
+    modifications: &HashMap<IndexedValue<Keyword, Location>, Keywords>,
+) -> usize {
+    // Since `h_add` (resp. `h_delete`) returns the set of keywords that have been inserted (resp.
+    // deleted), caller MUST know in advance how much memory is needed before calling `h_add`
+    // (resp. `h_delete`).
+    //
+    // In order to centralize into Rust the computation of the allocation size, 2 calls to
+    // `h_upsert` are required:
+    //
+    // - the first call is made with `results_len` with a 0 value. No indexation at all is done. It
+    //   simply returns an upper bound estimation of the allocation needed store the results.
+    // - the second call takes this returned value for `results_len`
+    modifications
+        .values()
+        .flat_map(|set| set.iter().map(|e| MAX_LEB128_ENCODING_SIZE + e.len()))
+        .sum::<usize>()
+}
 pub fn serialize_token_set(set: &Tokens) -> Result<Vec<u8>, SerializationError> {
     let mut ser = Serializer::with_capacity(set.len());
     ser.write_leb128_u64(set.len() as u64)?;
@@ -80,7 +116,6 @@ pub fn deserialize_location_set(bytes: &[u8]) -> Result<HashSet<Location>, Seria
     Ok(res)
 } //TODO: merge functions
 
-//
 pub fn serialize_edx_lines<const VALUE_LENGTH: usize>(
     map: &TokenToEncryptedValueMap<VALUE_LENGTH>,
 ) -> Result<Vec<u8>, SerializationError> {
@@ -88,7 +123,7 @@ pub fn serialize_edx_lines<const VALUE_LENGTH: usize>(
     ser.write_leb128_u64(map.len() as u64)?;
     for (uid, value) in map.iter() {
         ser.write_array(uid)?;
-        ser.write_vec(&<Vec<u8>>::from(value))?; // TODO: use write_array
+        ser.write_vec(&<Vec<u8>>::from(value))?;
     }
     Ok(ser.finalize().to_vec())
 }
@@ -101,6 +136,8 @@ pub fn deserialize_edx_lines<const VALUE_LENGTH: usize>(
     let mut items = Vec::with_capacity(length);
     for _ in 0..length {
         let key = Token::from(de.read_array()?);
+        // TODO: since constant generics cannot be used as constant values, there is no way to use
+        // `de.read_array<{ EncryptedValue::<VALUE_LENGTH>::LENGTH }>()` for now.
         let value = EncryptedValue::<VALUE_LENGTH>::try_from(de.read_vec()?.as_slice())?;
         items.push((key, value));
     }
@@ -126,9 +163,6 @@ pub fn serialize_indexed_values(
 pub fn deserialize_indexed_values(
     bytes: &[u8],
 ) -> Result<HashMap<IndexedValue<Keyword, Location>, HashSet<Keyword>>, SerializationError> {
-    if bytes.is_empty() {
-        return Ok(HashMap::new());
-    }
     let mut de = Deserializer::new(bytes);
     let length = <usize>::try_from(de.read_leb128_u64()?)?;
     let mut items = HashMap::with_capacity(length);

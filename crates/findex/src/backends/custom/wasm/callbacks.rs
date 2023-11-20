@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(typescript_type = "() => Promise<uids: Uint8Array[]>")]
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub type DumpTokens;
 }
 
