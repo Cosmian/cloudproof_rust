@@ -49,7 +49,8 @@ impl Findex {
             "error instantiating Findex with SQLite backend"
         );
         Ok(Self {
-            key: UserKey::try_from_bytes(key.0.to_bytes()).unwrap(),
+            key: UserKey::try_from_bytes(key.0.to_bytes())
+                .expect("the bytes passed represent a correct key"),
             label: label.0.clone(),
             runtime,
             instance,
@@ -74,7 +75,8 @@ impl Findex {
             "error instantiating Findex with Redis backend"
         );
         Ok(Self {
-            key: UserKey::try_from_bytes(key.0.to_bytes()).unwrap(),
+            key: UserKey::try_from_bytes(key.0.to_bytes())
+                .expect("the bytes passed represent a correct key"),
             label: label.0.clone(),
             runtime,
             instance,
@@ -99,7 +101,8 @@ impl Findex {
             "error instantiating Findex with Redis backend"
         );
         Ok(Self {
-            key: UserKey::try_from_bytes(key.0.to_bytes()).unwrap(),
+            key: UserKey::try_from_bytes(key.0.to_bytes())
+                .expect("the bytes passed represent a correct key"),
             label: label.0.clone(),
             runtime,
             instance,
@@ -129,7 +132,8 @@ impl Findex {
             "error instantiating Findex with Redis backend"
         );
         Ok(Self {
-            key: UserKey::try_from_bytes(key.0.to_bytes()).unwrap(),
+            key: UserKey::try_from_bytes(key.0.to_bytes())
+                .expect("the bytes passed represent a correct key"),
             label: label.0.clone(),
             runtime,
             instance,
@@ -239,9 +243,12 @@ impl Findex {
                         })
                         .collect::<HashMap<_, _>>();
 
-                    let ret = interrupt.call1(py, (py_results,)).unwrap();
+                    let ret = interrupt
+                        .call1(py, (py_results,))
+                        .expect("the bytes passed represent a correct key");
 
-                    ret.extract(py).unwrap()
+                    ret.extract(py)
+                        .expect("the bytes passed represent a correct key")
                 });
 
                 Ok(res)
@@ -296,7 +303,9 @@ impl Findex {
                         .map(|location| LocationPy(location))
                         .collect::<HashSet<LocationPy>>();
 
-                    let ret = filter.call1(py, (py_locations,)).unwrap();
+                    let ret = filter
+                        .call1(py, (py_locations,))
+                        .expect("the bytes passed represent a correct key");
 
                     ret.extract(py)
                         .map_err(|e| format!("converting Python remaining locations: {e}"))
@@ -324,7 +333,8 @@ impl Findex {
             "error while blocking for compact"
         );
 
-        self.key = UserKey::try_from_bytes(new_key.0.to_bytes()).unwrap();
+        self.key = UserKey::try_from_bytes(new_key.0.to_bytes())
+            .expect("the bytes passed represent a correct key");
         self.label = new_label.0.clone();
 
         Ok(())
