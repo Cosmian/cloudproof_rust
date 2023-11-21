@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-from array import array
-from pickle import dump
-import unittest
+import os
 import requests
-import json
+import redis
+import unittest
+
 from typing import Dict, List, Sequence, Set, Tuple
+
+from requests.models import REDIRECT_STATI
 
 from cloudproof_findex import (
     AuthorizationToken,
@@ -316,18 +318,30 @@ class TestFindex(unittest.TestCase):
         # Parameters used by the custom backend.
         (entry_callbacks, chain_callbacks) = define_custom_backends()
 
+        sqlite_db = '/tmp/cloudproof_findex.sqlite'
+        redis_host = 'localhost'
+        redis_port = 6379
+        redis_url = "redis://{}:{}".format(redis_host, redis_port)
+
+        if os.path.exists(sqlite_db):
+            os.remove(sqlite_db)
+
+        r = redis.Redis(host=redis_host, port=redis_port, db=0)
+        print(redis_url)
+        r.flushdb()
+
         self.findex_interfaces = {
             'sqlite': Findex.new_with_sqlite_backend(
                 self.findex_key,
                 self.label,
-                '/tmp/cloudproof_findex.sqlite',
-                '/tmp/cloudproof_findex.sqlite',
+                sqlite_db,
+                sqlite_db,
             ),
             'redis': Findex.new_with_redis_backend(
                 self.findex_key,
                 self.label,
-                'redis://localhost:6379',
-                'redis://localhost:6379',
+                redis_url,
+                redis_url,
             ),
             'rest': Findex.new_with_rest_backend(
                 self.findex_key, self.label, token.__str__(), url
@@ -376,7 +390,7 @@ class TestFindex(unittest.TestCase):
         }
 
         for backend, instance in self.findex_interfaces.items():
-            print('Test graph upserting and search on {} backend.', backend)
+            print('Test graph upserting and search on {} backend.'.format(backend))
             instance.add(indexed_values_and_keywords)
 
             # Adding custom keywords graph
@@ -421,28 +435,33 @@ class TestFindex(unittest.TestCase):
         indexed_values_and_keywords: IndexedValuesAndKeywords = {
             Location.from_int(k): v for k, v in self.db.items()
         }
+        del self.db[2]
+
         for backend, instance in self.findex_interfaces.items():
-            print('Test compacting and search on {} backend.', backend)
+            print('Test compacting and search on {} backend.'.format(backend))
 
             instance.add(indexed_values_and_keywords)
 
             # removing 2nd db line
             new_label = Label.random()
-            del self.db[2]
-            instance.compact(self.findex_key, new_label, 1)
+
+            def filter(dataset: Set[Location]):
+                res = set()
+                for data in dataset:
+                    if self.db.__contains__(data.__int__()):
+                        res.add(data)
+                return res
+
+            instance.compact(self.findex_key, new_label, 1, filter)
 
             # now new_label can perform search
             res = instance.search(['Sheperd'])
             self.assertEqual(len(res['Sheperd']), 2)
 
-            # but not the previous label
-            res = instance.search(['Sheperd'])
-            self.assertEqual(len(res['Sheperd']), 0)
-
             # and the keywords corresponding to the 2nd line have been removed
             res = instance.search(['Martial', 'Wilkins'])
-            assert len(res['Martial']) == 0
-            assert len(res['Wilkins']) == 0
+            self.assertEqual(len(res['Martial']), 0)
+            self.assertEqual(len(res['Wilkins']), 0)
 
 
 if __name__ == '__main__':
