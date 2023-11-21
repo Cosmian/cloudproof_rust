@@ -225,21 +225,25 @@ class AuthorizationToken:
 
 class Findex:
     @staticmethod
-    def new_with_sqlite_backend(entry_path: str, chain_path: str) -> Findex:
+    def new_with_sqlite_backend(
+        key: Key, label: Label, entry_path: str, chain_path: str
+    ) -> Findex:
         """Instantiate a new Findex instance using an SQLite backend.
 
         Returns:
             Findex
         """
     @staticmethod
-    def new_with_redis_backend(entry_url: str, chain_url: str) -> Findex:
+    def new_with_redis_backend(
+        key: Key, label: Label, entry_url: str, chain_url: str
+    ) -> Findex:
         """Instantiate a new Findex instance using Redis backend.
 
         Returns:
             Findex
         """
     @staticmethod
-    def new_with_rest_backend(token: str, url: str) -> Findex:
+    def new_with_rest_backend(key: Key, label: Label, token: str, url: str) -> Findex:
         """Instantiate a new Findex instance using REST backend.
 
         Returns:
@@ -247,7 +251,10 @@ class Findex:
         """
     @staticmethod
     def new_with_custom_backend(
-        entry_callbacks: PythonCallbacks, chain_callbacks: PythonCallbacks
+        key: Key,
+        label: Label,
+        entry_callbacks: PythonCallbacks,
+        chain_callbacks: PythonCallbacks,
     ) -> Findex:
         """Instantiate a new Findex instance using custom backend.
 
@@ -256,8 +263,6 @@ class Findex:
         """
     def add(
         self,
-        key: Key,
-        label: Label,
         additions: IndexedValuesAndKeywords,
     ) -> Set[Keyword]:
         """Index the given values for the associated keywords.
@@ -266,8 +271,6 @@ class Findex:
             The set of new keywords."""
     def delete(
         self,
-        key: Key,
-        label: Label,
         deletions: IndexedValuesAndKeywords,
     ) -> Set[Keyword]:
         """Remove the given values for the associated keywords from the index.
@@ -276,8 +279,6 @@ class Findex:
             The set of new keywords."""
     def search(
         self,
-        key: Key,
-        label: Label,
         keywords: Sequence[Union[Keyword, str]],
         interrupt: Optional[Callable] = None,
     ) -> SearchResults:
@@ -287,7 +288,6 @@ class Findex:
             The values indexed for those tokens."""
     def compact(
         self,
-        key: Key,
         new_key: Key,
         new_label: Label,
         num_reindexing_before_full_set: int,
