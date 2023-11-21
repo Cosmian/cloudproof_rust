@@ -145,7 +145,7 @@ class Label:
             Label
         """
 
-class MasterKey:
+class Key:
     """Input key used to derive Findex keys."""
 
     def to_bytes(self) -> bytes:
@@ -155,114 +155,143 @@ class MasterKey:
             bytes
         """
     @staticmethod
-    def random() -> MasterKey:
+    def random() -> Key:
         """Initialize a random key.
 
         Returns:
-            MasterKey
+            Key
         """
     @staticmethod
-    def from_bytes(key_bytes: bytes) -> MasterKey:
+    def from_bytes(key_bytes: bytes) -> Key:
         """Load from bytes.
 
         Args:
             key_bytes (bytes)
 
         Returns:
-            MasterKey
+            Key
         """
 
-class FindexCloud:
-    """Ready to use Findex with a backend powered by Cosmian."""
+class PythonCallbacks:
+    """Callback structure used to instantiate a Findex backend."""
 
     @staticmethod
-    def upsert(
-        token: str,
-        label: Label,
-        additions: IndexedValuesAndKeywords,
-        deletions: IndexedValuesAndKeywords,
-        base_url: Optional[str] = None,
-    ) -> Set[Keyword]:
-        """Upserts the given relations between `IndexedValue` and `Keyword` into Findex tables.
+    def new() -> PythonCallbacks:
+        """Initialize a new callback structure."""
+    def set_fetch(self, callback: object):
+        """Sets the fetch callback."""
+    def set_upsert(self, callback: object):
+        """Sets the upsert callback."""
+    def set_insert(self, callback: object):
+        """Sets the insert callback."""
+    def set_delete(self, callback: object):
+        """Sets the delete callback."""
+    def set_dump_tokens(self, callback: object):
+        """Sets the dump_tokens callback."""
 
-        Args:
-            token (str): Findex token.
-            label (Label): label used to allow versioning.
-            additions (Dict[Location | Keyword, List[Keyword | str]]):
-                map of `IndexedValue` to a list of `Keyword`.
-            deletions (Dict[Location | Keyword, List[Keyword | str]]):
-                map of `IndexedValue` to a list of `Keyword`.
-            base_url (str, optional): url of Findex backend.
-        """
+class AuthorizationToken:
     @staticmethod
-    def search(
-        token: str,
-        label: Label,
-        keywords: Sequence[Union[Keyword, str]],
-        base_url: Optional[str] = None,
-    ) -> SearchResults:
-        """Recursively search Findex graphs for `Locations` corresponding to the given `Keyword`.
-
-        Args:
-            token (str): Findex token.
-            label (Label): public label used in keyword hashing.
-            keywords (List[Keyword | str]): keywords to search using Findex.
-            base_url (str, optional): url of Findex backend.
+    def new(
+        index_id: str,
+        findex_key: Key,
+        fetch_entries_key: Key,
+        fetch_chains_key: Key,
+        upsert_entries_key: Key,
+        insert_chains_key: Key,
+    ) -> AuthorizationToken:
+        """Create a new token from the given elements.
 
         Returns:
-            Dict[Keyword, List[Location]]: `Locations` found by `Keyword`
+            Authorization token"""
+    @staticmethod
+    def random(index: str) -> AuthorizationToken:
+        """Generate a new random authorization token.
+
+        Returns:
+            AuthorizationToken
+        """
+    def generate_reduced_token_string(self, is_read: bool, is_write: bool) -> str:
+        """Generate a token string with the given reduced permissions.
+
+        Returns:
+            str
+        """
+    def __str__(self) -> str:
+        """Convert the authorization token to string.
+
+        Returns:
+            str
+        """
+
+class Findex:
+    @staticmethod
+    def new_with_sqlite_backend(entry_path: str, chain_path: str) -> Findex:
+        """Instantiate a new Findex instance using an SQLite backend.
+
+        Returns:
+            Findex
         """
     @staticmethod
-    def derive_new_token(token: str, search: bool, index: bool) -> str: ...
+    def new_with_redis_backend(entry_url: str, chain_url: str) -> Findex:
+        """Instantiate a new Findex instance using Redis backend.
+
+        Returns:
+            Findex
+        """
     @staticmethod
-    def generate_new_token(
-        index_id: str,
-        fetch_entries_seed: bytes,
-        fetch_chains_seed: bytes,
-        upsert_entries_seed: bytes,
-        insert_chains_seed: bytes,
-    ) -> str: ...
+    def new_with_rest_backend(token: str, url: str) -> Findex:
+        """Instantiate a new Findex instance using REST backend.
 
-class InternalFindex:
-    """This is an internal class. See `cloudproof_py.findex.Findex` abstract class instead."""
+        Returns:
+            Findex
+        """
+    @staticmethod
+    def new_with_custom_backend(
+        entry_callbacks: PythonCallbacks, chain_callbacks: PythonCallbacks
+    ) -> Findex:
+        """Instantiate a new Findex instance using custom backend.
 
-    def set_upsert_callbacks(
+        Returns:
+            Findex
+        """
+    def add(
         self,
-        fetch_entry_table: Callable,
-        upsert_entry_table: Callable,
-        insert_chain_table: Callable,
-    ) -> None: ...
-    def set_search_callbacks(
-        self,
-        fetch_entry_table: Callable,
-        fetch_chain_table: Callable,
-    ) -> None: ...
-    def set_compact_callbacks(
-        self,
-        fetch_entry_table: Callable,
-        fetch_chain_table: Callable,
-        update_lines: Callable,
-        list_removed_locations: Callable,
-        fetch_all_entry_table_uids: Callable,
-    ) -> None: ...
-    def upsert_wrapper(
-        self,
-        master_key: MasterKey,
+        key: Key,
         label: Label,
         additions: IndexedValuesAndKeywords,
-        deletions: IndexedValuesAndKeywords,
-    ) -> Set[Keyword]: ...
-    def search_wrapper(
+    ) -> Set[Keyword]:
+        """Index the given values for the associated keywords.
+
+        Returns:
+            The set of new keywords."""
+    def delete(
         self,
-        msk: MasterKey,
+        key: Key,
+        label: Label,
+        deletions: IndexedValuesAndKeywords,
+    ) -> Set[Keyword]:
+        """Remove the given values for the associated keywords from the index.
+
+        Returns:
+            The set of new keywords."""
+    def search(
+        self,
+        key: Key,
         label: Label,
         keywords: Sequence[Union[Keyword, str]],
-        progress_callback: Optional[Callable] = None,
-    ) -> SearchResults: ...
-    def compact_wrapper(
+        interrupt: Optional[Callable] = None,
+    ) -> SearchResults:
+        """Search for the given keywords in the index.
+
+        Returns:
+            The values indexed for those tokens."""
+    def compact(
         self,
-        master_key: MasterKey,
-        new_master_key: MasterKey,
+        key: Key,
+        new_key: Key,
         new_label: Label,
         num_reindexing_before_full_set: int,
-    ) -> None: ...
+    ) -> None:
+        """Compact the index. Encrypts the compacted index using the new key
+        and new label.
+        """

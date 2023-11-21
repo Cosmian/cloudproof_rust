@@ -25,7 +25,7 @@ normal = ["js-sys", "wasm-bindgen"]
 argon2 = "0.5"
 base64 = { workspace = true }
 chrono = { version = "0.4", default-features = false, features = ["clock", "wasmbind"] }
-cosmian_crypto_core = { workspace = true }
+cosmian_crypto_core = { workspace = true, features = ["sha3"] }
 hex = { workspace = true }
 rand = { workspace = true }
 rand_distr = "0.4"

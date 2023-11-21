@@ -1,7 +1,13 @@
 [package]
 name = "cloudproof_findex"
-version = "5.0.4"
-authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
+version = "6.0.0"
+authors = [
+  "Théophile Brézot<theophile.brezot@cosmian.com>",
+  "Emmanuel Coste<emmanuel.coste@cosmian.com>",
+  "Thibaud Dauce<thibaud.dauce@cosmian.com>",
+  "Bruno Grieder<bruno.grieder@cosmian.com>",
+  "Hugo Rosenkranz-costa<hugo.rosenkranz@cosmian.com>",
+]
 edition = "2021"
 license-file = "../../LICENSE.md"
 repository = "https://github.com/cosmian/cloudproof_rust/"
@@ -12,88 +18,93 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 name = "cloudproof_findex"
 
 [features]
-cloud = ["reqwest", "base64"]
+# Actual user features.
 default = []
+
+# Meta features implicitly activated.
+serialization = []
+
+
 ffi = [
+  "backend-ffi",
+  "backend-rest",
   "cosmian_ffi_utils",
-  "base64",
-  "serde_json",
+  "lazy_static",
+  "serialization",
   "tokio/rt-multi-thread",
-  "tracing",
-  "tracing-log",
-  "tracing-subscriber",
-  "tracing-tree",
 ]
-python = ["cloud", "futures", "pyo3", "tokio/rt-multi-thread"]
-findex-redis = [
-  "redis",
-  "serde",
-  "serde_json",
-  "thiserror",
-  "tokio",
-  "tracing",
+
+python = [
+  "backend-python",
+  "backend-redis",
+  "backend-rest",
+  "backend-sqlite",
+  "futures",
+  "pyo3",
+  "tokio/rt-multi-thread",
 ]
-findex-sqlite = [
-  "base64",
-  "faker_rand",
-  "rand",
-  "rusqlite",
-  "serde",
-  "serde_json",
-]
+
 wasm_bindgen = [
-  "cloud",
+  "backend-rest",
+  "backend-wasm",
   "js-sys",
-  "hex",
+  "log",
+  "serialization",
   "wasm-bindgen",
   "wasm-bindgen-futures",
-  "log",
   "wasm-logger",
+  "serialization",
+]
+
+backend-ffi = ["cosmian_crypto_core/ser", "serialization"]
+backend-python = ["pyo3"]
+backend-redis = ["redis"]
+backend-rest = ["base64", "cosmian_crypto_core/ser", "reqwest", "serialization"]
+backend-sqlite = ["rusqlite"]
+backend-wasm = [
+  "js-sys",
+  "wasm-bindgen",
+  "wasm-bindgen-futures",
+  "serialization",
 ]
 
 [dependencies]
 async-trait = { workspace = true }
-cosmian_crypto_core = { workspace = true }
-cosmian_findex = "5.0.3"
-
+cosmian_crypto_core = { workspace = true, default-features = false }
+cosmian_findex = { git = "https://github.com/Cosmian/findex", branch = "feature/refactoring" }
 # Optional dependencies
+actix-rt = { version = "2.9", optional = true }
 base64 = { workspace = true, optional = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
-faker_rand = { version = "0.1", optional = true }
-futures = { version = "0.3.29", optional = true }
-hex = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
+futures = { version = "0.3.29", optional = true }
+lazy_static = { version = "1.4.0", optional = true }
 log = { version = "0.4.20", optional = true }
-pyo3 = { workspace = true, features = ["extension-module"], optional = true }
+pyo3 = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
-redis = { version = "0.23", features = ["aio", "ahash", "script", "connection-manager", "tokio-comp"], optional = true }
-reqwest = { version = "0.11.22", features = ["rustls-tls"], default-features = false, optional = true }
-rusqlite = { version = "0.29", features = ["bundled"], optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_json = { version = "1.0.108", optional = true }
-thiserror = { workspace = true, optional = true }
-tokio = { version = "1.33.0", optional = true }
-tracing = { workspace = true, optional = true }
-tracing-log = { workspace = true, optional = true }
-tracing-subscriber = { workspace = true, optional = true }
-tracing-tree = { workspace = true, optional = true }
+redis = { version = "0.23", features = [
+  "aio",
+  "ahash",
+  "script",
+  "connection-manager",
+  "tokio-comp",
+], optional = true }
+reqwest = { version = "0.11.22", default-features = false, optional = true }
+rusqlite = { version = "0.30", features = ["bundled"], optional = true }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.34.0", optional = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 wasm-bindgen = { workspace = true, optional = true }
 wasm-bindgen-futures = { version = "0.4.38", optional = true }
 wasm-logger = { version = "0.2.0", optional = true }
 
 [dev-dependencies]
 actix-rt = "2.9"
+base64 = { workspace = true }
+faker_rand = "0.1"
+futures = "0.3.29"
+rand = { workspace = true }
+serde_json = "1.0.108"
 serial_test = "2.0.0"
-tracing-log = { workspace = true }
-tracing-subscriber = { workspace = true }
-tracing-tree = { workspace = true }
-
-[[test]]
-name = "test_sqlite"
-path = "tests/sqlite/test_sqlite.rs"
-required-features = ["findex-sqlite"]
-
-[[test]]
-name = "test_redis"
-path = "tests/redis/test_redis.rs"
-required-features = ["findex-redis"]
+wasm-bindgen-test = "0.3.38"

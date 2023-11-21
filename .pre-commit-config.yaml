@@ -7,7 +7,7 @@
 
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
-exclude: crates/findex/tests/sqlite/datasets|crates/findex/tests/redis
+exclude: crates/findex/datasets|crates/findex/tests/redis
 repos:
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v2.1.1
@@ -74,11 +74,6 @@ repos:
       # - id: git-check
       - id: shellcheck
 
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
-    hooks:
-      - id: cargo-check
-
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
@@ -118,19 +113,30 @@ repos:
         args: [--skip-string-normalization]
 
   - repo: https://github.com/Cosmian/git-hooks.git
-    rev: v1.0.14
+    rev: v1.0.24
     hooks:
-      # - id: dprint-toml-fix
       - id: stable-cargo-format
       - id: cargo-upgrade
       - id: cargo-update
       - id: cargo-audit-deny-warnings
       - id: cargo-outdated
       - id: cargo-udeps
+        args: [--exclude=cloudproof_findex]
       - id: cargo-machete
+      - id: docker-compose-up
       - id: cargo-tests-all
-      - id: cargo-test-doc
-      - id: clippy-autofix-all
-      - id: clippy-autofix-pedantic
-      - id: clippy-autofix-others
-      - id: clippy-all-targets-all-features
+        args: [--exclude=cloudproof_findex]
+
+      # cloudproof_findex excluded from clippy
+      - id: clippy-autofix-all-no-findex
+      - id: clippy-autofix-pedantic-no-findex
+      - id: clippy-autofix-others-no-findex
+      - id: clippy-all-targets-all-features-no-findex
+
+      # clippy only with cloudproof_findex
+      - id: clippy-autofix-ffi-findex
+      - id: clippy-autofix-python-findex
+      - id: clippy-autofix-wasm-findex
+
+      - id: stable-cargo-format
+      - id: docker-compose-down
