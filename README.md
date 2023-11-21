@@ -103,7 +103,7 @@ The `.so` libraries can then be found in `target/release/`.
 From the root directory:
 
 ```bash
-wasm-pack build -t web --release --features wasm_bindgen
+wasm-pack build -t web --release --features wasm
 ```
 
 The `.wasm` libraries can then be found in `pkg/`.

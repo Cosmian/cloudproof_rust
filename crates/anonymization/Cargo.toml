@@ -15,7 +15,7 @@ name = "cloudproof_anonymization"
 default = []
 ffi = []
 python = ["pyo3"]
-wasm_bindgen = ["js-sys", "wasm-bindgen"]
+wasm = ["js-sys", "wasm-bindgen"]
 
 # waiting for ffi and js
 [package.metadata.cargo-udeps.ignore]
@@ -24,7 +24,10 @@ normal = ["js-sys", "wasm-bindgen"]
 [dependencies]
 argon2 = "0.5"
 base64 = { workspace = true }
-chrono = { version = "0.4", default-features = false, features = ["clock", "wasmbind"] }
+chrono = { version = "0.4", default-features = false, features = [
+  "clock",
+  "wasmbind",
+] }
 cosmian_crypto_core = { workspace = true, features = ["sha3"] }
 hex = { workspace = true }
 rand = { workspace = true }

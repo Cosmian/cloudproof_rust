@@ -5,13 +5,13 @@ on: push
 
 jobs:
   cargo-nursery-base:
-    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@develop
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@wasm_feature
     with:
       toolchain: stable
       exclusions: --exclude=cloudproof_findex
 
   cargo-doc:
-    uses: Cosmian/reusable_workflows/.github/workflows/cargo-doc.yml@develop
+    uses: Cosmian/reusable_workflows/.github/workflows/cargo-doc.yml@wasm_feature
     with:
       toolchain: stable
       exclusions: --exclude=cloudproof_findex
@@ -48,7 +48,7 @@ jobs:
 
       - name: Wasm Static analysis for cloudproof_findex
         run: |
-          cargo clippy --workspace -p cloudproof_findex --all-targets --features wasm_bindgen -- -D warnings
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features wasm -- -D warnings
 
       - name: Python Static analysis for cloudproof_findex
         run: |
@@ -60,4 +60,4 @@ jobs:
 
       - name: Wasm tests for cloudproof_findex
         run: |
-          cargo test --release --workspace -p cloudproof_findex --all-targets --features wasm_bindgen
+          cargo test --release --workspace -p cloudproof_findex --all-targets --features wasm

@@ -1,4 +1,4 @@
-#[cfg(not(feature = "wasm_bindgen"))]
+#[cfg(not(feature = "wasm"))]
 use std::time::SystemTime;
 use std::{ops::Deref, str::FromStr};
 
@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use cosmian_crypto_core::bytes_ser_de::Serializable;
 use cosmian_findex::{kmac, EdxStore, ENTRY_LENGTH, LINK_LENGTH};
 pub use cosmian_findex::{TokenToEncryptedValueMap, TokenWithEncryptedValueList, Tokens};
-#[cfg(feature = "wasm_bindgen")]
+#[cfg(feature = "wasm")]
 use js_sys::Date;
 use reqwest::Client;
 
@@ -18,9 +18,9 @@ use crate::{
     },
 };
 
-/// The number of seconds of validity of the requests to the `FindexREST` server.
-/// After this time, the request cannot be accepted by the backend. This is done
-/// to prevent replay attacks.
+/// The number of seconds of validity of the requests to the `FindexREST`
+/// server. After this time, the request cannot be accepted by the backend. This
+/// is done to prevent replay attacks.
 pub const REQUEST_SIGNATURE_TIMEOUT_AS_SECS: u64 = 60;
 
 /// Callback signature length.
@@ -57,10 +57,10 @@ macro_rules! impl_rest_backend {
                 };
 
                 // SystemTime::now() panics in WASM <https://github.com/rust-lang/rust/issues/48564>
-                #[cfg(feature = "wasm_bindgen")]
+                #[cfg(feature = "wasm")]
                 let current_timestamp = (Date::now() / 1000.0) as u64; // Date::now() returns milliseconds
 
-                #[cfg(not(feature = "wasm_bindgen"))]
+                #[cfg(not(feature = "wasm"))]
                 let current_timestamp = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
                     .map_err(|_| {

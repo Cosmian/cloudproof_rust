@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2023-11-21
+
+### Features
+
+- Support Findex v6 through all interfaces: FFI, Wasm and Python
+
 ## [2.3.0] - 2023-11-06
 
 ### Features

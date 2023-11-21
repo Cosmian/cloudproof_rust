@@ -15,10 +15,16 @@ name = "cloudproof_ecies"
 default = []
 ffi = ["cosmian_ffi_utils"]
 python = ["pyo3"]
-wasm_bindgen = ["js-sys", "wasm-bindgen"]
+wasm = ["js-sys", "wasm-bindgen"]
 
 [dependencies]
-cosmian_crypto_core = { workspace = true, features = ["ecies", "sha3", "blake", "chacha", "curve25519"]}
+cosmian_crypto_core = { workspace = true, features = [
+  "ecies",
+  "sha3",
+  "blake",
+  "chacha",
+  "curve25519",
+] }
 
 # Optional dependencies
 cosmian_ffi_utils = { workspace = true, optional = true }
