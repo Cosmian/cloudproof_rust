@@ -58,22 +58,17 @@ jobs:
         run: |
           bash scripts/test_python.sh
 
-      - name: FFI Static analysis for cloudproof_findex
+      - name: Test ffi feature for cloudproof_findex
         run: |
           cargo clippy --workspace -p cloudproof_findex --all-targets --features ffi -- -D warnings
-
-      - name: Wasm Static analysis for cloudproof_findex
-        run: |
-          cargo clippy --workspace -p cloudproof_findex --all-targets --features wasm -- -D warnings
-
-      - name: Python Static analysis for cloudproof_findex
-        run: |
-          cargo clippy --workspace -p cloudproof_findex --all-targets --features python -- -D warnings
-
-      - name: FFI tests for cloudproof_findex
-        run: |
           cargo test --release --workspace -p cloudproof_findex --all-targets --features ffi
 
-      - name: Wasm tests for cloudproof_findex
+      - name: Test wasm feature for cloudproof_findex
         run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features wasm -- -D warnings
           cargo test --release --workspace -p cloudproof_findex --all-targets --features wasm
+
+      - name: Test python feature for cloudproof_findex
+        run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features python -- -D warnings
+          cargo test --release --workspace -p cloudproof_findex --all-targets --features python

@@ -300,7 +300,7 @@ impl Findex {
                 Python::with_gil(|py| {
                     let py_locations = indexed_data
                         .into_iter()
-                        .map(|location| LocationPy(location))
+                        .map(LocationPy)
                         .collect::<HashSet<LocationPy>>();
 
                     let ret = filter
