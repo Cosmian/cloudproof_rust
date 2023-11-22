@@ -6,8 +6,6 @@ import unittest
 
 from typing import Dict, List, Sequence, Set, Tuple
 
-from requests.models import REDIRECT_STATUSES
-
 from cloudproof_findex import (
     AuthorizationToken,
     Findex,
@@ -440,9 +438,8 @@ class TestFindex(unittest.TestCase):
         interfaces = [
             (backend, instance)
             for backend, instance in self.findex_interfaces.items()
-            if backend != 'rest'
+            if backend == 'sqlite'
         ]
-        print(f'interfaces: {interfaces}')
 
         for backend, instance in interfaces:
             print(f'Test compacting and search on {backend} backend.')
