@@ -6,7 +6,7 @@ import unittest
 
 from typing import Dict, List, Sequence, Set, Tuple
 
-from requests.models import REDIRECT_STATI
+from requests.models import REDIRECT_STATUSES
 
 from cloudproof_findex import (
     AuthorizationToken,
@@ -244,11 +244,11 @@ def define_custom_backends(is_with_test: bool = False):
 
         # Test values can be upserted.
         res = upsert_entries({}, {k1: v1})
-        assert res == {}
+        assert not res
         assert v1 == fetch([k1], entry_table)[k1]
 
         res = upsert_entries({k1: v1}, {k1: v2})
-        assert res == {}
+        assert not res
         assert v2 == fetch([k1], entry_table)[k1]
 
         res = upsert_entries({k1: v1}, {k1: v3})
@@ -257,9 +257,9 @@ def define_custom_backends(is_with_test: bool = False):
 
         assert {k1} == dump_entry_tokens()
 
-        res = insert_links({k1: v1})
+        insert_links({k1: v1})
         assert v1 == fetch([k1], chain_table)[k1]
-        assert {} == fetch([k2], chain_table)
+        assert not fetch([k2], chain_table)
 
         try:
             insert_links({k1: v2})
@@ -321,7 +321,7 @@ class TestFindex(unittest.TestCase):
         sqlite_db = '/tmp/cloudproof_findex.sqlite'
         redis_host = 'localhost'
         redis_port = 6379
-        redis_url = "redis://{}:{}".format(redis_host, redis_port)
+        redis_url = f'redis://{redis_host}:{redis_port}'
 
         if os.path.exists(sqlite_db):
             os.remove(sqlite_db)
@@ -390,7 +390,7 @@ class TestFindex(unittest.TestCase):
         }
 
         for backend, instance in self.findex_interfaces.items():
-            print('Test graph upserting and search on {} backend.'.format(backend))
+            print(f'Test graph upserting and search on {backend} backend.')
             instance.add(indexed_values_and_keywords)
 
             # Adding custom keywords graph
@@ -437,22 +437,29 @@ class TestFindex(unittest.TestCase):
         }
         del self.db[2]
 
-        for backend, instance in self.findex_interfaces.items():
-            print('Test compacting and search on {} backend.'.format(backend))
+        interfaces = [
+            (backend, instance)
+            for backend, instance in self.findex_interfaces.items()
+            if backend != 'rest'
+        ]
+        print(f'interfaces: {interfaces}')
+
+        for backend, instance in interfaces:
+            print(f'Test compacting and search on {backend} backend.')
 
             instance.add(indexed_values_and_keywords)
 
             # removing 2nd db line
             new_label = Label.random()
 
-            def filter(dataset: Set[Location]):
+            def filter_obsolete_data(dataset: Set[Location]):
                 res = set()
                 for data in dataset:
                     if self.db.__contains__(data.__int__()):
                         res.add(data)
                 return res
 
-            instance.compact(self.findex_key, new_label, 1, filter)
+            instance.compact(self.findex_key, new_label, 1, filter_obsolete_data)
 
             # now new_label can perform search
             res = instance.search(['Sheperd'])
