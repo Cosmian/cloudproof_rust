@@ -3,9 +3,10 @@ use std::{
     str::FromStr,
 };
 
+use cosmian_crypto_core::FixedSizeCBytes;
 use cosmian_findex::{
-    IndexedValue as IndexedValueRust, IndexedValueToKeywordsMap, Keyword, KeywordToDataMap,
-    Location,
+    IndexedValue as IndexedValueRust, IndexedValueToKeywordsMap, Keyword, KeywordToDataMap, Label,
+    Location, UserKey,
 };
 use pyo3::prelude::*;
 use tokio::runtime::Runtime;
@@ -23,6 +24,8 @@ use crate::{
 #[pyclass(unsendable)]
 pub struct Findex {
     runtime: Runtime,
+    key: UserKey,
+    label: Label,
     instance: InstantiatedFindex,
 }
 
@@ -30,7 +33,12 @@ pub struct Findex {
 impl Findex {
     /// Instantiates Findex with a SQLite as backend.
     #[staticmethod]
-    pub fn new_with_sqlite_backend(entry_db_path: String, chain_db_path: String) -> PyResult<Self> {
+    pub fn new_with_sqlite_backend(
+        key: &KeyPy,
+        label: &LabelPy,
+        entry_db_path: String,
+        chain_db_path: String,
+    ) -> PyResult<Self> {
         let configuration = BackendConfiguration::Sqlite(entry_db_path, chain_db_path);
         let runtime = pyo3_unwrap!(
             tokio::runtime::Runtime::new(),
@@ -40,12 +48,23 @@ impl Findex {
             runtime.block_on(InstantiatedFindex::new(configuration)),
             "error instantiating Findex with SQLite backend"
         );
-        Ok(Self { runtime, instance })
+        Ok(Self {
+            key: UserKey::try_from_bytes(key.0.to_bytes())
+                .expect("the bytes passed represent a correct key"),
+            label: label.0.clone(),
+            runtime,
+            instance,
+        })
     }
 
     /// Instantiates Findex with a Redis as backend.
     #[staticmethod]
-    pub fn new_with_redis_backend(entry_db_url: String, chain_db_url: String) -> PyResult<Self> {
+    pub fn new_with_redis_backend(
+        key: &KeyPy,
+        label: &LabelPy,
+        entry_db_url: String,
+        chain_db_url: String,
+    ) -> PyResult<Self> {
         let configuration = BackendConfiguration::Redis(entry_db_url, chain_db_url);
         let runtime = pyo3_unwrap!(
             tokio::runtime::Runtime::new(),
@@ -55,12 +74,20 @@ impl Findex {
             runtime.block_on(InstantiatedFindex::new(configuration)),
             "error instantiating Findex with Redis backend"
         );
-        Ok(Self { runtime, instance })
+        Ok(Self {
+            key: UserKey::try_from_bytes(key.0.to_bytes())
+                .expect("the bytes passed represent a correct key"),
+            label: label.0.clone(),
+            runtime,
+            instance,
+        })
     }
 
     /// Instantiates Findex with a custom backend.
     #[staticmethod]
     pub fn new_with_custom_backend(
+        key: &KeyPy,
+        label: &LabelPy,
         entry_callbacks: PythonCallbacks,
         chain_callbacks: PythonCallbacks,
     ) -> PyResult<Self> {
@@ -73,12 +100,23 @@ impl Findex {
             runtime.block_on(InstantiatedFindex::new(configuration)),
             "error instantiating Findex with Redis backend"
         );
-        Ok(Self { runtime, instance })
+        Ok(Self {
+            key: UserKey::try_from_bytes(key.0.to_bytes())
+                .expect("the bytes passed represent a correct key"),
+            label: label.0.clone(),
+            runtime,
+            instance,
+        })
     }
 
     /// Instantiates Findex with a REST backend.
     #[staticmethod]
-    pub fn new_with_rest_backend(token: String, url: String) -> PyResult<Self> {
+    pub fn new_with_rest_backend(
+        key: &KeyPy,
+        label: &LabelPy,
+        token: String,
+        url: String,
+    ) -> PyResult<Self> {
         let token = pyo3_unwrap!(
             AuthorizationToken::from_str(&token),
             "cannot convert token string"
@@ -93,31 +131,33 @@ impl Findex {
             ))),
             "error instantiating Findex with Redis backend"
         );
-        Ok(Self { runtime, instance })
+        Ok(Self {
+            key: UserKey::try_from_bytes(key.0.to_bytes())
+                .expect("the bytes passed represent a correct key"),
+            label: label.0.clone(),
+            runtime,
+            instance,
+        })
     }
 
-    /// Adds the given indexed values for the associated keywords to the index.
+    /// Adds the given associations to the index.
     ///
     /// Any subsequent search for such a keyword will result in finding (at
-    /// least) the corresponding indexed values.
+    /// least) the associated indexed values.
     ///
     /// Returns the keywords newly added to the index.
     ///
-    /// Parameters
+    /// # Parameters
     ///
-    /// - `key`                         : Findex key
-    /// - `label`                       : label used to allow versioning
-    /// - `indexed_values_and_keywords` : map of `IndexedValue` to `Keyword`
+    /// - `associations`    : associations to add to the index
     pub fn add(
         &self,
-        key: &KeyPy,
-        label: &LabelPy,
         additions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
     ) -> PyResult<HashSet<KeywordPy>> {
         let new_keywords = pyo3_unwrap!(
             self.runtime.block_on(self.instance.add(
-                &key.0,
-                &label.0,
+                &self.key,
+                &self.label,
                 indexed_values_and_keywords_to_rust(additions)
             )),
             "error blocking for addition"
@@ -132,27 +172,23 @@ impl Findex {
     /// Remove the given indexed values for the associated keywords from the
     /// index.
     ///
-    /// Any subsequent search for such a keyword will not result in finding (at
-    /// least) the corresponding indexed values.
+    /// Any subsequent search for such a keyword will result in finding (at
+    /// least) no value listed in one of its association.
     ///
     /// Returns the keywords newly added to the index.
     ///
-    /// Parameters
+    /// # Parameters
     ///
-    /// - `key`         : Findex key
-    /// - `label`       : label used to allow versioning
-    /// - `deletions`   : map of indexed values to the set of keyword
+    /// - `associations`    : associations to remove from the index
     pub fn delete(
         &self,
-        key: &KeyPy,
-        label: &LabelPy,
-        deletions: HashMap<ToIndexedValue, Vec<ToKeyword>>,
+        associations: HashMap<ToIndexedValue, Vec<ToKeyword>>,
     ) -> PyResult<HashSet<KeywordPy>> {
         let new_keywords = pyo3_unwrap!(
             self.runtime.block_on(self.instance.delete(
-                &key.0,
-                &label.0,
-                indexed_values_and_keywords_to_rust(deletions)
+                &self.key,
+                &self.label,
+                indexed_values_and_keywords_to_rust(associations)
             )),
             "error blocking for addition"
         );
@@ -166,23 +202,16 @@ impl Findex {
     /// Recursively search Findex graphs for `Location` corresponding to the
     /// given `Keyword`.
     ///
-    /// Parameters
-    ///
-    /// - `key`                     : Findex key
-    /// - `label`                   : Findex label
-    /// - `keywords`                : keywords to search in the index
-    /// - `interrupt`               : optional callback to process intermediate
-    ///   search results.
-    ///
     /// Returns: `Locations` found by `Keyword`
-    #[pyo3(signature = (
-        key, label, keywords,
-        interrupt = None
-    ))]
+    ///
+    /// # Parameters
+    ///
+    /// - `keywords`    : keywords to search in the index
+    /// - `interrupt`   : optional callback to process intermediate search
+    ///   results.
+    #[pyo3(signature = (keywords, interrupt = None))]
     pub fn search(
         &self,
-        key: &KeyPy,
-        label: &LabelPy,
         keywords: Vec<ToKeyword>,
         interrupt: Option<PyObject>,
     ) -> PyResult<HashMap<KeywordPy, Vec<LocationPy>>> {
@@ -215,9 +244,12 @@ impl Findex {
                         })
                         .collect::<HashMap<_, _>>();
 
-                    let ret = interrupt.call1(py, (py_results,)).unwrap();
+                    let ret = interrupt
+                        .call1(py, (py_results,))
+                        .expect("the bytes passed represent a correct key");
 
-                    ret.extract(py).unwrap()
+                    ret.extract(py)
+                        .expect("the bytes passed represent a correct key")
                 });
 
                 Ok(res)
@@ -228,8 +260,8 @@ impl Findex {
 
         let results = pyo3_unwrap!(
             self.runtime.block_on(self.instance.search(
-                &key.0,
-                &label.0,
+                &self.key,
+                &self.label,
                 keywords_set.into(),
                 &interrupt
             )),
@@ -239,7 +271,7 @@ impl Findex {
         Ok(search_results_to_python(results))
     }
 
-    /*/// Replace all the previous Index Entry Table UIDs and
+    /// Replace all the previous Index Entry Table UIDs and
     /// values with new ones (UID will be re-hash with the new label and
     /// values will be re-encrypted with a new nonce).
     /// This function will also select a random portion of all the index entries
@@ -251,39 +283,63 @@ impl Findex {
     /// - `key`                            : key
     /// - `new_key`                        : newly generated key
     /// - `new_label`                      : newly generated label
-    /// - `num_reindexing_before_full_set` : see below
+    /// - `n_compact_to_full` : see below
     ///
-    /// `num_reindexing_before_full_set`: if you compact the
+    /// `n_compact_to_full`: if you compact the
     /// indexes every night this is the number of days to wait before
     /// being sure that a big portion of the indexes were checked
     /// (see the coupon problem to understand why it's not 100% sure)
     pub fn compact(
-        &self,
-        key: &KeyPy,
+        &mut self,
         new_key: &KeyPy,
         new_label: &LabelPy,
-        num_reindexing_before_full_set: u32,
+        n_compact_to_full: u32,
+        filter: Option<PyObject>,
     ) -> PyResult<()> {
-        let findex: FindexRust = match self.backend {
-            FindexBackends::Redis(et, ed) => {
-                Findex::<BackendError, _, _>::new(EntryTable::setup(et), ChainTable::setup(ed))
-            }
-            FindexBackends::SQLite(et, ed) => {
-                Findex::<BackendError, _, _>::new(EntryTable::setup(et), ChainTable::setup(ed))
+        let filter = |indexed_data: HashSet<Location>| async {
+            if let Some(filter) = &filter {
+                Python::with_gil(|py| {
+                    let py_locations = indexed_data
+                        .into_iter()
+                        .map(LocationPy)
+                        .collect::<HashSet<LocationPy>>();
+
+                    let ret = filter
+                        .call1(py, (py_locations,))
+                        .expect("the bytes passed represent a correct key");
+
+                    ret.extract(py)
+                        .map_err(|e| format!("converting Python remaining locations: {e}"))
+                        .map(|remaining_locations: HashSet<LocationPy>| {
+                            remaining_locations
+                                .into_iter()
+                                .map(|py_location| py_location.0)
+                                .collect()
+                        })
+                })
+            } else {
+                Ok::<_, String>(indexed_data)
             }
         };
 
         pyo3_unwrap!(
-            block_on(findex.compact(
-                &key.0,
+            self.runtime.block_on(self.instance.compact(
+                &self.key,
                 &new_key.0,
+                &self.label,
                 &new_label.0,
-                num_reindexing_before_full_set,
+                n_compact_to_full as usize,
+                &filter,
             )),
             "error while blocking for compact"
         );
+
+        self.key = UserKey::try_from_bytes(new_key.0.to_bytes())
+            .expect("the bytes passed represent a correct key");
+        self.label = new_label.0.clone();
+
         Ok(())
-    }*/
+    }
 }
 
 fn indexed_values_and_keywords_to_rust(

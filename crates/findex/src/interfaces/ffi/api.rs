@@ -10,11 +10,9 @@ use cosmian_crypto_core::{
     bytes_ser_de::Serializer, reexport::rand_core::SeedableRng, CsRng, FixedSizeCBytes,
     RandomFixedSizeCBytes, SymmetricKey,
 };
-
-use cosmian_ffi_utils::ffi_read_string;
 use cosmian_ffi_utils::{
     error::{h_get_error, set_last_error, FfiError},
-    ffi_read_bytes, ffi_unwrap, ffi_write_bytes,
+    ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes,
 };
 use cosmian_findex::{
     Error as FindexError, IndexedValue, IndexedValueToKeywordsMap, Keyword, Keywords, Label,
@@ -23,26 +21,22 @@ use cosmian_findex::{
 use lazy_static::lazy_static;
 use tracing::trace;
 
-use crate::{
-    backends::{
-        rest::{AuthorizationToken, CallbackPrefix},
-        BackendError,
-    },
-    ser_de::ffi_ser_de::get_upsert_output_size,
-    ErrorCode,
-};
-
 #[cfg(debug_assertions)]
 use crate::logger::log_init;
 use crate::{
-    backends::custom::ffi::{
-        Delete, DumpTokens, Fetch, FfiCallbacks, FilterObsoleteData, Insert, Interrupt, Upsert,
+    backends::{
+        custom::ffi::{
+            Delete, DumpTokens, Fetch, FfiCallbacks, FilterObsoleteData, Insert, Interrupt, Upsert,
+        },
+        rest::{AuthorizationToken, CallbackPrefix},
+        BackendError,
     },
     ser_de::ffi_ser_de::{
         deserialize_indexed_values, deserialize_keyword_set, deserialize_location_set,
-        serialize_intermediate_results, serialize_keyword_set, serialize_location_set,
+        get_upsert_output_size, serialize_intermediate_results, serialize_keyword_set,
+        serialize_location_set,
     },
-    BackendConfiguration, InstantiatedFindex,
+    BackendConfiguration, ErrorCode, InstantiatedFindex,
 };
 
 lazy_static! {
@@ -199,8 +193,9 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
 
 /// Searches the index for the given keywords.
 ///
-/// At each search recursion, the passed `interrupt` function is called with the results from the
-/// current recursion level. The search is interrupted is `true` is returned.
+/// At each search recursion, the passed `interrupt` function is called with the
+/// results from the current recursion level. The search is interrupted is
+/// `true` is returned.
 ///
 /// # Parameters
 ///
@@ -491,9 +486,15 @@ pub unsafe extern "C" fn h_delete(
 /// - `findex_handle`           : Findex handle on the instance cache
 /// - `new_key`                 : new Findex key
 /// - `new_label`               : public information used to derive UIDs
+/// - `n_compact_to_full`       : see below
 /// - `filter_obsolete_data`    : callback used to filter out obsolete data
 ///   among indexed data
 ///
+/// `n_compact_to_full`: if you compact the
+/// indexes every night this is the number of days to wait before
+/// being sure that a big portion of the indexes were checked
+/// (see the coupon problem to understand why it's not 100% sure)
+
 /// # Safety
 ///
 /// Cannot be safe since using FFI.

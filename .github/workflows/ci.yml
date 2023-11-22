@@ -18,6 +18,22 @@ jobs:
 
   test_and_dry_publish:
     runs-on: ubuntu-latest
+    services:
+      findex_cloud:
+        image: ghcr.io/cosmian/findex_cloud:0.3.1
+        ports:
+          - 8080:8080
+
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
     steps:
       - uses: actions/checkout@v1
       - name: Set up cargo cache
@@ -42,22 +58,18 @@ jobs:
         run: |
           bash scripts/test_python.sh
 
-      - name: FFI Static analysis for cloudproof_findex
+      - name: Test ffi feature for cloudproof_findex
         run: |
           cargo clippy --workspace -p cloudproof_findex --all-targets --features ffi -- -D warnings
-
-      - name: Wasm Static analysis for cloudproof_findex
-        run: |
-          cargo clippy --workspace -p cloudproof_findex --all-targets --features wasm -- -D warnings
-
-      - name: Python Static analysis for cloudproof_findex
-        run: |
-          cargo clippy --workspace -p cloudproof_findex --all-targets --features python -- -D warnings
-
-      - name: FFI tests for cloudproof_findex
-        run: |
           cargo test --release --workspace -p cloudproof_findex --all-targets --features ffi
 
-      - name: Wasm tests for cloudproof_findex
+      - name: Test wasm feature for cloudproof_findex
         run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features wasm -- -D warnings
           cargo test --release --workspace -p cloudproof_findex --all-targets --features wasm
+
+      - name: Test python feature for cloudproof_findex
+        run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features python -- -D warnings
+          # Not testable but "bash scripts/test_python.sh" should be enough
+          # cargo test --release --workspace -p cloudproof_findex --all-targets --features python
