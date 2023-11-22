@@ -15,10 +15,10 @@ name = "cloudproof_aesgcm"
 default = []
 ffi = ["cosmian_ffi_utils"]
 python = ["pyo3"]
-wasm_bindgen = ["js-sys", "wasm-bindgen"]
+wasm = ["js-sys", "wasm-bindgen"]
 
 [dependencies]
-cosmian_crypto_core = { workspace = true, features = ["aes"]}
+cosmian_crypto_core = { workspace = true, features = ["aes"] }
 
 # Optional dependencies
 cosmian_ffi_utils = { workspace = true, optional = true }

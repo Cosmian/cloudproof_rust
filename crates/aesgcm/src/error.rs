@@ -3,7 +3,7 @@ use std::{array::TryFromSliceError, fmt::Display};
 use cosmian_crypto_core::CryptoCoreError;
 #[cfg(feature = "python")]
 use pyo3::{exceptions::PyException, PyErr};
-#[cfg(feature = "wasm_bindgen")]
+#[cfg(feature = "wasm")]
 use wasm_bindgen::JsValue;
 
 #[derive(Debug)]
@@ -33,7 +33,7 @@ impl From<TryFromSliceError> for AesGcmError {
     }
 }
 
-#[cfg(feature = "wasm_bindgen")]
+#[cfg(feature = "wasm")]
 impl From<AesGcmError> for JsValue {
     fn from(value: AesGcmError) -> Self {
         Self::from_str(&format!("Cloudproof error: {value:?}"))

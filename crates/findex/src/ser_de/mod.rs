@@ -63,5 +63,5 @@ impl From<JsValue> for SerializationError {
 
 #[cfg(any(feature = "backend-ffi", feature = "backend-rest", feature = "ffi"))]
 pub mod ffi_ser_de;
-#[cfg(any(feature = "backend-wasm", feature = "wasm_bindgen"))]
+#[cfg(any(feature = "backend-wasm", feature = "wasm"))]
 pub mod wasm_ser_de;

@@ -28,7 +28,7 @@ parse_deps = true
 
 [defines]
 "feature = ffi" = "DEFINE_FFI"
-"feature = wasm_bindgen" = "DEFINE_WASM"
+"feature = wasm" = "DEFINE_WASM"
 "feature = python" = "DEFINE_PYTHON"
 "feature = backend-rest" = "DEFINE_BACKEND_REST"
 "feature = backend-ffi" = "DEFINE_BACKEND_FFI"

@@ -12,7 +12,7 @@ pub mod backends;
 ))]
 mod instantiation;
 
-#[cfg(any(feature = "ffi", feature = "python", feature = "wasm_bindgen"))]
+#[cfg(any(feature = "ffi", feature = "python", feature = "wasm"))]
 pub mod interfaces;
 
 #[cfg(any(test, feature = "ffi"))]

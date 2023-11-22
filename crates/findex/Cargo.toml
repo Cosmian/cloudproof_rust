@@ -44,7 +44,7 @@ python = [
   "tokio/rt-multi-thread",
 ]
 
-wasm_bindgen = [
+wasm = [
   "backend-rest",
   "backend-wasm",
   "js-sys",

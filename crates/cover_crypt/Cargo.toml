@@ -15,7 +15,7 @@ name = "cloudproof_cover_crypt"
 default = []
 ffi = ["cosmian_ffi_utils", "lazy_static"]
 python = ["pyo3"]
-wasm_bindgen = ["js-sys", "wasm-bindgen"]
+wasm = ["js-sys", "wasm-bindgen"]
 
 [dependencies]
 cosmian_cover_crypt = { version = "13.0.0", features = ["serialization"] }

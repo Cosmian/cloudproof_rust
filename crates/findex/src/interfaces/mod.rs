@@ -4,5 +4,5 @@ pub mod ffi;
 #[cfg(feature = "python")]
 pub mod python;
 
-#[cfg(feature = "wasm_bindgen")]
+#[cfg(feature = "wasm")]
 pub mod wasm;
