@@ -290,8 +290,8 @@ class Findex:
         self,
         new_key: Key,
         new_label: Label,
-        num_reindexing_before_full_set: int,
-        filter: Optional[Callable] = None,
+        n_compact_to_full: int,
+        filter_obsolete_data: Optional[Callable] = None,
     ) -> None:
         """Compact the index. Encrypts the compacted index using the new key
         and new label.

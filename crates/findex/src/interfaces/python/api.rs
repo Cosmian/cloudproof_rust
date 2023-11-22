@@ -1,9 +1,9 @@
-use cosmian_crypto_core::FixedSizeCBytes;
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
 };
 
+use cosmian_crypto_core::FixedSizeCBytes;
 use cosmian_findex::{
     IndexedValue as IndexedValueRust, IndexedValueToKeywordsMap, Keyword, KeywordToDataMap, Label,
     Location, UserKey,
@@ -207,7 +207,8 @@ impl Findex {
     /// # Parameters
     ///
     /// - `keywords`    : keywords to search in the index
-    /// - `interrupt`   : optional callback to process intermediate search results.
+    /// - `interrupt`   : optional callback to process intermediate search
+    ///   results.
     #[pyo3(signature = (keywords, interrupt = None))]
     pub fn search(
         &self,
@@ -282,9 +283,9 @@ impl Findex {
     /// - `key`                            : key
     /// - `new_key`                        : newly generated key
     /// - `new_label`                      : newly generated label
-    /// - `num_reindexing_before_full_set` : see below
+    /// - `n_compact_to_full` : see below
     ///
-    /// `num_reindexing_before_full_set`: if you compact the
+    /// `n_compact_to_full`: if you compact the
     /// indexes every night this is the number of days to wait before
     /// being sure that a big portion of the indexes were checked
     /// (see the coupon problem to understand why it's not 100% sure)
@@ -292,7 +293,7 @@ impl Findex {
         &mut self,
         new_key: &KeyPy,
         new_label: &LabelPy,
-        num_reindexing_before_full_set: u32,
+        n_compact_to_full: u32,
         filter: Option<PyObject>,
     ) -> PyResult<()> {
         let filter = |indexed_data: HashSet<Location>| async {
@@ -327,7 +328,7 @@ impl Findex {
                 &new_key.0,
                 &self.label,
                 &new_label.0,
-                num_reindexing_before_full_set as usize,
+                n_compact_to_full as usize,
                 &filter,
             )),
             "error while blocking for compact"
