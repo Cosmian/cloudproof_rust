@@ -14,7 +14,7 @@ repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Findex Cloudproof library"
 
 [lib]
-crate-type = ["cdylib", "rlib", "staticlib"]
+crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_findex"
 
 [features]

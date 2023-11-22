@@ -22,7 +22,7 @@ macro_rules! ffi_not_null {
 /// early with 1.
 ///
 /// - `res` : result to unwrap
-/// - `msg` : (optional) additional message to use as error
+/// - `msg` : additional message to use as error
 #[macro_export]
 macro_rules! ffi_unwrap {
     ($res:expr, $msg:expr) => {
@@ -33,7 +33,19 @@ macro_rules! ffi_unwrap {
                     "{}: {}",
                     $msg, e
                 )));
-                return 1_i32;
+                return -1_i32;
+            }
+        }
+    };
+    ($res:expr, $msg:expr, $code:expr) => {
+        match $res {
+            Ok(v) => v,
+            Err(e) => {
+                $crate::error::set_last_error($crate::error::FfiError::Generic(format!(
+                    "{}: {}",
+                    $msg, e
+                )));
+                return $code;
             }
         }
     };
