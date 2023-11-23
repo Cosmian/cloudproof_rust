@@ -19,6 +19,6 @@ jobs:
       branch-js: develop
       branch-kms-js: v2.0.0
       branch-flutter: develop
-      branch-python: feature/findex_v6
+      branch-python: develop
       exclusions: --exclude=cloudproof_findex
     secrets: inherit
