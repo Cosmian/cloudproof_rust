@@ -341,9 +341,9 @@ class TestFindex(unittest.TestCase):
                 redis_url,
                 redis_url,
             ),
-            'rest': Findex.new_with_rest_backend(
-                self.findex_key, self.label, token.__str__(), url
-            ),
+            'rest': Findex.new_with_rest_backend(self.label,
+                                                 token.__str__(),
+                                                 url),
             'custom': Findex.new_with_custom_backend(
                 self.findex_key, self.label, entry_callbacks, chain_callbacks
             ),

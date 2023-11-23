@@ -243,7 +243,7 @@ class Findex:
             Findex
         """
     @staticmethod
-    def new_with_rest_backend(key: Key, label: Label, token: str, url: str) -> Findex:
+    def new_with_rest_backend(label: Label, token: str, url: str) -> Findex:
         """Instantiate a new Findex instance using REST backend.
 
         Returns:

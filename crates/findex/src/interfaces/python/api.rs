@@ -111,12 +111,7 @@ impl Findex {
 
     /// Instantiates Findex with a REST backend.
     #[staticmethod]
-    pub fn new_with_rest_backend(
-        key: &KeyPy,
-        label: &LabelPy,
-        token: String,
-        url: String,
-    ) -> PyResult<Self> {
+    pub fn new_with_rest_backend(label: &LabelPy, token: String, url: String) -> PyResult<Self> {
         let token = pyo3_unwrap!(
             AuthorizationToken::from_str(&token),
             "cannot convert token string"
@@ -125,6 +120,8 @@ impl Findex {
             tokio::runtime::Runtime::new(),
             "error creating Tokio runtime"
         );
+        let key = UserKey::try_from_slice(&token.findex_key)
+            .expect("the bytes passed represent a correct key");
         let instance = pyo3_unwrap!(
             runtime.block_on(InstantiatedFindex::new(BackendConfiguration::Rest(
                 token, url
@@ -132,8 +129,7 @@ impl Findex {
             "error instantiating Findex with Redis backend"
         );
         Ok(Self {
-            key: UserKey::try_from_bytes(key.0.to_bytes())
-                .expect("the bytes passed represent a correct key"),
+            key,
             label: label.0.clone(),
             runtime,
             instance,
