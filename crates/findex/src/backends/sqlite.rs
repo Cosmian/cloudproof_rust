@@ -3,7 +3,7 @@
 use std::{collections::HashMap, ops::Deref, sync::RwLock};
 
 use async_trait::async_trait;
-use cosmian_findex::{EdxStore, EncryptedValue, Token, ENTRY_LENGTH, LINK_LENGTH};
+use cosmian_findex::{EdxBackend, EncryptedValue, Token, ENTRY_LENGTH, LINK_LENGTH};
 use rusqlite::{params_from_iter, Connection, OptionalExtension};
 
 use crate::backends::BackendError;
@@ -40,7 +40,7 @@ macro_rules! impl_sqlite_backend {
         }
 
         #[async_trait(?Send)]
-        impl EdxStore<$value_length> for $type {
+        impl EdxBackend<$value_length> for $type {
             type Error = BackendError;
 
             async fn dump_tokens(&self) -> Result<cosmian_findex::Tokens, Self::Error> {

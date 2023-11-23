@@ -35,7 +35,7 @@ impl From<BackendError> for WasmError {
 impl From<FindexError<BackendError>> for WasmError {
     fn from(error: FindexError<BackendError>) -> Self {
         match error {
-            FindexError::Callback(_) => Self(format!("backend error: {error}")),
+            FindexError::Backend(_) => Self(format!("backend error: {error}")),
             _ => Self(format!("findex error: {error}")),
         }
     }

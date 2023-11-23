@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use cosmian_findex::EdxStore;
+use cosmian_findex::EdxBackend;
 
 use crate::backends::BackendError;
 
@@ -28,7 +28,7 @@ macro_rules! impl_custom_backend {
         }
 
         #[$crate::backends::custom::async_trait(?Send)]
-        impl $crate::backends::custom::EdxStore<$value_length> for $backend_type {
+        impl $crate::backends::custom::EdxBackend<$value_length> for $backend_type {
             type Error = $crate::backends::custom::BackendError;
 
             async fn dump_tokens(&self) -> Result<cosmian_findex::Tokens, Self::Error> {

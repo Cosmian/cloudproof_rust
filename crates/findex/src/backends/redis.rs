@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use cosmian_findex::{
-    CoreError as FindexCoreError, EdxStore, EncryptedValue, Token, TokenToEncryptedValueMap,
+    CoreError as FindexCoreError, EdxBackend, EncryptedValue, Token, TokenToEncryptedValueMap,
     TokenWithEncryptedValueList, Tokens, ENTRY_LENGTH, LINK_LENGTH,
 };
 use redis::{aio::ConnectionManager, pipe, AsyncCommands, Script};
@@ -85,7 +85,7 @@ impl RedisEntryBackend {
 }
 
 #[async_trait(?Send)]
-impl EdxStore<ENTRY_LENGTH> for RedisEntryBackend {
+impl EdxBackend<ENTRY_LENGTH> for RedisEntryBackend {
     type Error = BackendError;
 
     async fn dump_tokens(&self) -> Result<Tokens, Self::Error> {
@@ -239,7 +239,7 @@ impl RedisChainBackend {
 }
 
 #[async_trait(?Send)]
-impl EdxStore<LINK_LENGTH> for RedisChainBackend {
+impl EdxBackend<LINK_LENGTH> for RedisChainBackend {
     type Error = BackendError;
 
     async fn dump_tokens(&self) -> Result<Tokens, Self::Error> {

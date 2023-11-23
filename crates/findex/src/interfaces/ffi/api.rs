@@ -63,6 +63,7 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
     fetch_entry: Fetch,
     fetch_chain: Fetch,
     upsert_entry: Upsert,
+    insert_entry: Insert,
     insert_chain: Insert,
     delete_entry: Delete,
     delete_chain: Delete,
@@ -84,11 +85,12 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
     trace!("Label successfully parsed: label: {label}");
 
     let config = BackendConfiguration::Ffi(
+        // TODO: ensure null pointers are not given
         FfiCallbacks {
             table_number: entry_table_number as usize,
             fetch: Some(fetch_entry),
             upsert: Some(upsert_entry),
-            insert: None,
+            insert: Some(insert_entry),
             delete: Some(delete_entry),
             dump_tokens: Some(dump_tokens),
         },
@@ -337,7 +339,7 @@ pub unsafe extern "C" fn h_search(
 
     let results = match res {
         Ok(res) => res,
-        Err(FindexError::Callback(BackendError::Ffi(msg, code))) => {
+        Err(FindexError::Backend(BackendError::Ffi(msg, code))) => {
             set_last_error(FfiError::Generic(format!(
                 "backend error during `search` operation: {msg}"
             )));
@@ -445,7 +447,7 @@ pub unsafe extern "C" fn h_add(
 
     let new_keywords = match res {
         Ok(new_keywords) => new_keywords,
-        Err(FindexError::Callback(BackendError::Ffi(msg, code))) => {
+        Err(FindexError::Backend(BackendError::Ffi(msg, code))) => {
             set_last_error(FfiError::Generic(format!(
                 "backend error during `add` operation: {msg}"
             )));
@@ -536,7 +538,7 @@ pub unsafe extern "C" fn h_delete(
 
     let new_keywords = match res {
         Ok(new_keywords) => new_keywords,
-        Err(FindexError::Callback(BackendError::Ffi(msg, code))) => {
+        Err(FindexError::Backend(BackendError::Ffi(msg, code))) => {
             set_last_error(FfiError::Generic(format!(
                 "backend error during `delete` operation: {msg}"
             )));
@@ -666,7 +668,7 @@ pub unsafe extern "C" fn h_compact(
     ));
 
     match res {
-        Err(FindexError::Callback(BackendError::Ffi(msg, code))) => {
+        Err(FindexError::Backend(BackendError::Ffi(msg, code))) => {
             set_last_error(FfiError::Generic(format!(
                 "backend error during `compact` operation: {msg}"
             )));

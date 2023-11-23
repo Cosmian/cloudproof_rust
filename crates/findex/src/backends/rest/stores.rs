@@ -4,7 +4,7 @@ use std::{ops::Deref, str::FromStr};
 
 use async_trait::async_trait;
 use cosmian_crypto_core::bytes_ser_de::Serializable;
-use cosmian_findex::{kmac, EdxStore, ENTRY_LENGTH, LINK_LENGTH};
+use cosmian_findex::{kmac, EdxBackend, ENTRY_LENGTH, LINK_LENGTH};
 pub use cosmian_findex::{TokenToEncryptedValueMap, TokenWithEncryptedValueList, Tokens};
 #[cfg(feature = "wasm")]
 use js_sys::Date;
@@ -120,7 +120,7 @@ macro_rules! impl_rest_backend {
         }
 
         #[async_trait(?Send)]
-        impl EdxStore<$value_length> for $type {
+        impl EdxBackend<$value_length> for $type {
             type Error = BackendError;
 
             async fn dump_tokens(&self) -> Result<cosmian_findex::Tokens, Self::Error> {

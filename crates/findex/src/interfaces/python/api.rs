@@ -15,8 +15,7 @@ use super::types::ToKeyword;
 use crate::{
     backends::{custom::python::PythonCallbacks, rest::AuthorizationToken},
     interfaces::python::types::{
-        Key as KeyPy, Keyword as KeywordPy, Label as LabelPy, Location as LocationPy,
-        ToIndexedValue,
+        Key as KeyPy, Keyword as KeywordPy, Location as LocationPy, ToIndexedValue,
     },
     BackendConfiguration, InstantiatedFindex,
 };
@@ -35,7 +34,7 @@ impl Findex {
     #[staticmethod]
     pub fn new_with_sqlite_backend(
         key: &KeyPy,
-        label: &LabelPy,
+        label: String,
         entry_db_path: String,
         chain_db_path: String,
     ) -> PyResult<Self> {
@@ -51,7 +50,7 @@ impl Findex {
         Ok(Self {
             key: UserKey::try_from_bytes(key.0.to_bytes())
                 .expect("the bytes passed represent a correct key"),
-            label: label.0.clone(),
+            label: Label::from(label.as_str()),
             runtime,
             instance,
         })
@@ -61,7 +60,7 @@ impl Findex {
     #[staticmethod]
     pub fn new_with_redis_backend(
         key: &KeyPy,
-        label: &LabelPy,
+        label: String,
         entry_db_url: String,
         chain_db_url: String,
     ) -> PyResult<Self> {
@@ -77,7 +76,7 @@ impl Findex {
         Ok(Self {
             key: UserKey::try_from_bytes(key.0.to_bytes())
                 .expect("the bytes passed represent a correct key"),
-            label: label.0.clone(),
+            label: Label::from(label.as_str()),
             runtime,
             instance,
         })
@@ -87,7 +86,7 @@ impl Findex {
     #[staticmethod]
     pub fn new_with_custom_backend(
         key: &KeyPy,
-        label: &LabelPy,
+        label: String,
         entry_callbacks: PythonCallbacks,
         chain_callbacks: PythonCallbacks,
     ) -> PyResult<Self> {
@@ -103,7 +102,7 @@ impl Findex {
         Ok(Self {
             key: UserKey::try_from_bytes(key.0.to_bytes())
                 .expect("the bytes passed represent a correct key"),
-            label: label.0.clone(),
+            label: Label::from(label.as_str()),
             runtime,
             instance,
         })
@@ -111,12 +110,7 @@ impl Findex {
 
     /// Instantiates Findex with a REST backend.
     #[staticmethod]
-    pub fn new_with_rest_backend(
-        key: &KeyPy,
-        label: &LabelPy,
-        token: String,
-        url: String,
-    ) -> PyResult<Self> {
+    pub fn new_with_rest_backend(label: String, token: String, url: String) -> PyResult<Self> {
         let token = pyo3_unwrap!(
             AuthorizationToken::from_str(&token),
             "cannot convert token string"
@@ -125,6 +119,8 @@ impl Findex {
             tokio::runtime::Runtime::new(),
             "error creating Tokio runtime"
         );
+        let key = UserKey::try_from_slice(&token.findex_key)
+            .expect("the bytes passed represent a correct key");
         let instance = pyo3_unwrap!(
             runtime.block_on(InstantiatedFindex::new(BackendConfiguration::Rest(
                 token, url
@@ -132,9 +128,8 @@ impl Findex {
             "error instantiating Findex with Redis backend"
         );
         Ok(Self {
-            key: UserKey::try_from_bytes(key.0.to_bytes())
-                .expect("the bytes passed represent a correct key"),
-            label: label.0.clone(),
+            key,
+            label: Label::from(label.as_str()),
             runtime,
             instance,
         })
@@ -292,7 +287,7 @@ impl Findex {
     pub fn compact(
         &mut self,
         new_key: &KeyPy,
-        new_label: &LabelPy,
+        new_label: String,
         n_compact_to_full: u32,
         filter: Option<PyObject>,
     ) -> PyResult<()> {
@@ -322,12 +317,14 @@ impl Findex {
             }
         };
 
+        let new_label = Label::from(new_label.as_str());
+
         pyo3_unwrap!(
             self.runtime.block_on(self.instance.compact(
                 &self.key,
                 &new_key.0,
                 &self.label,
-                &new_label.0,
+                &new_label,
                 n_compact_to_full as usize,
                 &filter,
             )),
@@ -336,7 +333,7 @@ impl Findex {
 
         self.key = UserKey::try_from_bytes(new_key.0.to_bytes())
             .expect("the bytes passed represent a correct key");
-        self.label = new_label.0.clone();
+        self.label = new_label;
 
         Ok(())
     }
