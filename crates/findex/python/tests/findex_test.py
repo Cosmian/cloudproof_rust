@@ -11,7 +11,6 @@ from cloudproof_findex import (
     Findex,
     IndexedValuesAndKeywords,
     Keyword,
-    Label,
     Location,
     Key,
     ProgressResults,
@@ -89,14 +88,6 @@ class TestStructures(unittest.TestCase):
         # comparison between keywords
         self.assertEqual(kw_str, kw_bytes)
         self.assertNotEqual(kw_str, kw_int)
-
-    def test_label(self) -> None:
-        rand_label = Label.random()
-        self.assertIsInstance(rand_label, Label)
-
-        saved_bytes = rand_label.to_bytes()
-        reloaded_label = Label.from_bytes(saved_bytes)
-        self.assertEqual(saved_bytes, reloaded_label.to_bytes())
 
     def test_keys(self) -> None:
         msk = Key.random()
@@ -287,7 +278,7 @@ class TestFindex(unittest.TestCase):
     def setUp(self) -> None:
         # Create structures needed by Findex
         self.findex_key = Key.random()
-        self.label = Label.random()
+        self.label = "My label."
 
         self.db = {
             1: ['Martin', 'Sheperd'],
@@ -447,7 +438,7 @@ class TestFindex(unittest.TestCase):
             instance.add(indexed_values_and_keywords)
 
             # removing 2nd db line
-            new_label = Label.random()
+            new_label = "My renewed label"
 
             def filter_obsolete_data(dataset: Set[Location]):
                 res = set()

@@ -108,43 +108,6 @@ class Location:
             bytes
         """
 
-class Label:
-    """Additional data used to encrypt the entry table."""
-
-    def to_bytes(self) -> bytes:
-        """Convert to bytes.
-
-        Returns:
-            bytes
-        """
-    @staticmethod
-    def random() -> Label:
-        """Initialize a random label.
-
-        Returns:
-            Label
-        """
-    @staticmethod
-    def from_bytes(label_bytes: bytes) -> Label:
-        """Load from bytes.
-
-        Args:
-            label_bytes (bytes)
-
-        Returns:
-            Label
-        """
-    @staticmethod
-    def from_string(label_str: str) -> Label:
-        """Load from a string.
-
-        Args:
-            label_str (str)
-
-        Returns:
-            Label
-        """
-
 class Key:
     """Input key used to derive Findex keys."""
 
@@ -226,7 +189,7 @@ class AuthorizationToken:
 class Findex:
     @staticmethod
     def new_with_sqlite_backend(
-        key: Key, label: Label, entry_path: str, chain_path: str
+        key: Key, label: str, entry_path: str, chain_path: str
     ) -> Findex:
         """Instantiate a new Findex instance using an SQLite backend.
 
@@ -235,7 +198,7 @@ class Findex:
         """
     @staticmethod
     def new_with_redis_backend(
-        key: Key, label: Label, entry_url: str, chain_url: str
+        key: Key, label: str, entry_url: str, chain_url: str
     ) -> Findex:
         """Instantiate a new Findex instance using Redis backend.
 
@@ -243,7 +206,7 @@ class Findex:
             Findex
         """
     @staticmethod
-    def new_with_rest_backend(label: Label, token: str, url: str) -> Findex:
+    def new_with_rest_backend(label: str, token: str, url: str) -> Findex:
         """Instantiate a new Findex instance using REST backend.
 
         Returns:
@@ -252,7 +215,7 @@ class Findex:
     @staticmethod
     def new_with_custom_backend(
         key: Key,
-        label: Label,
+        label: str,
         entry_callbacks: PythonCallbacks,
         chain_callbacks: PythonCallbacks,
     ) -> Findex:
@@ -289,7 +252,7 @@ class Findex:
     def compact(
         self,
         new_key: Key,
-        new_label: Label,
+        new_label: str,
         n_compact_to_full: int,
         filter_obsolete_data: Optional[Callable] = None,
     ) -> None:
