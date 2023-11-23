@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_fpe"
-version = "0.2.3"
+version = "0.2.2"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
