@@ -6,7 +6,7 @@
 
 Cloudproof Encryption provides libraries and tools to encrypt and securely index large repositories of data with advanced, high-performance security primitives with Post-Quantum resistance.
 
-See [the use cases and benefits](https://docs.cosmian.com/cloudproof_encryption/use_cases_benefits/) and a description of the [cryptosystems](https://docs.cosmian.com/cloudproof_encryption/crypto_systems/) used.
+See [an introduction to Cosmian libraries](https://docs.cosmian.com/cloudproof_encryption/how_it_works/) and a description of the [cryptosystems](https://docs.cosmian.com/cloudproof_encryption/crypto_systems/) used.
 
 The libraries are available in multiple languages to facilitate encryption close to the data source and decryption close to the decryption target, including mobile devices and browsers.
 
@@ -131,7 +131,7 @@ The `.whl` libraries can then be found in `target/wheels/`.
 
 ### Building the library for a different glibc
 
-Go to the [build](build/glibc-2.17/) directory for an example on how to build for GLIBC 2.17
+Go to the [build](glibc-2.17/) directory for an example on how to build for GLIBC 2.17
 
 ## Benchmarks
 
