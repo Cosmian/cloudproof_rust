@@ -4,7 +4,7 @@ import requests
 import redis
 import unittest
 
-from typing import Dict, List, Sequence, Set, Tuple
+from typing import Dict, Set
 
 from cloudproof_findex import (
     AuthorizationToken,
@@ -101,96 +101,6 @@ class TestStructures(unittest.TestCase):
             Key.from_bytes(b'wrong size')
 
 
-class FindexHashmap:
-    """Implement Findex callbacks using hashmaps"""
-
-    def __init__(self, db: Dict[int, List[str]]):
-        self.db = db
-        self.entry_table: Dict[bytes, bytes] = {}
-        self.chain_table: Dict[bytes, bytes] = {}
-
-    # Create callback functions
-    def fetch_entry(self, uids: List[bytes]) -> Sequence[Tuple[bytes, bytes]]:
-        """DB request to fetch entry_table elements"""
-        res = []
-        for uid in uids:
-            if uid in self.entry_table:
-                res.append((uid, self.entry_table[uid]))
-        return res
-
-    def fetch_all_entry_table_uids(self) -> Set[bytes]:
-        return set(self.entry_table.keys())
-
-    def fetch_chain(self, uids: List[bytes]) -> Dict[bytes, bytes]:
-        """DB request to fetch chain_table elements"""
-        res = {}
-        for uid in uids:
-            if uid in self.chain_table:
-                res[uid] = self.chain_table[uid]
-        return res
-
-    def upsert_entry(
-        self, entries: Dict[bytes, Tuple[bytes, bytes]]
-    ) -> Dict[bytes, bytes]:
-        """DB request to upsert entry_table elements.
-        WARNING: This implementation will not work with concurrency.
-        """
-        rejected_lines = {}
-        for uid, (old_val, new_val) in entries.items():
-            if uid in self.entry_table:
-                if self.entry_table[uid] == old_val:
-                    self.entry_table[uid] = new_val
-                else:
-                    rejected_lines[uid] = self.entry_table[uid]
-            elif not old_val:
-                self.entry_table[uid] = new_val
-            else:
-                raise Exception('Line got deleted in Entry Table')
-
-        return rejected_lines
-
-    def insert_entry(self, entries: Dict[bytes, bytes]) -> None:
-        """DB request to insert entry_table elements"""
-        for uid in entries:
-            if uid in self.entry_table:
-                raise KeyError('Conflict in Entry Table for UID: {uid}')
-            self.entry_table[uid] = entries[uid]
-
-    def insert_chain(self, entries: Dict[bytes, bytes]) -> None:
-        """DB request to insert chain_table elements"""
-        for uid in entries:
-            if uid in self.chain_table:
-                raise KeyError('Conflict in Chain Table for UID: {uid}')
-            self.chain_table[uid] = entries[uid]
-
-    def list_removed_locations(self, locations: List[Location]) -> List[Location]:
-        res = []
-        for loc in locations:
-            if not int(loc) in self.db:
-                res.append(loc)
-        return res
-
-    def update_lines(
-        self,
-        removed_chain_table_uids: List[bytes],
-        new_encrypted_entry_table_items: Dict[bytes, bytes],
-        new_encrypted_chain_table_items: Dict[bytes, bytes],
-    ) -> None:
-        # remove all entries from entry table
-        self.entry_table.clear()
-
-        # remove entries from chain table
-        for uid in removed_chain_table_uids:
-            del self.chain_table[uid]
-
-        # insert new chains
-        self.insert_chain(new_encrypted_chain_table_items)
-
-        # insert newly encrypted entries
-        self.insert_entry(new_encrypted_entry_table_items)
-
-
-# Define closures to implement an in-memory backend.
 def define_custom_backends(is_with_test: bool = False):
     entry_table: dict = {}
     chain_table: dict = {}
@@ -198,17 +108,21 @@ def define_custom_backends(is_with_test: bool = False):
     def fetch(uids, table: dict):
         res = {}
         for uid in uids:
-            if table.__contains__(uid):
-                res[uid] = table.get(uid)
+            if uid in table:
+                res[uid] = table[uid]
         return res
 
     def upsert_entries(old_values: dict, new_values: dict):
         res = {}
         for uid, new_value in new_values.items():
-            if old_values.get(uid) == entry_table.get(uid):
+            current_value = entry_table.get(uid)
+            old_value = old_values.get(uid)
+            if old_value == current_value:
                 entry_table[uid] = new_value
-            elif entry_table.__contains__(uid):
-                res[uid] = entry_table[uid]
+            elif not current_value:
+                raise ValueError('The current value needs to be defined as long as the old value is defined ')
+            else:
+                res[uid] = current_value
         return res
 
     def insert_links(new_links: Dict):
