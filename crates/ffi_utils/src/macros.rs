@@ -11,7 +11,13 @@ macro_rules! ffi_not_null {
     ($name:literal, $ptr:expr) => {
         if $ptr.is_null() {
             $crate::error::set_last_error($crate::error::FfiError::NullPointer($name.to_string()));
-            return 1_i32;
+            return -1_i32;
+        }
+    };
+    ($name:literal, $ptr:expr, $code:expr) => {
+        if $ptr.is_null() {
+            $crate::error::set_last_error($crate::error::FfiError::NullPointer($name.to_string()));
+            return $code;
         }
     };
 }
@@ -19,7 +25,7 @@ macro_rules! ffi_not_null {
 /// Unwraps an `std::result::Result`.
 ///
 /// If the result is an error, sets the last error to this error and returns
-/// early with 1.
+/// early with -1 or the given error code.
 ///
 /// - `res` : result to unwrap
 /// - `msg` : additional message to use as error
@@ -62,15 +68,15 @@ macro_rules! ffi_unwrap {
 macro_rules! ffi_bail {
     ($msg:literal $(,)?) => {
         $crate::error::set_last_error($crate::error::FfiError::Generic($msg.to_owned()));
-        return 1_i32;
+        return -1_i32;
     };
     ($err:expr $(,)?) => {
         $crate::error::set_last_error($crate::error::FfiError::Generic($err.to_string()));
-        return 1_i32;
+        return -1_i32;
     };
     ($fmt:expr, $($arg:tt)*) => {
         $crate::error::set_last_error($crate::error::FfiError::Generic(format!($fmt, $($arg)*)));
-        return 1_i32;
+        return -1_i32;
     };
 }
 
