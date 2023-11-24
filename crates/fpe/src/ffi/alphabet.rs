@@ -38,8 +38,6 @@ pub unsafe fn fpe(
     };
 
     ffi_write_bytes!("output_ptr", output_str.as_bytes(), output_ptr, output_len);
-
-    0
 }
 
 /// Encrypts a string using Format Preserving Encryption (FPE) algorithm with

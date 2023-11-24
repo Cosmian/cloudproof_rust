@@ -25,8 +25,6 @@ pub unsafe extern "C" fn h_ecies_x25519_generate_key_pair(
         private_key_ptr,
         private_key_len
     );
-
-    0
 }
 
 unsafe extern "C" fn ecies_salsa_seal_box(
@@ -94,8 +92,6 @@ unsafe extern "C" fn ecies_salsa_seal_box(
         )
     };
     ffi_write_bytes!("output_ptr", &output, output_ptr, output_len);
-
-    0
 }
 
 #[no_mangle]

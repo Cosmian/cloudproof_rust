@@ -113,13 +113,13 @@ macro_rules! ffi_write_bytes {
     ($($name: literal, $bytes: expr, $ptr: ident, $len: ident $(,)?)+) => {
 
         let mut error_code = 0_i32;
+        let mut nul_error = false;
 
-        // Write outputs one by one. Do not return on error, increment the
-        // `error_code` instead.
+        // Write outputs one by one. Do not return on error
         $(
             if $ptr.is_null() {
                 $crate::error::set_last_error($crate::error::FfiError::NullPointer($name.to_string()));
-                error_code += 1;
+                nul_error = true;
             } else {
                 let allocated = *$len;
                 *$len = $bytes.len() as i32;
@@ -128,7 +128,7 @@ macro_rules! ffi_write_bytes {
                         "The pre-allocated {} buffer is too small; need {} bytes, allocated {allocated}",
                         $name, *$len
                     )));
-                    error_code += 1;
+                    error_code = 1_i32;
                 } else {
                     std::slice::from_raw_parts_mut($ptr.cast(), $bytes.len()).copy_from_slice($bytes);
                 }
@@ -136,10 +136,9 @@ macro_rules! ffi_write_bytes {
 
         )+;
 
-        // Return here if there was an error. This allows for returning the
-        // correct size for several output buffers at once. The number of
-        // errors is returned.
-        if error_code > 0 {
+        if nul_error {
+            return -1_i32;
+        }else {
             return error_code;
         }
     };

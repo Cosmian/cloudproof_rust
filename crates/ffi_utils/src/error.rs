@@ -81,8 +81,6 @@ pub unsafe extern "C" fn h_get_error(error_ptr: *mut i8, error_len: *mut i32) ->
     );
 
     ffi_write_bytes!("error", cs.as_bytes(), error_ptr, error_len);
-
-    0
 }
 
 #[cfg(test)]

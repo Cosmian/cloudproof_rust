@@ -58,7 +58,6 @@ macro_rules! update_policy {
             $updated_policy_ptr,
             $updated_policy_len
         );
-        0
     }};
 }
 
@@ -68,7 +67,6 @@ pub unsafe extern "C" fn h_policy(policy_ptr: *mut i8, policy_len: *mut i32) -> 
     let policy = Policy::new();
     let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error deserializing policy");
     ffi_write_bytes!("policy", &policy_bytes, policy_ptr, policy_len);
-    0
 }
 
 /// # Safety
@@ -100,8 +98,6 @@ pub unsafe extern "C" fn h_add_policy_axis(
         updated_policy_ptr,
         updated_policy_len
     );
-
-    0
 }
 
 /// # Safety
@@ -133,8 +129,6 @@ pub unsafe extern "C" fn h_remove_policy_axis(
         updated_policy_ptr,
         updated_policy_len
     );
-
-    0
 }
 
 /// # Safety

@@ -165,8 +165,6 @@ input to BigUint"
     let output_str = output.to_str_radix(radix);
 
     ffi_write_bytes!("output_ptr", output_str.as_bytes(), output_ptr, output_len);
-
-    0
 }
 
 /// Encrypts an input big integer using the FPE algorithm and returns the

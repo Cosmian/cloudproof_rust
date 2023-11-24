@@ -44,8 +44,6 @@ pub unsafe extern "C" fn h_generate_master_keys(
         mpk_ptr,
         mpk_len
     );
-
-    0
 }
 
 #[no_mangle]
@@ -91,8 +89,6 @@ pub unsafe extern "C" fn h_generate_user_secret_key(
 
     let usk_bytes = ffi_unwrap!(usk.serialize(), "error serializing user secret key");
     ffi_write_bytes!("user secret key", &usk_bytes, usk_ptr, usk_len);
-
-    0
 }
 
 #[no_mangle]
@@ -159,8 +155,6 @@ pub unsafe extern "C" fn h_update_master_keys(
         updated_mpk_ptr,
         updated_mpk_len
     );
-
-    0
 }
 
 #[no_mangle]
@@ -235,6 +229,4 @@ pub unsafe extern "C" fn h_refresh_user_secret_key(
         updated_usk_ptr,
         updated_usk_len
     );
-
-    0
 }

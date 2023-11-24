@@ -164,8 +164,6 @@ pub unsafe extern "C" fn h_encrypt_header_using_cache(
         header_bytes_ptr,
         header_bytes_len
     );
-
-    0
 }
 
 #[no_mangle]
@@ -248,8 +246,6 @@ pub unsafe extern "C" fn h_encrypt_header(
         header_bytes_ptr,
         header_bytes_len
     );
-
-    0
 }
 
 // -------------------------------
@@ -386,8 +382,6 @@ pub unsafe extern "C" fn h_decrypt_header_using_cache(
             header_metadata_len
         );
     }
-
-    0
 }
 
 #[no_mangle]
@@ -460,8 +454,6 @@ pub unsafe extern "C" fn h_decrypt_header(
             header_metadata_len
         );
     }
-
-    0
 }
 
 #[no_mangle]
@@ -511,8 +503,6 @@ pub unsafe extern "C" fn h_dem_encrypt(
     );
 
     ffi_write_bytes!("ciphertext", &ciphertext, ciphertext_ptr, ciphertext_len);
-
-    0
 }
 
 #[no_mangle]
@@ -555,8 +545,6 @@ pub unsafe extern "C" fn h_dem_decrypt(
     );
 
     ffi_write_bytes!("plaintext", &plaintext, plaintext_ptr, plaintext_len);
-
-    0
 }
 
 #[no_mangle]
@@ -643,8 +631,6 @@ pub unsafe extern "C" fn h_hybrid_encrypt(
     let bytes = ser.finalize();
 
     ffi_write_bytes!("ciphertext", &bytes, ciphertext_ptr, ciphertext_len);
-
-    0
 }
 
 #[no_mangle]
@@ -721,6 +707,4 @@ pub unsafe extern "C" fn h_hybrid_decrypt(
             header_metadata_len
         );
     }
-
-    0
 }

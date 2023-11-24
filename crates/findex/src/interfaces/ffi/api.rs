@@ -288,8 +288,6 @@ pub unsafe extern "C" fn h_search(
     let serialized_uids = serializer.finalize();
 
     ffi_write_bytes!("search results", &serialized_uids, results_ptr, results_len);
-
-    ErrorCode::Success.into()
 }
 
 /// Adds the given associations to the index.
@@ -377,8 +375,6 @@ pub unsafe extern "C" fn h_add(
         results_ptr,
         results_len
     );
-
-    ErrorCode::Success.into()
 }
 
 /// Removes the given associations from the index.
@@ -466,8 +462,6 @@ pub unsafe extern "C" fn h_delete(
         results_ptr,
         results_len
     );
-
-    ErrorCode::Success.into()
 }
 
 /// Replaces all the Index Entry Table UIDs and values. New UIDs are derived
@@ -683,8 +677,6 @@ pub unsafe extern "C" fn h_generate_new_token(
         token_ptr,
         token_len
     );
-
-    ErrorCode::Success.into()
 }
 
 /// Re-export the `cosmian_ffi` `h_get_error` function to clients with the old

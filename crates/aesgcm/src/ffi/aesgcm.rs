@@ -36,8 +36,6 @@ unsafe extern "C" fn aesgcm(
     };
 
     ffi_write_bytes!("output_ptr", &output, output_ptr, output_len);
-
-    0
 }
 
 #[no_mangle]
