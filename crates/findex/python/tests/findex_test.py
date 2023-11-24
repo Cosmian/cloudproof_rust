@@ -424,7 +424,6 @@ class TestFindex(unittest.TestCase):
         indexed_values_and_keywords: IndexedValuesAndKeywords = {
             Location.from_int(k): v for k, v in self.db.items()
         }
-        del self.db[2]
 
         interfaces = [
             (backend, instance)
@@ -440,10 +439,12 @@ class TestFindex(unittest.TestCase):
             # removing 2nd db line
             new_label = "My renewed label"
 
+            filtered_locations = { Location.from_int(2) }
+
             def filter_obsolete_data(dataset: Set[Location]):
                 res = set()
                 for data in dataset:
-                    if self.db.__contains__(data.__int__()):
+                    if data not in filtered_locations:
                         res.add(data)
                 return res
 
