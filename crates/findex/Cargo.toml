@@ -27,6 +27,7 @@ serialization = []
 
 ffi = [
   "backend-ffi",
+  "backend-redis",
   "backend-rest",
   "cosmian_ffi_utils",
   "lazy_static",

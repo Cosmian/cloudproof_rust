@@ -12,7 +12,7 @@ use cosmian_crypto_core::{
 };
 use cosmian_ffi_utils::{
     error::{h_get_error, set_last_error, FfiError},
-    ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes,
+    ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes, ErrorCode,
 };
 use cosmian_findex::{
     Error as FindexError, IndexedValue, IndexedValueToKeywordsMap, Keyword, Keywords, Label,
@@ -36,7 +36,7 @@ use crate::{
         get_upsert_output_size, serialize_intermediate_results, serialize_keyword_set,
         serialize_location_set,
     },
-    BackendConfiguration, ErrorCode, InstantiatedFindex,
+    BackendConfiguration, InstantiatedFindex,
 };
 
 lazy_static! {
@@ -74,7 +74,8 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
     let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
     let key = ffi_unwrap!(
         SymmetricKey::try_from_slice(key_bytes),
-        "error deserializing findex key"
+        "error deserializing findex key",
+        ErrorCode::Serialization.into()
     );
     trace!("Key successfully parsed");
 
@@ -108,7 +109,8 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
     );
     let findex = ffi_unwrap!(
         rt.block_on(InstantiatedFindex::new(config)),
-        "error instantiating Findex with custom backend"
+        "error instantiating Findex with custom backend",
+        ErrorCode::Findex.into()
     );
 
     let mut cache = FINDEX_INSTANCES
@@ -116,7 +118,8 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
         .expect("Findex instance cache lock poisoned.");
     let handle = ffi_unwrap!(
         <i32>::try_from(cache.len()),
-        "findex instance cache capacity overflow"
+        "findex instance cache capacity overflow",
+        ErrorCode::Findex.into()
     );
 
     cache.insert(handle, (key, label, findex));
@@ -157,7 +160,8 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
     trace!("Authorization token read: {token}");
     let authorization_token = ffi_unwrap!(
         crate::backends::rest::AuthorizationToken::from_str(&token),
-        "authorization token conversion failed"
+        "authorization token conversion failed",
+        ErrorCode::Backend.into()
     );
 
     let base_url = if url_ptr.is_null() {
@@ -174,7 +178,8 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
     );
     let findex = ffi_unwrap!(
         rt.block_on(InstantiatedFindex::new(config)),
-        "error instantiating Findex with REST backend"
+        "error instantiating Findex with REST backend",
+        ErrorCode::Backend.into()
     );
 
     let mut cache = FINDEX_INSTANCES
@@ -182,9 +187,80 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
         .expect("Findex instance cache lock poisoned.");
     let handle = ffi_unwrap!(
         <i32>::try_from(cache.len()),
-        "findex instance cache capacity overflow"
+        "findex instance cache capacity overflow",
+        ErrorCode::Findex.into()
     );
     cache.insert(handle, (authorization_token.findex_key, label, findex));
+
+    *findex_handle = handle;
+
+    ErrorCode::Success.into()
+}
+
+/// Instantiate a Findex using a Redis backend.
+///
+/// # Parameters
+///
+/// - `key`     : findex key
+/// - `label`   : label used by Findex
+/// - `entry_table_redis_url`     : Redis entry table URL
+/// - `chain_table_redis_url`     : Redis chain table URL
+///
+/// # Safety
+///
+/// Cannot be safe since using FFI.
+#[no_mangle]
+#[tracing::instrument(ret, skip_all)]
+pub unsafe extern "C" fn h_instantiate_with_redis_backend(
+    findex_handle: *mut i32,
+    key_ptr: *const u8,
+    key_len: i32,
+    label_ptr: *const u8,
+    label_len: i32,
+    entry_table_redis_url_ptr: *const i8,
+    chain_table_redis_url_ptr: *const i8,
+) -> i32 {
+    #[cfg(debug_assertions)]
+    log_init();
+
+    let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
+    let key = ffi_unwrap!(
+        SymmetricKey::try_from_slice(key_bytes),
+        "error deserializing findex key",
+        ErrorCode::Serialization.into()
+    );
+    trace!("Key successfully parsed");
+
+    let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
+    let label = Label::from(label_bytes);
+    trace!("Label successfully parsed: label: {label}");
+
+    let entry_table_redis_url =
+        ffi_read_string!("Redis entry table URL", entry_table_redis_url_ptr);
+    let chain_table_redis_url =
+        ffi_read_string!("Redis chain table URL", chain_table_redis_url_ptr);
+
+    let config = BackendConfiguration::Redis(entry_table_redis_url, chain_table_redis_url);
+
+    let rt = ffi_unwrap!(
+        tokio::runtime::Runtime::new(),
+        "error creating Tokio runtime"
+    );
+    let findex = ffi_unwrap!(
+        rt.block_on(InstantiatedFindex::new(config)),
+        "error instantiating Findex with REST backend",
+        ErrorCode::Findex.into()
+    );
+
+    let mut cache = FINDEX_INSTANCES
+        .lock()
+        .expect("Findex instance cache lock poisoned.");
+    let handle = ffi_unwrap!(
+        <i32>::try_from(cache.len()),
+        "findex instance cache capacity overflow",
+        ErrorCode::Findex.into()
+    );
+    cache.insert(handle, (key, label, findex));
 
     *findex_handle = handle;
 
@@ -222,7 +298,8 @@ pub unsafe extern "C" fn h_search(
 
     let keywords = ffi_unwrap!(
         deserialize_keyword_set(ffi_read_bytes!("keywords", keywords_ptr, keywords_len)),
-        "error deserializing keywords"
+        "error deserializing keywords",
+        ErrorCode::Serialization.into()
     );
     let keywords = Keywords::from(keywords);
     trace!("Keywords successfully parsed: keywords: {keywords}");
@@ -243,7 +320,8 @@ pub unsafe extern "C" fn h_search(
         cache
             .get(&findex_handle)
             .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
-        "cannot get a hold on the Findex instance"
+        "cannot get a hold on the Findex instance",
+        ErrorCode::Findex.into()
     );
 
     let rt = ffi_unwrap!(
@@ -274,15 +352,24 @@ pub unsafe extern "C" fn h_search(
     let mut serializer = Serializer::new();
     ffi_unwrap!(
         serializer.write_leb128_u64(results.len() as u64),
-        "error serializing length"
+        "error serializing length",
+        ErrorCode::Serialization.into()
     );
     for (keyword, locations) in results {
-        ffi_unwrap!(serializer.write_vec(&keyword), "error serializing keyword");
-        let serialized_location_set =
-            ffi_unwrap!(serialize_location_set(&locations), "error serializing set");
+        ffi_unwrap!(
+            serializer.write_vec(&keyword),
+            "error serializing keyword",
+            ErrorCode::Serialization.into()
+        );
+        let serialized_location_set = ffi_unwrap!(
+            serialize_location_set(&locations),
+            "error serializing set",
+            ErrorCode::Serialization.into()
+        );
         ffi_unwrap!(
             serializer.write_array(&serialized_location_set),
-            "error serializing locations"
+            "error serializing locations",
+            ErrorCode::Serialization.into()
         );
     }
     let serialized_uids = serializer.finalize();
@@ -316,7 +403,8 @@ pub unsafe extern "C" fn h_add(
     let associations_bytes = ffi_read_bytes!("associations", associations_ptr, associations_len);
     let associations = IndexedValueToKeywordsMap::from(ffi_unwrap!(
         deserialize_indexed_values(associations_bytes),
-        "failed deserialize indexed values (associations)"
+        "failed deserialize indexed values (associations)",
+        ErrorCode::Serialization.into()
     ));
 
     let output_size = get_upsert_output_size(&associations);
@@ -337,7 +425,8 @@ pub unsafe extern "C" fn h_add(
         cache
             .get(&findex_handle)
             .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
-        "cannot get a hold on the Findex instance"
+        "cannot get a hold on the Findex instance",
+        ErrorCode::Findex.into()
     );
 
     trace!("instantiated Findex: {findex:?}");
@@ -366,7 +455,8 @@ pub unsafe extern "C" fn h_add(
     // Serialize the results.
     let serialized_keywords = ffi_unwrap!(
         serialize_keyword_set(&new_keywords),
-        "serialize new keywords"
+        "serialize new keywords",
+        ErrorCode::Serialization.into()
     );
 
     ffi_write_bytes!(
@@ -403,7 +493,8 @@ pub unsafe extern "C" fn h_delete(
     let associations_bytes = ffi_read_bytes!("associations", associations_ptr, associations_len);
     let associations = IndexedValueToKeywordsMap::from(ffi_unwrap!(
         deserialize_indexed_values(associations_bytes),
-        "failed deserialize indexed values (associations)"
+        "failed deserialize indexed values (associations)",
+        ErrorCode::Serialization.into()
     ));
 
     let output_size = get_upsert_output_size(&associations);
@@ -424,7 +515,8 @@ pub unsafe extern "C" fn h_delete(
         cache
             .get(&findex_handle)
             .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
-        "cannot get a hold on the Findex instance"
+        "cannot get a hold on the Findex instance",
+        ErrorCode::Findex.into()
     );
 
     trace!("instantiated Findex: {findex:?}");
@@ -453,7 +545,8 @@ pub unsafe extern "C" fn h_delete(
     // Serialize the results.
     let serialized_keywords = ffi_unwrap!(
         serialize_keyword_set(&new_keywords),
-        "serialize new keywords"
+        "serialize new keywords",
+        ErrorCode::Serialization.into()
     );
 
     ffi_write_bytes!(
@@ -531,7 +624,8 @@ pub unsafe extern "C" fn h_compact(
     let new_key_bytes = ffi_read_bytes!("new key", new_key_ptr, new_key_len);
     let new_key = ffi_unwrap!(
         SymmetricKey::try_from_slice(new_key_bytes),
-        "error deserializing new findex key"
+        "error deserializing new findex key",
+        ErrorCode::Serialization.into()
     );
 
     let new_label_bytes = ffi_read_bytes!("new label", new_label_ptr, new_label_len);
@@ -545,7 +639,8 @@ pub unsafe extern "C" fn h_compact(
         cache
             .get_mut(&findex_handle)
             .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
-        "cannot get a hold on the Findex instance"
+        "cannot get a hold on the Findex instance",
+        ErrorCode::Findex.into()
     );
 
     let rt = ffi_unwrap!(
