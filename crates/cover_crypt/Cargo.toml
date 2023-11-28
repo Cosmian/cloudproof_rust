@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_cover_crypt"
-version = "13.0.0"
+version = "13.0.1"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -8,7 +8,7 @@ repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Covercrypt Cloudproof library"
 
 [lib]
-crate-type = ["cdylib", "rlib", "staticlib"]
+crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_cover_crypt"
 
 [features]
@@ -31,4 +31,4 @@ wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 cosmian_cover_crypt = { version = "13.0.0", features = ["test_utils"] }
-wasm-bindgen-test = "0.3.38"
+wasm-bindgen-test = "0.3.39"

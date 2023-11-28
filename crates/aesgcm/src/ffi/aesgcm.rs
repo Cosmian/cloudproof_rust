@@ -1,4 +1,4 @@
-use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes};
+use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes, ErrorCode};
 
 use crate::{decrypt, encrypt};
 
@@ -26,18 +26,18 @@ unsafe extern "C" fn aesgcm(
     let output = if encrypt_flag {
         ffi_unwrap!(
             encrypt(key_bytes, nonce_bytes, input_data_bytes, authenticated_data),
-            "AES-256 GCM encryption error"
+            "AES-256 GCM encryption error",
+            ErrorCode::Encryption
         )
     } else {
         ffi_unwrap!(
             decrypt(key_bytes, nonce_bytes, input_data_bytes, authenticated_data),
-            "AES-256 GCM decryption error"
+            "AES-256 GCM decryption error",
+            ErrorCode::Decryption
         )
     };
 
     ffi_write_bytes!("output_ptr", &output, output_ptr, output_len);
-
-    0
 }
 
 #[no_mangle]

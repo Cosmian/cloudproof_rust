@@ -2,6 +2,8 @@ use core::fmt::Display;
 use std::{array::TryFromSliceError, num::TryFromIntError};
 
 use cosmian_crypto_core::CryptoCoreError;
+#[cfg(feature = "backend-ffi")]
+use cosmian_ffi_utils::ErrorCode;
 use cosmian_findex::{CallbackErrorTrait, CoreError as FindexCoreError};
 #[cfg(feature = "backend-wasm")]
 use js_sys::{JsString, Object};
@@ -21,8 +23,6 @@ use wasm_bindgen::JsValue;
     feature = "ffi"
 ))]
 use crate::ser_de::SerializationError;
-#[cfg(feature = "backend-ffi")]
-use crate::ErrorCode;
 
 #[derive(Debug)]
 pub enum BackendError {

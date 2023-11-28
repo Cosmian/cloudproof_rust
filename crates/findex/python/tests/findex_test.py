@@ -207,7 +207,7 @@ def define_custom_backends(is_with_test: bool = False):
     def fetch(uids, table: dict):
         res = {}
         for uid in uids:
-            if table.__contains__(uid):
+            if uid in table:
                 res[uid] = table.get(uid)
         return res
 
@@ -216,13 +216,13 @@ def define_custom_backends(is_with_test: bool = False):
         for uid, new_value in new_values.items():
             if old_values.get(uid) == entry_table.get(uid):
                 entry_table[uid] = new_value
-            elif entry_table.__contains__(uid):
+            elif uid in entry_table:
                 res[uid] = entry_table[uid]
         return res
 
     def insert_links(new_links: Dict):
         for uid, value in new_links.items():
-            if chain_table.__contains__(uid):
+            if uid in chain_table:
                 raise ValueError('collision in the Chain Table on uid: ' + uid)
             chain_table[uid] = value
 
@@ -342,7 +342,7 @@ class TestFindex(unittest.TestCase):
                 redis_url,
             ),
             'rest': Findex.new_with_rest_backend(
-                self.findex_key, self.label, token.__str__(), url
+                self.findex_key, self.label, str(token), url
             ),
             'custom': Findex.new_with_custom_backend(
                 self.findex_key, self.label, entry_callbacks, chain_callbacks
@@ -452,7 +452,7 @@ class TestFindex(unittest.TestCase):
             def filter_obsolete_data(dataset: Set[Location]):
                 res = set()
                 for data in dataset:
-                    if self.db.__contains__(data.__int__()):
+                    if int(data) in self.db:
                         res.add(data)
                 return res
 

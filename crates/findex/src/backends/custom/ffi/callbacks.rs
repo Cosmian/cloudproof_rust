@@ -1,5 +1,6 @@
 //! Defines the FFI types for the callbacks used in Findex.
 
+use cosmian_ffi_utils::ErrorCode;
 use cosmian_findex::{Token, TokenToEncryptedValueMap, Tokens};
 use tracing::{debug, instrument, trace};
 
@@ -9,7 +10,6 @@ use crate::{
         deserialize_edx_lines, deserialize_token_set, get_serialized_edx_lines_size_bound,
         serialize_edx_lines, serialize_token_set,
     },
-    ErrorCode,
 };
 
 /// # Serialization

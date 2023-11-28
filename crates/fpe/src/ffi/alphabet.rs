@@ -1,4 +1,4 @@
-use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
+use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes, ErrorCode};
 
 use crate::get_alphabet;
 
@@ -20,7 +20,11 @@ pub unsafe fn fpe(
     let input_str = ffi_read_string!("input", input_ptr);
     let alphabet_id_str = ffi_read_string!("alphabet_id", alphabet_id_ptr);
 
-    let mut alphabet = ffi_unwrap!(get_alphabet(&alphabet_id_str), "Alphabet id not supported");
+    let mut alphabet = ffi_unwrap!(
+        get_alphabet(&alphabet_id_str),
+        "Alphabet id not supported",
+        ErrorCode::Fpe
+    );
     let additional_characters_str =
         ffi_read_string!("additional_characters_ptr", additional_characters_ptr);
     alphabet.extend_with(&additional_characters_str);
@@ -28,18 +32,18 @@ pub unsafe fn fpe(
     let output_str = if encrypt_flag {
         ffi_unwrap!(
             alphabet.encrypt(key_bytes, tweak_bytes, &input_str),
-            "fpe encryption process"
+            "fpe encryption process",
+            ErrorCode::Encryption
         )
     } else {
         ffi_unwrap!(
             alphabet.decrypt(key_bytes, tweak_bytes, &input_str),
-            "fpe decryption process"
+            "fpe decryption process",
+            ErrorCode::Decryption
         )
     };
 
     ffi_write_bytes!("output_ptr", output_str.as_bytes(), output_ptr, output_len);
-
-    0
 }
 
 /// Encrypts a string using Format Preserving Encryption (FPE) algorithm with

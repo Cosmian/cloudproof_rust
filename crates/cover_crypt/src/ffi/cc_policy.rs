@@ -1,5 +1,5 @@
 use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, EncryptionHint, Policy};
-use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
+use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes, ErrorCode};
 
 /// This macro handles deserializing the policy from JS, deserializing an
 /// attribute from JS, and performing a specified action on the policy. It also
@@ -39,26 +39,30 @@ macro_rules! update_policy {
             ffi_read_bytes!("current policy", $current_policy_ptr, $current_policy_len);
         let mut $cc_policy = ffi_unwrap!(
             Policy::parse_and_convert(policy_bytes),
-            "error deserializing policy"
+            "error deserializing policy",
+            ErrorCode::Serialization
         );
 
         let attr_string = ffi_read_string!("attribute", $attr_bytes);
         let $cc_attr = ffi_unwrap!(
             Attribute::try_from(attr_string.as_str()),
-            "error parsing attribute"
+            "error parsing attribute",
+            ErrorCode::InvalidArgument("Attribute".to_string())
         );
 
-        ffi_unwrap!($action, $error_msg);
+        ffi_unwrap!($action, $error_msg, ErrorCode::Serialization);
 
-        let policy_bytes =
-            ffi_unwrap!(<Vec<u8>>::try_from(&$cc_policy), "error serializing policy");
+        let policy_bytes = ffi_unwrap!(
+            <Vec<u8>>::try_from(&$cc_policy),
+            "error serializing policy",
+            ErrorCode::Serialization
+        );
         ffi_write_bytes!(
             "updated policy",
             &policy_bytes,
             $updated_policy_ptr,
             $updated_policy_len
         );
-        0
     }};
 }
 
@@ -66,9 +70,12 @@ macro_rules! update_policy {
 #[no_mangle]
 pub unsafe extern "C" fn h_policy(policy_ptr: *mut i8, policy_len: *mut i32) -> i32 {
     let policy = Policy::new();
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error deserializing policy");
+    let policy_bytes = ffi_unwrap!(
+        <Vec<u8>>::try_from(&policy),
+        "error deserializing policy",
+        ErrorCode::Serialization
+    );
     ffi_write_bytes!("policy", &policy_bytes, policy_ptr, policy_len);
-    0
 }
 
 /// # Safety
@@ -83,25 +90,33 @@ pub unsafe extern "C" fn h_add_policy_axis(
     let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
     let mut policy = ffi_unwrap!(
         Policy::parse_and_convert(policy_bytes),
-        "error deserializing policy"
+        "error deserializing policy",
+        ErrorCode::Serialization
     );
     let axis_string = ffi_read_string!("axis", axis_ptr);
     let axis = ffi_unwrap!(
         serde_json::from_str(&axis_string),
-        "error deserializing policy axis"
+        "error deserializing policy axis",
+        ErrorCode::Serialization
     );
 
-    ffi_unwrap!(policy.add_dimension(axis), "error adding policy axis");
+    ffi_unwrap!(
+        policy.add_dimension(axis),
+        "error adding policy axis",
+        ErrorCode::CovercryptPolicy
+    );
 
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
+    let policy_bytes = ffi_unwrap!(
+        <Vec<u8>>::try_from(&policy),
+        "error serializing policy",
+        ErrorCode::Serialization
+    );
     ffi_write_bytes!(
         "updated policy",
         &policy_bytes,
         updated_policy_ptr,
         updated_policy_len
     );
-
-    0
 }
 
 /// # Safety
@@ -116,25 +131,29 @@ pub unsafe extern "C" fn h_remove_policy_axis(
     let policy_bytes = ffi_read_bytes!("current policy", current_policy_ptr, current_policy_len);
     let mut policy = ffi_unwrap!(
         Policy::parse_and_convert(policy_bytes),
-        "error deserializing policy"
+        "error deserializing policy",
+        ErrorCode::Serialization
     );
 
     let axis_name = ffi_read_string!("axis name", axis_name_ptr);
 
     ffi_unwrap!(
         policy.remove_dimension(&axis_name),
-        "error removing policy axis"
+        "error removing policy axis",
+        ErrorCode::CovercryptPolicy
     );
 
-    let policy_bytes = ffi_unwrap!(<Vec<u8>>::try_from(&policy), "error serializing policy");
+    let policy_bytes = ffi_unwrap!(
+        <Vec<u8>>::try_from(&policy),
+        "error serializing policy",
+        ErrorCode::Serialization
+    );
     ffi_write_bytes!(
         "updated policy",
         &policy_bytes,
         updated_policy_ptr,
         updated_policy_len
     );
-
-    0
 }
 
 /// # Safety
@@ -278,7 +297,8 @@ pub unsafe extern "C" fn h_validate_boolean_expression(boolean_expression_ptr: *
     let boolean_expression = ffi_read_string!("boolean expression", boolean_expression_ptr);
     ffi_unwrap!(
         AccessPolicy::from_boolean_expression(&boolean_expression),
-        "error parsing boolean expression"
+        "error parsing boolean expression",
+        ErrorCode::Serialization
     );
     0
 }
@@ -289,7 +309,8 @@ pub unsafe extern "C" fn h_validate_attribute(attribute_ptr: *const i8) -> i32 {
     let attribute_str = ffi_read_string!("attribute", attribute_ptr);
     ffi_unwrap!(
         AccessPolicy::from_boolean_expression(&attribute_str),
-        "error parsing attribute"
+        "error parsing attribute",
+        ErrorCode::Serialization
     );
     0
 }

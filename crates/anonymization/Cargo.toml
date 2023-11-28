@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_anonymization"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Hugo Rosenkranz-costa<hugo.rosenkranz@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -8,7 +8,7 @@ repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Cloudproof Anonymization library"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_anonymization"
 
 [features]
@@ -43,4 +43,4 @@ wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"
-wasm-bindgen-test = "0.3.38"
+wasm-bindgen-test = "0.3.39"
