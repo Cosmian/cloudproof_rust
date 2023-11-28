@@ -22,26 +22,26 @@ unsafe extern "C" fn fpe(
     let key: [u8; KEY_LENGTH] = ffi_unwrap!(
         key_bytes.try_into(),
         "key size is 32 bytes",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
 
     let itg = ffi_unwrap!(
         Integer::instantiate(radix, digits as usize),
         "cannot instantiate FPE integer",
-        ErrorCode::Fpe.into()
+        ErrorCode::Fpe
     );
 
     *output = if encrypt_flag {
         ffi_unwrap!(
             itg.encrypt(&key, tweak_bytes, input),
             "fpe encryption process",
-            ErrorCode::Encryption.into()
+            ErrorCode::Encryption
         )
     } else {
         ffi_unwrap!(
             itg.decrypt(&key, tweak_bytes, input),
             "fpe decryption process",
-            ErrorCode::Decryption.into()
+            ErrorCode::Decryption
         )
     };
 
@@ -147,32 +147,32 @@ unsafe extern "C" fn fpe_big_integer(
     let itg = ffi_unwrap!(
         Integer::instantiate(radix, digits as usize),
         "cannot instantiate FPE integer",
-        ErrorCode::Fpe.into()
+        ErrorCode::Fpe
     );
     let input_biguint = ffi_unwrap!(
         BigUint::from_str_radix(&input_str, radix),
         "failed to convert input to BigUint",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
 
     // Copy the contents of the slice into the 32-array
     let key: [u8; KEY_LENGTH] = ffi_unwrap!(
         key_bytes.try_into(),
         "key size is 32 bytes",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
 
     let output = if encrypt_flag {
         ffi_unwrap!(
             itg.encrypt_big(&key, tweak_bytes, &input_biguint),
             "fpe encryption process",
-            ErrorCode::Encryption.into()
+            ErrorCode::Encryption
         )
     } else {
         ffi_unwrap!(
             itg.decrypt_big(&key, tweak_bytes, &input_biguint),
             "fpe decryption process",
-            ErrorCode::Decryption.into()
+            ErrorCode::Decryption
         )
     };
 

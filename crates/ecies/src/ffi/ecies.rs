@@ -54,12 +54,12 @@ unsafe extern "C" fn ecies_salsa_seal_box(
                 "ECIES error: public key length incorrect: expected {}",
                 X25519PublicKey::LENGTH
             ),
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         );
         let public_key = ffi_unwrap!(
             X25519PublicKey::try_from_bytes(public_key),
             format!("ECIES error: public key deserializing"),
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         );
 
         ffi_unwrap!(
@@ -70,7 +70,7 @@ unsafe extern "C" fn ecies_salsa_seal_box(
                 Some(authenticated_data_bytes)
             ),
             "ECIES error: encryption",
-            ErrorCode::Encryption.into()
+            ErrorCode::Encryption
         )
     } else {
         let private_key: [u8; X25519PrivateKey::LENGTH] = ffi_unwrap!(
@@ -79,12 +79,12 @@ unsafe extern "C" fn ecies_salsa_seal_box(
                 "ECIES error: private key length incorrect: expected {}",
                 X25519PrivateKey::LENGTH
             ),
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         );
         let private_key = ffi_unwrap!(
             X25519PrivateKey::try_from_bytes(private_key),
             format!("ECIES error: private key deserializing"),
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         );
 
         ffi_unwrap!(
@@ -94,7 +94,7 @@ unsafe extern "C" fn ecies_salsa_seal_box(
                 Some(authenticated_data_bytes)
             ),
             "ECIES error: decryption",
-            ErrorCode::Decryption.into()
+            ErrorCode::Decryption
         )
     };
     ffi_write_bytes!("output_ptr", &output, output_ptr, output_len);

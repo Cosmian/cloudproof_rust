@@ -27,13 +27,13 @@ unsafe extern "C" fn aesgcm(
         ffi_unwrap!(
             encrypt(key_bytes, nonce_bytes, input_data_bytes, authenticated_data),
             "AES-256 GCM encryption error",
-            ErrorCode::Encryption.into()
+            ErrorCode::Encryption
         )
     } else {
         ffi_unwrap!(
             decrypt(key_bytes, nonce_bytes, input_data_bytes, authenticated_data),
             "AES-256 GCM decryption error",
-            ErrorCode::Decryption.into()
+            ErrorCode::Decryption
         )
     };
 

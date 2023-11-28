@@ -24,7 +24,6 @@ default = []
 # Meta features implicitly activated.
 serialization = []
 
-
 ffi = [
   "backend-ffi",
   "backend-redis",
@@ -70,15 +69,15 @@ backend-wasm = [
 ]
 
 [dependencies]
-async-trait = { workspace = true }
-cosmian_crypto_core = { workspace = true, default-features = false }
-cosmian_findex = { git = "https://github.com/Cosmian/findex", branch = "develop" }
 # Optional dependencies
 actix-rt = { version = "2.9", optional = true }
+async-trait = { workspace = true }
 base64 = { workspace = true, optional = true }
+cosmian_crypto_core = { workspace = true, default-features = false }
 cosmian_ffi_utils = { workspace = true, optional = true }
-js-sys = { workspace = true, optional = true }
+cosmian_findex = { git = "https://github.com/Cosmian/findex", branch = "develop" }
 futures = { version = "0.3.29", optional = true }
+js-sys = { workspace = true, optional = true }
 lazy_static = { version = "1.4.0", optional = true }
 log = { version = "0.4.20", optional = true }
 pyo3 = { workspace = true, optional = true }

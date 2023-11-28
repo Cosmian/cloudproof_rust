@@ -80,7 +80,7 @@ pub unsafe extern "C" fn h_get_error(error_ptr: *mut i8, error_len: *mut i32) ->
     let cs = ffi_unwrap!(
         CString::new(get_last_error()),
         "failed to convert error to CString",
-        ErrorCode::InvalidArgument("CString".to_string()).into()
+        ErrorCode::InvalidArgument("CString".to_string())
     );
 
     ffi_write_bytes!("error", cs.as_bytes(), error_ptr, error_len);

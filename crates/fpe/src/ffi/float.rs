@@ -18,13 +18,13 @@ unsafe extern "C" fn fpe(
     let key: [u8; KEY_LENGTH] = ffi_unwrap!(
         key_bytes.try_into(),
         "key size is 32 bytes",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
 
     let itg = ffi_unwrap!(
         Float::instantiate(),
         "cannot instantiate FPE float",
-        ErrorCode::Fpe.into()
+        ErrorCode::Fpe
     );
 
     let operation = match encrypt_flag {
@@ -35,7 +35,7 @@ unsafe extern "C" fn fpe(
     *output = ffi_unwrap!(
         operation,
         "fpe encryption/decryption process",
-        ErrorCode::Fpe.into()
+        ErrorCode::Fpe
     );
 
     0

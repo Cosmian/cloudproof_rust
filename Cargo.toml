@@ -16,8 +16,8 @@ resolver = "1"
 async-trait = "0.1.74"
 base64 = "0.21.5"
 cosmian_crypto_core = { version = "9.3.0", default-features = false }
-# cosmian_ffi_utils = "0.1.2"
-cosmian_ffi_utils = { path = "crates/ffi_utils"}
+# cosmian_ffi_utils = "0.1.2" // TODO
+cosmian_ffi_utils = { path = "crates/ffi_utils" }
 hex = "0.4.3"
 js-sys = "0.3"
 pyo3 = { version = "0.20.0", features = [

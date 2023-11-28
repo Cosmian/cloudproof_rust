@@ -121,6 +121,7 @@ repos:
   - repo: https://github.com/Cosmian/git-hooks.git
     rev: v1.0.24
     hooks:
+      # - id: dprint-toml-fix
       - id: stable-cargo-format
       - id: cargo-upgrade
       - id: cargo-update

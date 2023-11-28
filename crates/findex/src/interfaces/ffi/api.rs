@@ -75,7 +75,7 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
     let key = ffi_unwrap!(
         SymmetricKey::try_from_slice(key_bytes),
         "error deserializing findex key",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
     trace!("Key successfully parsed");
 
@@ -106,12 +106,12 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime",
-        ErrorCode::Tokio.into()
+        ErrorCode::Tokio
     );
     let findex = ffi_unwrap!(
         rt.block_on(InstantiatedFindex::new(config)),
         "error instantiating Findex with custom backend",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
 
     let mut cache = FINDEX_INSTANCES
@@ -120,7 +120,7 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
     let handle = ffi_unwrap!(
         <i32>::try_from(cache.len()),
         "findex instance cache capacity overflow",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
 
     cache.insert(handle, (key, label, findex));
@@ -162,7 +162,7 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
     let authorization_token = ffi_unwrap!(
         crate::backends::rest::AuthorizationToken::from_str(&token),
         "authorization token conversion failed",
-        ErrorCode::Backend.into()
+        ErrorCode::Backend
     );
 
     let base_url = if url_ptr.is_null() {
@@ -176,12 +176,12 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime",
-        ErrorCode::Tokio.into()
+        ErrorCode::Tokio
     );
     let findex = ffi_unwrap!(
         rt.block_on(InstantiatedFindex::new(config)),
         "error instantiating Findex with REST backend",
-        ErrorCode::Backend.into()
+        ErrorCode::Backend
     );
 
     let mut cache = FINDEX_INSTANCES
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
     let handle = ffi_unwrap!(
         <i32>::try_from(cache.len()),
         "findex instance cache capacity overflow",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
     cache.insert(handle, (authorization_token.findex_key, label, findex));
 
@@ -229,7 +229,7 @@ pub unsafe extern "C" fn h_instantiate_with_redis_backend(
     let key = ffi_unwrap!(
         SymmetricKey::try_from_slice(key_bytes),
         "error deserializing findex key",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
     trace!("Key successfully parsed");
 
@@ -247,12 +247,12 @@ pub unsafe extern "C" fn h_instantiate_with_redis_backend(
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime",
-        ErrorCode::Tokio.into()
+        ErrorCode::Tokio
     );
     let findex = ffi_unwrap!(
         rt.block_on(InstantiatedFindex::new(config)),
         "error instantiating Findex with REST backend",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
 
     let mut cache = FINDEX_INSTANCES
@@ -261,7 +261,7 @@ pub unsafe extern "C" fn h_instantiate_with_redis_backend(
     let handle = ffi_unwrap!(
         <i32>::try_from(cache.len()),
         "findex instance cache capacity overflow",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
     cache.insert(handle, (key, label, findex));
 
@@ -302,7 +302,7 @@ pub unsafe extern "C" fn h_search(
     let keywords = ffi_unwrap!(
         deserialize_keyword_set(ffi_read_bytes!("keywords", keywords_ptr, keywords_len)),
         "error deserializing keywords",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
     let keywords = Keywords::from(keywords);
     trace!("Keywords successfully parsed: keywords: {keywords}");
@@ -324,13 +324,13 @@ pub unsafe extern "C" fn h_search(
             .get(&findex_handle)
             .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
         "cannot get a hold on the Findex instance",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime",
-        ErrorCode::Tokio.into()
+        ErrorCode::Tokio
     );
 
     let res = rt.block_on(findex.search(key, label, keywords, &user_interrupt));
@@ -357,23 +357,23 @@ pub unsafe extern "C" fn h_search(
     ffi_unwrap!(
         serializer.write_leb128_u64(results.len() as u64),
         "error serializing length",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
     for (keyword, locations) in results {
         ffi_unwrap!(
             serializer.write_vec(&keyword),
             "error serializing keyword",
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         );
         let serialized_location_set = ffi_unwrap!(
             serialize_location_set(&locations),
             "error serializing set",
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         );
         ffi_unwrap!(
             serializer.write_array(&serialized_location_set),
             "error serializing locations",
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         );
     }
     let serialized_uids = serializer.finalize();
@@ -408,7 +408,7 @@ pub unsafe extern "C" fn h_add(
     let associations = IndexedValueToKeywordsMap::from(ffi_unwrap!(
         deserialize_indexed_values(associations_bytes),
         "failed deserialize indexed values (associations)",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     ));
 
     let output_size = get_upsert_output_size(&associations);
@@ -430,7 +430,7 @@ pub unsafe extern "C" fn h_add(
             .get(&findex_handle)
             .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
         "cannot get a hold on the Findex instance",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
 
     trace!("instantiated Findex: {findex:?}");
@@ -438,7 +438,7 @@ pub unsafe extern "C" fn h_add(
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime",
-        ErrorCode::Tokio.into()
+        ErrorCode::Tokio
     );
 
     let res = rt.block_on(findex.add(key, label, associations));
@@ -461,7 +461,7 @@ pub unsafe extern "C" fn h_add(
     let serialized_keywords = ffi_unwrap!(
         serialize_keyword_set(&new_keywords),
         "serialize new keywords",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
 
     ffi_write_bytes!(
@@ -499,7 +499,7 @@ pub unsafe extern "C" fn h_delete(
     let associations = IndexedValueToKeywordsMap::from(ffi_unwrap!(
         deserialize_indexed_values(associations_bytes),
         "failed deserialize indexed values (associations)",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     ));
 
     let output_size = get_upsert_output_size(&associations);
@@ -521,7 +521,7 @@ pub unsafe extern "C" fn h_delete(
             .get(&findex_handle)
             .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
         "cannot get a hold on the Findex instance",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
 
     trace!("instantiated Findex: {findex:?}");
@@ -529,7 +529,7 @@ pub unsafe extern "C" fn h_delete(
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime",
-        ErrorCode::Tokio.into()
+        ErrorCode::Tokio
     );
 
     let res = rt.block_on(findex.delete(key, label, associations));
@@ -552,7 +552,7 @@ pub unsafe extern "C" fn h_delete(
     let serialized_keywords = ffi_unwrap!(
         serialize_keyword_set(&new_keywords),
         "serialize new keywords",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
 
     ffi_write_bytes!(
@@ -631,7 +631,7 @@ pub unsafe extern "C" fn h_compact(
     let new_key = ffi_unwrap!(
         SymmetricKey::try_from_slice(new_key_bytes),
         "error deserializing new findex key",
-        ErrorCode::Serialization.into()
+        ErrorCode::Serialization
     );
 
     let new_label_bytes = ffi_read_bytes!("new label", new_label_ptr, new_label_len);
@@ -646,13 +646,13 @@ pub unsafe extern "C" fn h_compact(
             .get_mut(&findex_handle)
             .ok_or_else(|| format!("no matching instance for handle {findex_handle}")),
         "cannot get a hold on the Findex instance",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
         "error creating Tokio runtime",
-        ErrorCode::Tokio.into()
+        ErrorCode::Tokio
     );
 
     trace!("instantiated Findex: {findex:?}");
@@ -741,7 +741,7 @@ pub unsafe extern "C" fn h_generate_new_token(
         ffi_unwrap!(
             SymmetricKey::try_from_slice(fetch_entries_seed),
             "fetch_entries_seed is of wrong size",
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         ),
     );
     seeds.insert(
@@ -749,7 +749,7 @@ pub unsafe extern "C" fn h_generate_new_token(
         ffi_unwrap!(
             SymmetricKey::try_from_slice(fetch_chains_seed),
             "fetch_chains_seed is of wrong size",
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         ),
     );
     seeds.insert(
@@ -757,7 +757,7 @@ pub unsafe extern "C" fn h_generate_new_token(
         ffi_unwrap!(
             SymmetricKey::try_from_slice(upsert_entries_seed),
             "upsert_entries_seed is of wrong size",
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         ),
     );
     seeds.insert(
@@ -765,7 +765,7 @@ pub unsafe extern "C" fn h_generate_new_token(
         ffi_unwrap!(
             SymmetricKey::try_from_slice(insert_chains_seed),
             "insert_chains_seed is of wrong size",
-            ErrorCode::Serialization.into()
+            ErrorCode::Serialization
         ),
     );
 
@@ -775,7 +775,7 @@ pub unsafe extern "C" fn h_generate_new_token(
     let token = ffi_unwrap!(
         AuthorizationToken::new(index_id, findex_key, seeds),
         "generate authorization token",
-        ErrorCode::Findex.into()
+        ErrorCode::Findex
     );
 
     ffi_write_bytes!(

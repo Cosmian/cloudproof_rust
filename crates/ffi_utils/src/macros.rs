@@ -39,7 +39,7 @@ macro_rules! ffi_unwrap {
                     "{}: {}",
                     $msg, e
                 )));
-                return $code;
+                return $code.into();
             }
         }
     };

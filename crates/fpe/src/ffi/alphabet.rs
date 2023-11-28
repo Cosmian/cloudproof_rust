@@ -23,7 +23,7 @@ pub unsafe fn fpe(
     let mut alphabet = ffi_unwrap!(
         get_alphabet(&alphabet_id_str),
         "Alphabet id not supported",
-        ErrorCode::Fpe.into()
+        ErrorCode::Fpe
     );
     let additional_characters_str =
         ffi_read_string!("additional_characters_ptr", additional_characters_ptr);
@@ -33,13 +33,13 @@ pub unsafe fn fpe(
         ffi_unwrap!(
             alphabet.encrypt(key_bytes, tweak_bytes, &input_str),
             "fpe encryption process",
-            ErrorCode::Encryption.into()
+            ErrorCode::Encryption
         )
     } else {
         ffi_unwrap!(
             alphabet.decrypt(key_bytes, tweak_bytes, &input_str),
             "fpe decryption process",
-            ErrorCode::Decryption.into()
+            ErrorCode::Decryption
         )
     };
 
