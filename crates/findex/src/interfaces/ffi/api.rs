@@ -105,7 +105,8 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
+        "error creating Tokio runtime",
+        ErrorCode::Tokio.into()
     );
     let findex = ffi_unwrap!(
         rt.block_on(InstantiatedFindex::new(config)),
@@ -174,7 +175,8 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
+        "error creating Tokio runtime",
+        ErrorCode::Tokio.into()
     );
     let findex = ffi_unwrap!(
         rt.block_on(InstantiatedFindex::new(config)),
@@ -244,7 +246,8 @@ pub unsafe extern "C" fn h_instantiate_with_redis_backend(
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
+        "error creating Tokio runtime",
+        ErrorCode::Tokio.into()
     );
     let findex = ffi_unwrap!(
         rt.block_on(InstantiatedFindex::new(config)),
@@ -326,7 +329,8 @@ pub unsafe extern "C" fn h_search(
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
+        "error creating Tokio runtime",
+        ErrorCode::Tokio.into()
     );
 
     let res = rt.block_on(findex.search(key, label, keywords, &user_interrupt));
@@ -433,7 +437,8 @@ pub unsafe extern "C" fn h_add(
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
+        "error creating Tokio runtime",
+        ErrorCode::Tokio.into()
     );
 
     let res = rt.block_on(findex.add(key, label, associations));
@@ -523,7 +528,8 @@ pub unsafe extern "C" fn h_delete(
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
+        "error creating Tokio runtime",
+        ErrorCode::Tokio.into()
     );
 
     let res = rt.block_on(findex.delete(key, label, associations));
@@ -645,7 +651,8 @@ pub unsafe extern "C" fn h_compact(
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
-        "error creating Tokio runtime"
+        "error creating Tokio runtime",
+        ErrorCode::Tokio.into()
     );
 
     trace!("instantiated Findex: {findex:?}");
@@ -733,28 +740,32 @@ pub unsafe extern "C" fn h_generate_new_token(
         CallbackPrefix::FetchEntry,
         ffi_unwrap!(
             SymmetricKey::try_from_slice(fetch_entries_seed),
-            "fetch_entries_seed is of wrong size"
+            "fetch_entries_seed is of wrong size",
+            ErrorCode::Serialization.into()
         ),
     );
     seeds.insert(
         CallbackPrefix::FetchChain,
         ffi_unwrap!(
             SymmetricKey::try_from_slice(fetch_chains_seed),
-            "fetch_chains_seed is of wrong size"
+            "fetch_chains_seed is of wrong size",
+            ErrorCode::Serialization.into()
         ),
     );
     seeds.insert(
         CallbackPrefix::Upsert,
         ffi_unwrap!(
             SymmetricKey::try_from_slice(upsert_entries_seed),
-            "upsert_entries_seed is of wrong size"
+            "upsert_entries_seed is of wrong size",
+            ErrorCode::Serialization.into()
         ),
     );
     seeds.insert(
         CallbackPrefix::Insert,
         ffi_unwrap!(
             SymmetricKey::try_from_slice(insert_chains_seed),
-            "insert_chains_seed is of wrong size"
+            "insert_chains_seed is of wrong size",
+            ErrorCode::Serialization.into()
         ),
     );
 
@@ -763,7 +774,8 @@ pub unsafe extern "C" fn h_generate_new_token(
 
     let token = ffi_unwrap!(
         AuthorizationToken::new(index_id, findex_key, seeds),
-        "generate authorization token"
+        "generate authorization token",
+        ErrorCode::Findex.into()
     );
 
     ffi_write_bytes!(

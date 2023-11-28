@@ -1,6 +1,8 @@
 use core::{cell::RefCell, fmt::Display};
 use std::ffi::CString;
 
+use crate::ErrorCode;
+
 #[derive(Debug)]
 pub enum FfiError {
     NullPointer(String),
@@ -77,7 +79,8 @@ pub unsafe extern "C" fn h_get_error(error_ptr: *mut i8, error_len: *mut i32) ->
     // Get the error message as a null terminated string.
     let cs = ffi_unwrap!(
         CString::new(get_last_error()),
-        "failed to convert error to CString"
+        "failed to convert error to CString",
+        ErrorCode::InvalidArgument("CString".to_string()).into()
     );
 
     ffi_write_bytes!("error", cs.as_bytes(), error_ptr, error_len);

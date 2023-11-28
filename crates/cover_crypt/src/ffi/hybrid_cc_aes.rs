@@ -14,7 +14,9 @@ use cosmian_crypto_core::{
     bytes_ser_de::{Deserializer, Serializable, Serializer},
     Aes256Gcm, FixedSizeCBytes, SymmetricKey,
 };
-use cosmian_ffi_utils::{ffi_bail, ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
+use cosmian_ffi_utils::{
+    ffi_bail, ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes, ErrorCode,
+};
 use lazy_static::lazy_static;
 
 // -------------------------------
@@ -52,11 +54,16 @@ pub unsafe extern "C" fn h_create_encryption_cache(
     mpk_len: i32,
 ) -> i32 {
     let policy = ffi_read_bytes!("policy", policy_ptr, policy_len);
-    let policy = ffi_unwrap!(Policy::try_from(policy), "error deserializing policy");
+    let policy = ffi_unwrap!(
+        Policy::try_from(policy),
+        "error deserializing policy",
+        ErrorCode::Serialization.into()
+    );
     let mpk = ffi_read_bytes!("public key", mpk_ptr, mpk_len);
     let mpk = ffi_unwrap!(
         MasterPublicKey::deserialize(mpk),
-        "error deserializing public key"
+        "error deserializing public key",
+        ErrorCode::Serialization.into()
     );
 
     let cache = EncryptionCache { policy, mpk };
@@ -103,7 +110,8 @@ pub unsafe extern "C" fn h_encrypt_header_using_cache(
     let encryption_policy_bytes = ffi_read_string!("encryption policy", encryption_policy_ptr);
     let encryption_policy = ffi_unwrap!(
         AccessPolicy::from_boolean_expression(&encryption_policy_bytes),
-        "error parsing encryption policy"
+        "error parsing encryption policy",
+        ErrorCode::CovercryptPolicy.into()
     );
 
     let header_metadata = if header_metadata_ptr.is_null() || header_metadata_len == 0 {
@@ -146,12 +154,14 @@ pub unsafe extern "C" fn h_encrypt_header_using_cache(
             header_metadata,
             authentication_data,
         ),
-        "error encrypting CoverCrypt header"
+        "error encrypting CoverCrypt header",
+        ErrorCode::Covercrypt.into()
     );
 
     let encrypted_header_bytes = ffi_unwrap!(
         encrypted_header.serialize(),
-        "error serializing encrypted CoverCrypt header"
+        "error serializing encrypted CoverCrypt header",
+        ErrorCode::Serialization.into()
     );
 
     ffi_write_bytes!(
@@ -188,16 +198,22 @@ pub unsafe extern "C" fn h_encrypt_header(
     authentication_data_len: i32,
 ) -> i32 {
     let policy = ffi_read_bytes!("policy", policy_ptr, policy_len);
-    let policy = ffi_unwrap!(Policy::try_from(policy), "error deserializing policy");
+    let policy = ffi_unwrap!(
+        Policy::try_from(policy),
+        "error deserializing policy",
+        ErrorCode::Serialization.into()
+    );
     let mpk = ffi_read_bytes!("public key", mpk_ptr, mpk_len);
     let mpk = ffi_unwrap!(
         MasterPublicKey::deserialize(mpk),
-        "error deserializing public key"
+        "error deserializing public key",
+        ErrorCode::Serialization.into()
     );
     let encryption_policy_string = ffi_read_string!("encryption policy", encryption_policy_ptr);
     let encryption_policy = ffi_unwrap!(
         AccessPolicy::from_boolean_expression(&encryption_policy_string),
-        "error parsing encryption policy"
+        "error parsing encryption policy",
+        ErrorCode::CovercryptPolicy.into()
     );
     let header_metadata = if header_metadata_ptr.is_null() || header_metadata_len == 0 {
         None
@@ -228,12 +244,14 @@ pub unsafe extern "C" fn h_encrypt_header(
             header_metadata,
             authentication_data
         ),
-        "error encrypting CoverCrypt header"
+        "error encrypting CoverCrypt header",
+        ErrorCode::Encryption.into()
     );
 
     let encrypted_header_bytes = ffi_unwrap!(
         encrypted_header.serialize(),
-        "error serializing encrypted CoverCrypt header"
+        "error serializing encrypted CoverCrypt header",
+        ErrorCode::Serialization.into()
     );
 
     ffi_write_bytes!(
@@ -282,7 +300,8 @@ pub unsafe extern "C" fn h_create_decryption_cache(
     let usk_bytes = ffi_read_bytes!("user secret key", usk_ptr, usk_len);
     let usk = ffi_unwrap!(
         UserSecretKey::deserialize(usk_bytes),
-        "error deserializing user secret key"
+        "error deserializing user secret key",
+        ErrorCode::Serialization.into()
     );
 
     let cache = DecryptionCache { usk };
@@ -333,7 +352,8 @@ pub unsafe extern "C" fn h_decrypt_header_using_cache(
     );
     let encrypted_header = ffi_unwrap!(
         EncryptedHeader::deserialize(encrypted_header_bytes),
-        "error deserializing encrypted header"
+        "error deserializing encrypted header",
+        ErrorCode::Serialization.into()
     );
     let authentication_data = if authentication_data_ptr.is_null() || authentication_data_len == 0 {
         None
@@ -358,7 +378,8 @@ pub unsafe extern "C" fn h_decrypt_header_using_cache(
 
     let header = ffi_unwrap!(
         encrypted_header.decrypt(&Covercrypt::default(), &cache.usk, authentication_data),
-        "error decrypting CoverCrypt header"
+        "error decrypting CoverCrypt header",
+        ErrorCode::Decryption.into()
     );
 
     if header_metadata_ptr.is_null() {
@@ -406,7 +427,8 @@ pub unsafe extern "C" fn h_decrypt_header(
     let usk_bytes = ffi_read_bytes!("user secret key", usk_ptr, usk_len);
     let usk = ffi_unwrap!(
         UserSecretKey::deserialize(usk_bytes),
-        "error deserializing user secret key"
+        "error deserializing user secret key",
+        ErrorCode::Serialization.into()
     );
     let encrypted_header_bytes = ffi_read_bytes!(
         "encrypted header",
@@ -415,7 +437,8 @@ pub unsafe extern "C" fn h_decrypt_header(
     );
     let encrypted_header = ffi_unwrap!(
         EncryptedHeader::deserialize(encrypted_header_bytes),
-        "encrypted header"
+        "encrypted header",
+        ErrorCode::Serialization.into()
     );
 
     let authentication_data = if authentication_data_ptr.is_null() || authentication_data_len == 0 {
@@ -430,7 +453,8 @@ pub unsafe extern "C" fn h_decrypt_header(
 
     let decrypted_header = ffi_unwrap!(
         encrypted_header.decrypt(&Covercrypt::default(), &usk, authentication_data),
-        "error decrypting CoverCrypt header"
+        "error decrypting CoverCrypt header",
+        ErrorCode::Decryption.into()
     );
 
     if header_metadata_ptr.is_null() {
@@ -481,11 +505,13 @@ pub unsafe extern "C" fn h_dem_encrypt(
         ffi_read_bytes!("symmetric key", symmetric_key_ptr, symmetric_key_len);
     let symmetric_key_fixed_length = ffi_unwrap!(
         symmetric_key_bytes.try_into(),
-        "error converting to fixed length"
+        "error converting to fixed length",
+        ErrorCode::Serialization.into()
     );
     let symmetric_key = ffi_unwrap!(
         SymmetricKey::try_from_bytes(symmetric_key_fixed_length),
-        "error parsing symmetric key"
+        "error parsing symmetric key",
+        ErrorCode::Serialization.into()
     );
     let authentication_data = if authentication_data_ptr.is_null() || authentication_data_len == 0 {
         None
@@ -499,7 +525,8 @@ pub unsafe extern "C" fn h_dem_encrypt(
 
     let ciphertext = ffi_unwrap!(
         Covercrypt::default().encrypt(&symmetric_key, plaintext, authentication_data),
-        "error encrypting plaintext"
+        "error encrypting plaintext",
+        ErrorCode::Encryption.into()
     );
 
     ffi_write_bytes!("ciphertext", &ciphertext, ciphertext_ptr, ciphertext_len);
@@ -523,11 +550,13 @@ pub unsafe extern "C" fn h_dem_decrypt(
         ffi_read_bytes!("symmetric key", symmetric_key_ptr, symmetric_key_len);
     let symmetric_key_fixed_length = ffi_unwrap!(
         symmetric_key_bytes.try_into(),
-        "error converting to fixed length"
+        "error converting to fixed length",
+        ErrorCode::Serialization.into()
     );
     let symmetric_key = ffi_unwrap!(
         SymmetricKey::try_from_bytes(symmetric_key_fixed_length),
-        "error parsing symmetric key"
+        "error parsing symmetric key",
+        ErrorCode::Serialization.into()
     );
     let authentication_data = if authentication_data_ptr.is_null() || authentication_data_len == 0 {
         None
@@ -541,7 +570,8 @@ pub unsafe extern "C" fn h_dem_decrypt(
 
     let plaintext = ffi_unwrap!(
         Covercrypt::default().decrypt(&symmetric_key, ciphertext, authentication_data),
-        "error decrypting symmetric ciphertext"
+        "error decrypting symmetric ciphertext",
+        ErrorCode::Decryption.into()
     );
 
     ffi_write_bytes!("plaintext", &plaintext, plaintext_ptr, plaintext_len);
@@ -569,18 +599,21 @@ pub unsafe extern "C" fn h_hybrid_encrypt(
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
     let policy = ffi_unwrap!(
         Policy::parse_and_convert(policy_bytes),
-        "error deserializing policy"
+        "error deserializing policy",
+        ErrorCode::Serialization.into()
     );
     let encryption_policy_string = ffi_read_string!("encryption policy", encryption_policy_ptr);
     let encryption_policy = ffi_unwrap!(
         AccessPolicy::from_boolean_expression(&encryption_policy_string),
-        "error parsing encryption policy"
+        "error parsing encryption policy",
+        ErrorCode::Serialization.into()
     );
     let plaintext = ffi_read_bytes!("plaintext", plaintext_ptr, plaintext_len);
     let mpk_bytes = ffi_read_bytes!("public key", mpk_ptr, mpk_len);
     let mpk = ffi_unwrap!(
         MasterPublicKey::deserialize(mpk_bytes),
-        "error deserializing public key"
+        "error deserializing public key",
+        ErrorCode::Serialization.into()
     );
     let header_metadata = if header_metadata_ptr.is_null() || header_metadata_len == 0 {
         None
@@ -611,22 +644,26 @@ pub unsafe extern "C" fn h_hybrid_encrypt(
             header_metadata,
             authentication_data
         ),
-        "error encrypting CoverCrypt header"
+        "error encrypting CoverCrypt header",
+        ErrorCode::Encryption.into()
     );
 
     let ciphertext = ffi_unwrap!(
         Covercrypt::default().encrypt(&symmetric_key, plaintext, authentication_data,),
-        "error encrypting plaintext"
+        "error encrypting plaintext",
+        ErrorCode::Encryption.into()
     );
 
     let mut ser = Serializer::with_capacity(encrypted_header.length() + ciphertext.len());
     ffi_unwrap!(
         ser.write(&encrypted_header),
-        "error serializing encrypted CoverCrypt header"
+        "error serializing encrypted CoverCrypt header",
+        ErrorCode::Serialization.into()
     );
     ffi_unwrap!(
         ser.write_array(&ciphertext),
-        "error deserializing symmetric ciphertext"
+        "error deserializing symmetric ciphertext",
+        ErrorCode::Serialization.into()
     );
     let bytes = ser.finalize();
 
@@ -654,7 +691,8 @@ pub unsafe extern "C" fn h_hybrid_decrypt(
     let usk_bytes = ffi_read_bytes!("user secret key", usk_ptr, usk_len);
     let usk = ffi_unwrap!(
         UserSecretKey::deserialize(usk_bytes),
-        "error deserializing user secret key"
+        "error deserializing user secret key",
+        ErrorCode::Serialization.into()
     );
     let authentication_data = if authentication_data_ptr.is_null() || authentication_data_len == 0 {
         None
@@ -671,7 +709,8 @@ pub unsafe extern "C" fn h_hybrid_decrypt(
     let encrypted_header = ffi_unwrap!(
         // this will read the exact header size
         de.read::<EncryptedHeader>(),
-        "error deserializing encrypted CoverCrypt header"
+        "error deserializing encrypted CoverCrypt header",
+        ErrorCode::Serialization.into()
     );
     // the rest is the symmetric ciphertext
     let encrypted_content = de.finalize();
@@ -679,7 +718,8 @@ pub unsafe extern "C" fn h_hybrid_decrypt(
     // Decrypt header
     let decrypted_header = ffi_unwrap!(
         encrypted_header.decrypt(&Covercrypt::default(), &usk, authentication_data),
-        "error decrypting CoverCrypt header"
+        "error decrypting CoverCrypt header",
+        ErrorCode::Decryption.into()
     );
 
     let plaintext = ffi_unwrap!(
@@ -688,7 +728,8 @@ pub unsafe extern "C" fn h_hybrid_decrypt(
             &encrypted_content,
             authentication_data,
         ),
-        "error decrypting symmetric ciphertext"
+        "error decrypting symmetric ciphertext",
+        ErrorCode::Decryption.into()
     );
 
     if header_metadata_ptr.is_null() {

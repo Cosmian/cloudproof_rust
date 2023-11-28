@@ -31,18 +31,6 @@ macro_rules! ffi_not_null {
 /// - `msg` : additional message to use as error
 #[macro_export]
 macro_rules! ffi_unwrap {
-    ($res:expr, $msg:expr) => {
-        match $res {
-            Ok(v) => v,
-            Err(e) => {
-                $crate::error::set_last_error($crate::error::FfiError::Generic(format!(
-                    "{}: {}",
-                    $msg, e
-                )));
-                return -1_i32;
-            }
-        }
-    };
     ($res:expr, $msg:expr, $code:expr) => {
         match $res {
             Ok(v) => v,
