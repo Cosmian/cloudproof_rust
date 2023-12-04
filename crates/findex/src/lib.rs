@@ -1,14 +1,14 @@
 //! Defines Findex interfaces for other languages.
 
-pub mod backends;
+pub mod db_interfaces;
 
 #[cfg(any(
-    feature = "backend-ffi",
-    feature = "backend-python",
-    feature = "backend-redis",
-    feature = "backend-rest",
-    feature = "backend-sqlite",
-    feature = "backend-wasm",
+    feature = "ffi",
+    feature = "python",
+    feature = "redis-interface",
+    feature = "rest-interface",
+    feature = "sqlite-interface",
+    feature = "wasm",
 ))]
 mod instantiation;
 
@@ -22,11 +22,11 @@ pub mod logger;
 pub mod ser_de;
 
 #[cfg(any(
-    feature = "backend-ffi",
-    feature = "backend-python",
-    feature = "backend-redis",
-    feature = "backend-rest",
-    feature = "backend-sqlite",
-    feature = "backend-wasm",
+    feature = "ffi",
+    feature = "python",
+    feature = "redis-interface",
+    feature = "rest-interface",
+    feature = "sqlite-interface",
+    feature = "wasm",
 ))]
-pub use instantiation::{BackendConfiguration, InstantiatedFindex};
+pub use instantiation::{Configuration, InstantiatedFindex};

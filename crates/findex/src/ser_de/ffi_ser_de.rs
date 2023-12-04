@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializer};
 use cosmian_findex::{
-    EncryptedValue, IndexedValue, Keyword, Keywords, Location, Token, TokenToEncryptedValueMap,
+    Data, EncryptedValue, IndexedValue, Keyword, Keywords, Token, TokenToEncryptedValueMap,
     TokenWithEncryptedValueList, Tokens,
 };
 
@@ -27,7 +27,7 @@ pub const fn get_serialized_edx_lines_size_bound<const VALUE_LENGTH: usize>(
 
 #[must_use]
 pub fn get_upsert_output_size(
-    modifications: &HashMap<IndexedValue<Keyword, Location>, Keywords>,
+    modifications: &HashMap<IndexedValue<Keyword, Data>, Keywords>,
 ) -> usize {
     // Since `h_add` (resp. `h_delete`) returns the set of keywords that have been inserted (resp.
     // deleted), caller MUST know in advance how much memory is needed before calling `h_add`
@@ -96,7 +96,7 @@ pub fn deserialize_keyword_set(keywords: &[u8]) -> Result<HashSet<Keyword>, Seri
     }
 }
 
-pub fn serialize_location_set(set: &HashSet<Location>) -> Result<Vec<u8>, SerializationError> {
+pub fn serialize_location_set(set: &HashSet<Data>) -> Result<Vec<u8>, SerializationError> {
     let mut ser = Serializer::with_capacity(set.len());
     ser.write_leb128_u64(set.len() as u64)?;
     for element in set {
@@ -105,12 +105,12 @@ pub fn serialize_location_set(set: &HashSet<Location>) -> Result<Vec<u8>, Serial
     Ok(ser.finalize().to_vec())
 } //TODO: merge functions
 
-pub fn deserialize_location_set(bytes: &[u8]) -> Result<HashSet<Location>, SerializationError> {
+pub fn deserialize_location_set(bytes: &[u8]) -> Result<HashSet<Data>, SerializationError> {
     let mut de = Deserializer::new(bytes);
     let length = <usize>::try_from(de.read_leb128_u64()?)?;
     let mut res = HashSet::with_capacity(length);
     for _ in 0..length {
-        let location = Location::from(de.read_vec()?);
+        let location = Data::from(de.read_vec()?);
         res.insert(location);
     }
     Ok(res)
@@ -145,7 +145,7 @@ pub fn deserialize_edx_lines<const VALUE_LENGTH: usize>(
 }
 
 pub fn serialize_indexed_values(
-    map: &HashMap<IndexedValue<Keyword, Location>, HashSet<Keyword>>,
+    map: &HashMap<IndexedValue<Keyword, Data>, HashSet<Keyword>>,
 ) -> Result<Vec<u8>, SerializationError> {
     let mut ser = Serializer::with_capacity(map.len());
     ser.write_leb128_u64(map.len() as u64)?;
@@ -162,7 +162,7 @@ pub fn serialize_indexed_values(
 
 pub fn deserialize_indexed_values(
     bytes: &[u8],
-) -> Result<HashMap<IndexedValue<Keyword, Location>, HashSet<Keyword>>, SerializationError> {
+) -> Result<HashMap<IndexedValue<Keyword, Data>, HashSet<Keyword>>, SerializationError> {
     let mut de = Deserializer::new(bytes);
     let length = <usize>::try_from(de.read_leb128_u64()?)?;
     let mut items = HashMap::with_capacity(length);
@@ -180,7 +180,7 @@ pub fn deserialize_indexed_values(
 }
 
 pub fn serialize_intermediate_results(
-    res: &HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>,
+    res: &HashMap<Keyword, HashSet<IndexedValue<Keyword, Data>>>,
 ) -> Result<Vec<u8>, SerializationError> {
     let mut ser = Serializer::with_capacity(res.len());
     ser.write_leb128_u64(res.len() as u64)?;
@@ -223,9 +223,9 @@ mod tests {
         // Index 1 keyword
         //
         let mut indexed_value_to_keywords = HashMap::new();
-        let felix_location = Location::from(vec![0, 0, 0, 0, 0, 0, 0, 0]);
+        let felix_location = Data::from(vec![0, 0, 0, 0, 0, 0, 0, 0]);
         indexed_value_to_keywords.insert(
-            IndexedValue::<Keyword, Location>::Data(felix_location),
+            IndexedValue::<Keyword, Data>::Data(felix_location),
             HashSet::from_iter([Keyword::from("Felix")]),
         );
         let serialized_iv = serialize_indexed_values(&indexed_value_to_keywords).unwrap();
@@ -236,9 +236,9 @@ mod tests {
         // Index 2 keywords
         //
         let mut indexed_value_to_keywords = HashMap::new();
-        let robert_doe_location = Location::from("robert doe DB location");
+        let robert_doe_location = Data::from("robert doe DB location");
         indexed_value_to_keywords.insert(
-            IndexedValue::<Keyword, Location>::Data(robert_doe_location),
+            IndexedValue::<Keyword, Data>::Data(robert_doe_location),
             HashSet::from_iter([Keyword::from("robert"), Keyword::from("doe")]),
         );
         let serialized_iv = serialize_indexed_values(&indexed_value_to_keywords).unwrap();

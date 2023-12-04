@@ -25,28 +25,26 @@ default = []
 serialization = []
 
 ffi = [
-  "backend-ffi",
-  "backend-redis",
-  "backend-rest",
+  "redis-interface",
+  "rest-interface",
   "cosmian_ffi_utils",
   "lazy_static",
   "serialization",
   "tokio/rt-multi-thread",
+  "cosmian_crypto_core/ser",
 ]
 
 python = [
-  "backend-python",
-  "backend-redis",
-  "backend-rest",
-  "backend-sqlite",
+  "redis-interface",
+  "rest-interface",
+  "sqlite-interface",
   "futures",
   "pyo3",
   "tokio/rt-multi-thread",
 ]
 
 wasm = [
-  "backend-rest",
-  "backend-wasm",
+  "rest-interface",
   "js-sys",
   "log",
   "serialization",
@@ -56,17 +54,9 @@ wasm = [
   "serialization",
 ]
 
-backend-ffi = ["cosmian_crypto_core/ser", "serialization"]
-backend-python = ["pyo3"]
-backend-redis = ["redis"]
-backend-rest = ["base64", "cosmian_crypto_core/ser", "reqwest", "serialization"]
-backend-sqlite = ["rusqlite"]
-backend-wasm = [
-  "js-sys",
-  "wasm-bindgen",
-  "wasm-bindgen-futures",
-  "serialization",
-]
+redis-interface = ["redis"]
+rest-interface = ["base64", "cosmian_crypto_core/ser", "reqwest", "serialization"]
+sqlite-interface = ["rusqlite"]
 
 [dependencies]
 # Optional dependencies
@@ -75,7 +65,7 @@ async-trait = { workspace = true }
 base64 = { workspace = true, optional = true }
 cosmian_crypto_core = { workspace = true, default-features = false }
 cosmian_ffi_utils = { workspace = true, optional = true }
-cosmian_findex = { git = "https://github.com/Cosmian/findex", branch = "develop" }
+cosmian_findex = { git = "https://github.com/Cosmian/findex", branch = "fix/documentation" }
 futures = { version = "0.3.29", optional = true }
 js-sys = { workspace = true, optional = true }
 lazy_static = { version = "1.4.0", optional = true }

@@ -3,17 +3,17 @@
 use std::{collections::HashMap, ops::Deref, sync::RwLock};
 
 use async_trait::async_trait;
-use cosmian_findex::{EdxBackend, EncryptedValue, Token, ENTRY_LENGTH, LINK_LENGTH};
+use cosmian_findex::{DbInterface, EncryptedValue, Token, ENTRY_LENGTH, LINK_LENGTH};
 use rusqlite::{params_from_iter, Connection, OptionalExtension};
 
-use crate::backends::BackendError;
+use crate::db_interfaces::DbInterfaceError;
 
 /// Implements the `SQLite` backend for the given `$type`, with values of size
 /// `$value_length`.
 macro_rules! impl_sqlite_backend {
     ($type:ident, $value_length:ident, $table_name:literal) => {
         impl $type {
-            pub fn new(db_path: &str) -> Result<Self, BackendError> {
+            pub fn new(db_path: &str) -> Result<Self, DbInterfaceError> {
                 let connection = Connection::open(db_path)?;
                 connection
                     .execute(
@@ -40,8 +40,8 @@ macro_rules! impl_sqlite_backend {
         }
 
         #[async_trait(?Send)]
-        impl EdxBackend<$value_length> for $type {
-            type Error = BackendError;
+        impl DbInterface<$value_length> for $type {
+            type Error = DbInterfaceError;
 
             async fn dump_tokens(&self) -> Result<cosmian_findex::Tokens, Self::Error> {
                 let cnx = self.read().expect("poisoned mutex");
@@ -192,8 +192,10 @@ mod tests {
     use futures::executor::block_on;
 
     use crate::{
-        backends::tests::{test_backend, test_generate_non_regression_db, test_non_regression},
-        BackendConfiguration,
+        db_interfaces::tests::{
+            test_backend, test_generate_non_regression_db, test_non_regression,
+        },
+        Configuration,
     };
 
     #[test]
@@ -202,7 +204,7 @@ mod tests {
         if db_path.exists() {
             std::fs::remove_file(db_path).unwrap();
         }
-        let config = BackendConfiguration::Sqlite(
+        let config = Configuration::Sqlite(
             db_path.to_str().unwrap().to_string(),
             db_path.to_str().unwrap().to_string(),
         );
@@ -217,7 +219,7 @@ mod tests {
             std::fs::remove_file(db_path).unwrap();
         }
 
-        let config = BackendConfiguration::Sqlite(
+        let config = Configuration::Sqlite(
             db_path.to_str().unwrap().to_string(),
             db_path.to_str().unwrap().to_string(),
         );
@@ -226,7 +228,7 @@ mod tests {
 
         // Test existing non-regression database.
         let db_path = Path::new("datasets/sqlite.db");
-        let config = BackendConfiguration::Sqlite(
+        let config = Configuration::Sqlite(
             db_path.to_str().unwrap().to_string(),
             db_path.to_str().unwrap().to_string(),
         );

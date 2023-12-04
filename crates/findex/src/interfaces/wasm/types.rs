@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use cosmian_findex::{IndexedValue, Keyword, KeywordToDataMap, Keywords, Location};
+use cosmian_findex::{Data, IndexedValue, Keyword, KeywordToDataMap, Keywords};
 use js_sys::{Array, JsString, Object, Reflect, Uint8Array};
 use wasm_bindgen::{prelude::wasm_bindgen, JsCast, JsValue};
 
@@ -64,11 +64,11 @@ extern "C" {
     pub type InterruptInput;
 }
 
-impl TryFrom<HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>> for InterruptInput {
+impl TryFrom<HashMap<Keyword, HashSet<IndexedValue<Keyword, Data>>>> for InterruptInput {
     type Error = WasmError;
 
     fn try_from(
-        results: HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>,
+        results: HashMap<Keyword, HashSet<IndexedValue<Keyword, Data>>>,
     ) -> Result<Self, WasmError> {
         let array = Array::new_with_length(results.len() as u32);
         for (i, (keyword, indexed_values)) in results.into_iter().enumerate() {
@@ -101,8 +101,8 @@ extern "C" {
     pub type IndexedData;
 }
 
-impl From<&HashSet<Location>> for IndexedData {
-    fn from(indexed_data: &HashSet<Location>) -> Self {
+impl From<&HashSet<Data>> for IndexedData {
+    fn from(indexed_data: &HashSet<Data>) -> Self {
         let array = Array::new();
         for data in indexed_data {
             let js_data = unsafe { Uint8Array::new(&Uint8Array::view(data)) };
@@ -112,7 +112,7 @@ impl From<&HashSet<Location>> for IndexedData {
     }
 }
 
-impl TryFrom<IndexedData> for HashSet<Location> {
+impl TryFrom<IndexedData> for HashSet<Data> {
     type Error = WasmError;
 
     fn try_from(value: IndexedData) -> Result<Self, Self::Error> {
@@ -133,7 +133,7 @@ impl TryFrom<IndexedData> for HashSet<Location> {
             .map(|(i, try_data)| {
                 try_data
                     .map_err(|e| WasmError(format!("failed getting data at index {i}: {e:?}")))
-                    .map(|data| Location::from(Uint8Array::from(data).to_vec()))
+                    .map(|data| Data::from(Uint8Array::from(data).to_vec()))
             })
             .collect()
     }
@@ -175,9 +175,7 @@ extern "C" {
     pub type IndexedValuesAndKeywords;
 }
 
-impl TryFrom<&IndexedValuesAndKeywords>
-    for HashMap<IndexedValue<Keyword, Location>, HashSet<Keyword>>
-{
+impl TryFrom<&IndexedValuesAndKeywords> for HashMap<IndexedValue<Keyword, Data>, HashSet<Keyword>> {
     type Error = WasmError;
 
     fn try_from(value: &IndexedValuesAndKeywords) -> Result<Self, Self::Error> {

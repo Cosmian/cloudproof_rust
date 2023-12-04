@@ -1,12 +1,12 @@
-#[cfg(feature = "backend-wasm")]
+#[cfg(feature = "wasm")]
 use std::array::TryFromSliceError;
 use std::{fmt::Display, num::TryFromIntError};
 
 use cosmian_crypto_core::CryptoCoreError;
 use cosmian_findex::CoreError as FindexCoreError;
-#[cfg(feature = "backend-wasm")]
+#[cfg(feature = "wasm")]
 use js_sys::{JsString, Object};
-#[cfg(feature = "backend-wasm")]
+#[cfg(feature = "wasm")]
 use wasm_bindgen::{JsCast, JsValue};
 
 #[derive(Debug)]
@@ -38,14 +38,14 @@ impl From<TryFromIntError> for SerializationError {
     }
 }
 
-#[cfg(feature = "backend-wasm")]
+#[cfg(feature = "wasm")]
 impl From<TryFromSliceError> for SerializationError {
     fn from(value: TryFromSliceError) -> Self {
         Self(value.to_string())
     }
 }
 
-#[cfg(feature = "backend-wasm")]
+#[cfg(feature = "wasm")]
 impl From<JsValue> for SerializationError {
     fn from(e: JsValue) -> Self {
         Self(format!(
@@ -61,7 +61,7 @@ impl From<JsValue> for SerializationError {
     }
 }
 
-#[cfg(any(feature = "backend-ffi", feature = "backend-rest", feature = "ffi"))]
+#[cfg(any(feature = "ffi", feature = "rest-interface"))]
 pub mod ffi_ser_de;
-#[cfg(any(feature = "backend-wasm", feature = "wasm"))]
+#[cfg(feature = "wasm")]
 pub mod wasm_ser_de;

@@ -5,19 +5,19 @@ use std::{
 
 use cosmian_crypto_core::FixedSizeCBytes;
 use cosmian_findex::{
-    IndexedValue as IndexedValueRust, IndexedValueToKeywordsMap, Keyword, KeywordToDataMap, Label,
-    Location, UserKey,
+    Data, IndexedValue as IndexedValueRust, IndexedValueToKeywordsMap, Keyword, KeywordToDataMap,
+    Label, UserKey,
 };
 use pyo3::prelude::*;
 use tokio::runtime::Runtime;
 
 use super::types::ToKeyword;
 use crate::{
-    backends::{custom::python::PythonCallbacks, rest::AuthorizationToken},
+    db_interfaces::{custom::python::PythonCallbacks, rest::AuthorizationToken},
     interfaces::python::types::{
         Key as KeyPy, Keyword as KeywordPy, Location as LocationPy, ToIndexedValue,
     },
-    BackendConfiguration, InstantiatedFindex,
+    Configuration, InstantiatedFindex,
 };
 
 #[pyclass(unsendable)]
@@ -30,15 +30,18 @@ pub struct Findex {
 
 #[pymethods]
 impl Findex {
-    /// Instantiates Findex with a SQLite as backend.
+    /// Instantiates Findex with an SQLite interface.
     #[staticmethod]
-    pub fn new_with_sqlite_backend(
+    pub fn new_with_sqlite_interface(
         key: &KeyPy,
         label: String,
         entry_db_path: String,
-        chain_db_path: String,
+        chain_db_path: Option<String>,
     ) -> PyResult<Self> {
-        let configuration = BackendConfiguration::Sqlite(entry_db_path, chain_db_path);
+        let configuration = Configuration::Sqlite(
+            entry_db_path.clone(),
+            chain_db_path.unwrap_or(entry_db_path),
+        );
         let runtime = pyo3_unwrap!(
             tokio::runtime::Runtime::new(),
             "error creating Tokio runtime"
@@ -56,15 +59,16 @@ impl Findex {
         })
     }
 
-    /// Instantiates Findex with a Redis as backend.
+    /// Instantiates Findex with a Redis interface.
     #[staticmethod]
-    pub fn new_with_redis_backend(
+    pub fn new_with_redis_interface(
         key: &KeyPy,
         label: String,
         entry_db_url: String,
-        chain_db_url: String,
+        chain_db_url: Option<String>,
     ) -> PyResult<Self> {
-        let configuration = BackendConfiguration::Redis(entry_db_url, chain_db_url);
+        let configuration =
+            Configuration::Redis(entry_db_url.clone(), chain_db_url.unwrap_or(entry_db_url));
         let runtime = pyo3_unwrap!(
             tokio::runtime::Runtime::new(),
             "error creating Tokio runtime"
@@ -82,15 +86,18 @@ impl Findex {
         })
     }
 
-    /// Instantiates Findex with a custom backend.
+    /// Instantiates Findex with a custom interface.
     #[staticmethod]
-    pub fn new_with_custom_backend(
+    pub fn new_with_custom_interface(
         key: &KeyPy,
         label: String,
         entry_callbacks: PythonCallbacks,
-        chain_callbacks: PythonCallbacks,
+        chain_callbacks: Option<PythonCallbacks>,
     ) -> PyResult<Self> {
-        let configuration = BackendConfiguration::Python(entry_callbacks, chain_callbacks);
+        let configuration = Configuration::Python(
+            entry_callbacks.clone(),
+            chain_callbacks.unwrap_or(entry_callbacks),
+        );
         let runtime = pyo3_unwrap!(
             tokio::runtime::Runtime::new(),
             "error creating Tokio runtime"
@@ -110,7 +117,12 @@ impl Findex {
 
     /// Instantiates Findex with a REST backend.
     #[staticmethod]
-    pub fn new_with_rest_backend(label: String, token: String, url: String) -> PyResult<Self> {
+    pub fn new_with_rest_interface(
+        label: String,
+        token: String,
+        entry_url: String,
+        chain_url: Option<String>,
+    ) -> PyResult<Self> {
         let token = pyo3_unwrap!(
             AuthorizationToken::from_str(&token),
             "cannot convert token string"
@@ -122,8 +134,10 @@ impl Findex {
         let key = UserKey::try_from_slice(&token.findex_key)
             .expect("the bytes passed represent a correct key");
         let instance = pyo3_unwrap!(
-            runtime.block_on(InstantiatedFindex::new(BackendConfiguration::Rest(
-                token, url
+            runtime.block_on(InstantiatedFindex::new(Configuration::Rest(
+                token,
+                entry_url.clone(),
+                chain_url.unwrap_or(entry_url)
             ))),
             "error instantiating Findex with Redis backend"
         );
@@ -213,45 +227,43 @@ impl Findex {
         let keywords_set: HashSet<Keyword> =
             keywords.into_iter().map(|keyword| keyword.0).collect();
 
-        let interrupt = |partial_results: HashMap<
-            Keyword,
-            HashSet<IndexedValueRust<Keyword, Location>>,
-        >| async {
-            if let Some(interrupt) = &interrupt {
-                let res = Python::with_gil(|py| {
-                    let py_results = partial_results
-                        .into_iter()
-                        .map(|(keyword, locations)| {
-                            (
-                                KeywordPy(keyword),
-                                locations
-                                    .into_iter()
-                                    .map(|indexed_value| match indexed_value {
-                                        IndexedValueRust::Data(location) => {
-                                            LocationPy(location).into_py(py)
-                                        }
-                                        IndexedValueRust::Pointer(keyword) => {
-                                            KeywordPy(keyword).into_py(py)
-                                        }
-                                    })
-                                    .collect::<Vec<PyObject>>(),
-                            )
-                        })
-                        .collect::<HashMap<_, _>>();
+        let interrupt =
+            |partial_results: HashMap<Keyword, HashSet<IndexedValueRust<Keyword, Data>>>| async {
+                if let Some(interrupt) = &interrupt {
+                    let res = Python::with_gil(|py| {
+                        let py_results = partial_results
+                            .into_iter()
+                            .map(|(keyword, locations)| {
+                                (
+                                    KeywordPy(keyword),
+                                    locations
+                                        .into_iter()
+                                        .map(|indexed_value| match indexed_value {
+                                            IndexedValueRust::Data(location) => {
+                                                LocationPy(location).into_py(py)
+                                            }
+                                            IndexedValueRust::Pointer(keyword) => {
+                                                KeywordPy(keyword).into_py(py)
+                                            }
+                                        })
+                                        .collect::<Vec<PyObject>>(),
+                                )
+                            })
+                            .collect::<HashMap<_, _>>();
 
-                    let ret = interrupt
-                        .call1(py, (py_results,))
-                        .expect("the bytes passed represent a correct key");
+                        let ret = interrupt
+                            .call1(py, (py_results,))
+                            .expect("the bytes passed represent a correct key");
 
-                    ret.extract(py)
-                        .expect("the bytes passed represent a correct key")
-                });
+                        ret.extract(py)
+                            .expect("the bytes passed represent a correct key")
+                    });
 
-                Ok(res)
-            } else {
-                Ok::<_, String>(false)
-            }
-        };
+                    Ok(res)
+                } else {
+                    Ok::<_, String>(false)
+                }
+            };
 
         let results = pyo3_unwrap!(
             self.runtime.block_on(self.instance.search(
@@ -288,10 +300,10 @@ impl Findex {
         &mut self,
         new_key: &KeyPy,
         new_label: String,
-        n_compact_to_full: u32,
+        compacting_rate: f64,
         filter: Option<PyObject>,
     ) -> PyResult<()> {
-        let filter = |indexed_data: HashSet<Location>| async {
+        let data_filter = |indexed_data: HashSet<Data>| async {
             if let Some(filter) = &filter {
                 Python::with_gil(|py| {
                     let py_locations = indexed_data
@@ -325,8 +337,8 @@ impl Findex {
                 &new_key.0,
                 &self.label,
                 &new_label,
-                n_compact_to_full as usize,
-                &filter,
+                compacting_rate,
+                &data_filter,
             )),
             "error while blocking for compact"
         );

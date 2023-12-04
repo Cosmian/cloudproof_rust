@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use base64::{engine::general_purpose, Engine};
 use cosmian_crypto_core::{CsRng, FixedSizeCBytes, RandomFixedSizeCBytes};
 use cosmian_findex::{
-    IndexedValue, IndexedValueToKeywordsMap, Keyword, Keywords, Label, Location, UserKey,
+    Data, IndexedValue, IndexedValueToKeywordsMap, Keyword, Keywords, Label, UserKey,
 };
 use faker_rand::{
     en_us::addresses::PostalCode,
@@ -23,8 +23,8 @@ use rand::SeedableRng;
 use serde::{Deserialize, Serialize};
 use tracing::trace;
 
-use super::BackendError;
-use crate::{BackendConfiguration, InstantiatedFindex};
+use super::DbInterfaceError;
+use crate::{Configuration, InstantiatedFindex};
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize)]
@@ -75,10 +75,10 @@ impl Default for User {
     }
 }
 
-fn get_users() -> Result<Vec<User>, BackendError> {
+fn get_users() -> Result<Vec<User>, DbInterfaceError> {
     let dataset = std::fs::read_to_string("datasets/users.json")?;
     serde_json::from_str::<Vec<User>>(&dataset)
-        .map_err(|e| BackendError::Serialization(e.to_string()))
+        .map_err(|e| DbInterfaceError::Serialization(e.to_string()))
 }
 
 /// Generate the key used in the tests. In case the test is a non-regression, the key from
@@ -87,7 +87,7 @@ fn get_key(is_non_regression: bool) -> UserKey {
     if is_non_regression {
         let bytes = general_purpose::STANDARD
             .decode(std::fs::read_to_string("datasets/key.txt").unwrap())
-            .map_err(|e| BackendError::Other(e.to_string()))
+            .map_err(|e| DbInterfaceError::Other(e.to_string()))
             .unwrap();
         UserKey::try_from_slice(bytes.as_slice()).unwrap()
     } else {
@@ -118,14 +118,14 @@ async fn insert_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label)
         .enumerate()
         .map(|(idx, user)| {
             (
-                IndexedValue::Data(Location::from((idx as i64).to_be_bytes().as_slice())),
+                IndexedValue::Data(Data::from((idx as i64).to_be_bytes().as_slice())),
                 user.values()
                     .iter()
                     .map(|word| Keyword::from(word.as_bytes()))
                     .collect::<HashSet<_>>(),
             )
         })
-        .collect::<Vec<(IndexedValue<Keyword, Location>, HashSet<Keyword>)>>();
+        .collect::<Vec<(IndexedValue<Keyword, Data>, HashSet<Keyword>)>>();
 
     trace!("Upsert indexes.");
 
@@ -133,7 +133,7 @@ async fn insert_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label)
     let n_batches = additions.len() / MAX_BATCH_SIZE;
 
     for i in 0..n_batches {
-        let additions: HashMap<IndexedValue<Keyword, Location>, HashSet<Keyword>> = additions
+        let additions: HashMap<IndexedValue<Keyword, Data>, HashSet<Keyword>> = additions
             [i * MAX_BATCH_SIZE..(i + 1) * MAX_BATCH_SIZE]
             .iter()
             .cloned()
@@ -143,7 +143,7 @@ async fn insert_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label)
             .await
             .unwrap();
     }
-    let additions: HashMap<IndexedValue<Keyword, Location>, HashSet<Keyword>> = additions
+    let additions: HashMap<IndexedValue<Keyword, Data>, HashSet<Keyword>> = additions
         [n_batches * MAX_BATCH_SIZE..]
         .iter()
         .cloned()
@@ -178,7 +178,7 @@ async fn find_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label) {
 
         for word in user.values() {
             let keyword = Keyword::from(word.as_bytes());
-            let location = Location::from((idx as i64).to_be_bytes().as_slice());
+            let location = Data::from((idx as i64).to_be_bytes().as_slice());
             assert!(res.contains_key(&keyword));
             let word_res = res.get(&keyword).unwrap();
             assert!(word_res.contains(&location));
@@ -195,7 +195,7 @@ async fn find_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label) {
 /// 4. Asserts that the correctness of the search as defined in step 2.
 ///
 /// The `.db` file produced by this test should be okay to use in the non-regression test.
-pub async fn test_backend(config: BackendConfiguration) {
+pub async fn test_backend(config: Configuration) {
     let is_non_regression = false;
 
     let findex = InstantiatedFindex::new(config).await.unwrap();
@@ -217,7 +217,7 @@ pub async fn test_backend(config: BackendConfiguration) {
             &new_key,
             &label,
             &new_label,
-            1,
+            1f64,
             &|indexed_data| async { Ok(indexed_data) },
         )
         .await
@@ -228,14 +228,14 @@ pub async fn test_backend(config: BackendConfiguration) {
     find_users(&findex, &new_key, &new_label).await;
 }
 
-pub async fn test_non_regression(config: BackendConfiguration) {
+pub async fn test_non_regression(config: Configuration) {
     let is_non_regression = true;
     let key = get_key(is_non_regression);
     let label = get_label(is_non_regression);
 
     let mut expected_results: Vec<i64> =
         serde_json::from_str(include_str!("../../datasets/expected_db_uids.json"))
-            .map_err(|e| BackendError::Serialization(e.to_string()))
+            .map_err(|e| DbInterfaceError::Serialization(e.to_string()))
             .unwrap();
     expected_results.sort_unstable();
 
@@ -263,7 +263,7 @@ pub async fn test_non_regression(config: BackendConfiguration) {
     assert_eq!(results, expected_results);
 }
 
-pub async fn test_generate_non_regression_db(config: BackendConfiguration) {
+pub async fn test_generate_non_regression_db(config: Configuration) {
     let is_non_regression = true;
 
     let findex = InstantiatedFindex::new(config).await.unwrap();

@@ -5,7 +5,7 @@ use cosmian_crypto_core::{kdf256, FixedSizeCBytes, SymmetricKey};
 use cosmian_findex::{UserKey as FindexUserKey, USER_KEY_LENGTH as FINDEX_USER_KEY_LENGTH};
 
 use super::CallbackPrefix;
-use crate::backends::BackendError;
+use crate::db_interfaces::DbInterfaceError;
 
 /// Seed used to generate KMAC keys.
 pub const SIGNATURE_SEED_LENGTH: usize = 16;
@@ -65,7 +65,7 @@ impl Display for AuthorizationToken {
 }
 
 impl FromStr for AuthorizationToken {
-    type Err = BackendError;
+    type Err = DbInterfaceError;
 
     fn from_str(token: &str) -> Result<Self, Self::Err> {
         let (index_id, tail) = token.split_at(INDEX_ID_LENGTH);
@@ -124,9 +124,9 @@ impl AuthorizationToken {
         index_id: String,
         findex_key: SymmetricKey<FINDEX_USER_KEY_LENGTH>,
         seeds: HashMap<CallbackPrefix, SymmetricKey<SIGNATURE_SEED_LENGTH>>,
-    ) -> Result<Self, BackendError> {
+    ) -> Result<Self, DbInterfaceError> {
         if index_id.len() != INDEX_ID_LENGTH {
-            Err(BackendError::MalformedToken(format!(
+            Err(DbInterfaceError::MalformedToken(format!(
                 "wrong index ID length: got {}, needed {} ({})",
                 index_id.len(),
                 INDEX_ID_LENGTH,
@@ -141,7 +141,7 @@ impl AuthorizationToken {
         }
     }
 
-    pub fn reduce_permissions(&mut self, read: bool, write: bool) -> Result<(), BackendError> {
+    pub fn reduce_permissions(&mut self, read: bool, write: bool) -> Result<(), DbInterfaceError> {
         match (read, write) {
             (true, true) => {}
             (true, false) => {
@@ -150,7 +150,7 @@ impl AuthorizationToken {
                 self.seeds.remove(&CallbackPrefix::DeleteChain);
                 self.seeds.remove(&CallbackPrefix::Upsert);
             }
-            (false, true) => Err(BackendError::Other(
+            (false, true) => Err(DbInterfaceError::Other(
                 "Write access needs read access.".to_string(),
             ))?,
             (false, false) => {

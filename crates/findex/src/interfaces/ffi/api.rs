@@ -15,8 +15,8 @@ use cosmian_ffi_utils::{
     ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes, ErrorCode,
 };
 use cosmian_findex::{
-    Error as FindexError, IndexedValue, IndexedValueToKeywordsMap, Keyword, Keywords, Label,
-    Location, USER_KEY_LENGTH,
+    Data, Error as FindexError, IndexedValue, IndexedValueToKeywordsMap, Keyword, Keywords, Label,
+    USER_KEY_LENGTH,
 };
 use lazy_static::lazy_static;
 use tracing::trace;
@@ -24,19 +24,19 @@ use tracing::trace;
 #[cfg(debug_assertions)]
 use crate::logger::log_init;
 use crate::{
-    backends::{
+    db_interfaces::{
         custom::ffi::{
             Delete, DumpTokens, Fetch, FfiCallbacks, FilterObsoleteData, Insert, Interrupt, Upsert,
         },
         rest::{AuthorizationToken, CallbackPrefix},
-        BackendError,
+        DbInterfaceError,
     },
     ser_de::ffi_ser_de::{
         deserialize_indexed_values, deserialize_keyword_set, deserialize_location_set,
         get_upsert_output_size, serialize_intermediate_results, serialize_keyword_set,
         serialize_location_set,
     },
-    BackendConfiguration, InstantiatedFindex,
+    Configuration, InstantiatedFindex,
 };
 
 lazy_static! {
@@ -53,7 +53,7 @@ lazy_static! {
 /// Cannot be safe since using FFI.
 #[no_mangle]
 #[tracing::instrument(ret, skip_all)]
-pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
+pub unsafe extern "C" fn h_instantiate_with_custom_interface(
     findex_handle: *mut i32,
     key_ptr: *const u8,
     key_len: i32,
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
     let label = Label::from(label_bytes);
     trace!("Label successfully parsed: label: {label}");
 
-    let config = BackendConfiguration::Ffi(
+    let config = Configuration::Ffi(
         // TODO: ensure null pointers are not given
         FfiCallbacks {
             table_number: entry_table_number as usize,
@@ -145,12 +145,13 @@ pub unsafe extern "C" fn h_instantiate_with_ffi_backend(
 /// Cannot be safe since using FFI.
 #[no_mangle]
 #[tracing::instrument(ret, skip_all)]
-pub unsafe extern "C" fn h_instantiate_with_rest_backend(
+pub unsafe extern "C" fn h_instantiate_with_rest_interface(
     findex_handle: *mut i32,
     label_ptr: *const u8,
     label_len: i32,
     token_ptr: *const i8,
-    url_ptr: *const i8,
+    entry_url_ptr: *const i8,
+    chain_url_ptr: *const i8,
 ) -> i32 {
     #[cfg(debug_assertions)]
     log_init();
@@ -162,18 +163,23 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
     let token = ffi_read_string!("token", token_ptr);
     trace!("Authorization token read: {token}");
     let authorization_token = ffi_unwrap!(
-        crate::backends::rest::AuthorizationToken::from_str(&token),
+        crate::db_interfaces::rest::AuthorizationToken::from_str(&token),
         "authorization token conversion failed",
         ErrorCode::Backend
     );
 
-    let base_url = if url_ptr.is_null() {
+    let entry_url = if entry_url_ptr.is_null() {
         String::new()
     } else {
-        ffi_read_string!("REST server URL", url_ptr)
+        ffi_read_string!("REST server Entry Table URL", entry_url_ptr)
     };
 
-    let config = BackendConfiguration::Rest(authorization_token.clone(), base_url);
+    let chain_url = if chain_url_ptr.is_null() {
+        String::new()
+    } else {
+        ffi_read_string!("REST server Chain Table URL", chain_url_ptr)
+    };
+    let config = Configuration::Rest(authorization_token.clone(), entry_url, chain_url);
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
@@ -215,7 +221,7 @@ pub unsafe extern "C" fn h_instantiate_with_rest_backend(
 /// Cannot be safe since using FFI.
 #[no_mangle]
 #[tracing::instrument(ret, skip_all)]
-pub unsafe extern "C" fn h_instantiate_with_redis_backend(
+pub unsafe extern "C" fn h_instantiate_with_redis_interface(
     findex_handle: *mut i32,
     key_ptr: *const u8,
     key_len: i32,
@@ -244,7 +250,7 @@ pub unsafe extern "C" fn h_instantiate_with_redis_backend(
     let chain_table_redis_url =
         ffi_read_string!("Redis chain table URL", chain_table_redis_url_ptr);
 
-    let config = BackendConfiguration::Redis(entry_table_redis_url, chain_table_redis_url);
+    let config = Configuration::Redis(entry_table_redis_url, chain_table_redis_url);
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
@@ -309,7 +315,7 @@ pub unsafe extern "C" fn h_search(
     let keywords = Keywords::from(keywords);
     trace!("Keywords successfully parsed: keywords: {keywords}");
 
-    let user_interrupt = |res: HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>| async move {
+    let user_interrupt = |res: HashMap<Keyword, HashSet<IndexedValue<Keyword, Data>>>| async move {
         trace!("user interrupt input: {res:?}");
         let bytes = serialize_intermediate_results(&res).map_err(|e| e.to_string())?;
         let length = <u32>::try_from(bytes.len()).map_err(|e| e.to_string())?;
@@ -339,7 +345,7 @@ pub unsafe extern "C" fn h_search(
 
     let results = match res {
         Ok(res) => res,
-        Err(FindexError::Backend(BackendError::Ffi(msg, code))) => {
+        Err(FindexError::DbInterface(DbInterfaceError::Ffi(msg, code))) => {
             set_last_error(FfiError::Generic(format!(
                 "backend error during `search` operation: {msg}"
             )));
@@ -447,7 +453,7 @@ pub unsafe extern "C" fn h_add(
 
     let new_keywords = match res {
         Ok(new_keywords) => new_keywords,
-        Err(FindexError::Backend(BackendError::Ffi(msg, code))) => {
+        Err(FindexError::DbInterface(DbInterfaceError::Ffi(msg, code))) => {
             set_last_error(FfiError::Generic(format!(
                 "backend error during `add` operation: {msg}"
             )));
@@ -538,7 +544,7 @@ pub unsafe extern "C" fn h_delete(
 
     let new_keywords = match res {
         Ok(new_keywords) => new_keywords,
-        Err(FindexError::Backend(BackendError::Ffi(msg, code))) => {
+        Err(FindexError::DbInterface(DbInterfaceError::Ffi(msg, code))) => {
             set_last_error(FfiError::Generic(format!(
                 "backend error during `delete` operation: {msg}"
             )));
@@ -581,11 +587,11 @@ pub unsafe extern "C" fn h_delete(
 /// - `findex_handle`           : Findex handle on the instance cache
 /// - `new_key`                 : new Findex key
 /// - `new_label`               : public information used to derive UIDs
-/// - `n_compact_to_full`       : see below
+/// - `compacting_rate`         : see below
 /// - `filter_obsolete_data`    : callback used to filter out obsolete data
 ///   among indexed data
 ///
-/// `n_compact_to_full`: if you compact the
+/// `compacting_rate`: if you compact the
 /// indexes every night this is the number of days to wait before
 /// being sure that a big portion of the indexes were checked
 /// (see the coupon problem to understand why it's not 100% sure)
@@ -601,13 +607,13 @@ pub unsafe extern "C" fn h_compact(
     new_key_len: i32,
     new_label_ptr: *const u8,
     new_label_len: i32,
-    n_compact_to_full: u32,
+    compacting_rate: f32,
     filter_obsolete_data: FilterObsoleteData,
 ) -> i32 {
     #[cfg(debug_assertions)]
     log_init();
 
-    let filter = |locations: HashSet<Location>| async {
+    let filter = |locations: HashSet<Data>| async {
         let move_locations = locations;
         let bytes = serialize_location_set(&move_locations)
             .map_err(|e| format!("error serializing locations: {e}"))?;
@@ -663,12 +669,12 @@ pub unsafe extern "C" fn h_compact(
         &new_key,
         old_label,
         &new_label,
-        n_compact_to_full as usize,
+        compacting_rate as f64,
         &filter,
     ));
 
     match res {
-        Err(FindexError::Backend(BackendError::Ffi(msg, code))) => {
+        Err(FindexError::DbInterface(DbInterfaceError::Ffi(msg, code))) => {
             set_last_error(FfiError::Generic(format!(
                 "backend error during `compact` operation: {msg}"
             )));

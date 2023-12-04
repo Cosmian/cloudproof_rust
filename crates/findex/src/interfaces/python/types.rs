@@ -4,12 +4,12 @@ use cosmian_crypto_core::{
     reexport::rand_core::SeedableRng, CsRng, FixedSizeCBytes, RandomFixedSizeCBytes, SymmetricKey,
 };
 use cosmian_findex::{
-    IndexedValue as IndexedValueRust, Keyword as KeywordRust, Label as LabelRust,
-    Location as LocationRust, USER_KEY_LENGTH,
+    Data as LocationRust, IndexedValue as IndexedValueRust, Keyword as KeywordRust,
+    Label as LabelRust, USER_KEY_LENGTH,
 };
 use pyo3::{prelude::*, pyclass::CompareOp, types::PyBytes};
 
-use crate::backends::rest::{AuthorizationToken as AuthorizationTokenRust, CallbackPrefix};
+use crate::db_interfaces::rest::{AuthorizationToken as AuthorizationTokenRust, CallbackPrefix};
 
 fn truncate(s: String, max_chars: usize) -> String {
     match s.char_indices().nth(max_chars) {

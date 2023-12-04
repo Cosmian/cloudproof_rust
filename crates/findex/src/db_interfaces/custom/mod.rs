@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use cosmian_findex::EdxBackend;
+use cosmian_findex::DbInterface;
 
-use crate::backends::BackendError;
+use crate::db_interfaces::DbInterfaceError;
 
 /// Implements `EdxStore<$value_length>` for the given backend type, which wraps
 /// the given callback type.
@@ -27,9 +27,9 @@ macro_rules! impl_custom_backend {
             }
         }
 
-        #[$crate::backends::custom::async_trait(?Send)]
-        impl $crate::backends::custom::EdxBackend<$value_length> for $backend_type {
-            type Error = $crate::backends::custom::BackendError;
+        #[$crate::db_interfaces::custom::async_trait(?Send)]
+        impl $crate::db_interfaces::custom::DbInterface<$value_length> for $backend_type {
+            type Error = $crate::db_interfaces::custom::DbInterfaceError;
 
             async fn dump_tokens(&self) -> Result<cosmian_findex::Tokens, Self::Error> {
                 self.0.dump_tokens().await.map(Into::into)
@@ -68,11 +68,11 @@ macro_rules! impl_custom_backend {
     };
 }
 
-#[cfg(feature = "backend-ffi")]
+#[cfg(feature = "ffi")]
 pub mod ffi;
 
-#[cfg(feature = "backend-wasm")]
+#[cfg(feature = "wasm")]
 pub mod wasm;
 
-#[cfg(feature = "backend-python")]
+#[cfg(feature = "python")]
 pub mod python;
