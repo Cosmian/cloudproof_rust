@@ -57,8 +57,7 @@ pub unsafe extern "C" fn h_instantiate_with_custom_interface(
     findex_handle: *mut i32,
     key_ptr: *const u8,
     key_len: i32,
-    label_ptr: *const u8,
-    label_len: i32,
+    label_ptr: *const i8,
     entry_table_number: u32,
     fetch_entry: Fetch,
     fetch_chain: Fetch,
@@ -80,8 +79,8 @@ pub unsafe extern "C" fn h_instantiate_with_custom_interface(
     );
     trace!("Key successfully parsed");
 
-    let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
-    let label = Label::from(label_bytes);
+    let label_bytes = ffi_read_string!("label", label_ptr);
+    let label = Label::from(label_bytes.as_str());
     trace!("Label successfully parsed: label: {label}");
 
     let config = Configuration::Ffi(
@@ -147,8 +146,7 @@ pub unsafe extern "C" fn h_instantiate_with_custom_interface(
 #[tracing::instrument(ret, skip_all)]
 pub unsafe extern "C" fn h_instantiate_with_rest_interface(
     findex_handle: *mut i32,
-    label_ptr: *const u8,
-    label_len: i32,
+    label_ptr: *const i8,
     token_ptr: *const i8,
     entry_url_ptr: *const i8,
     chain_url_ptr: *const i8,
@@ -156,8 +154,8 @@ pub unsafe extern "C" fn h_instantiate_with_rest_interface(
     #[cfg(debug_assertions)]
     log_init();
 
-    let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
-    let label = Label::from(label_bytes);
+    let label_bytes = ffi_read_string!("label", label_ptr);
+    let label = Label::from(label_bytes.as_str());
     trace!("Label successfully parsed: label: {label}");
 
     let token = ffi_read_string!("token", token_ptr);
@@ -211,10 +209,10 @@ pub unsafe extern "C" fn h_instantiate_with_rest_interface(
 ///
 /// # Parameters
 ///
-/// - `key`     : findex key
-/// - `label`   : label used by Findex
-/// - `entry_table_redis_url`     : Redis entry table URL
-/// - `chain_table_redis_url`     : Redis chain table URL
+/// - `key`                     : Findex key
+/// - `label`                   : label used by Findex
+/// - `entry_table_redis_url`   : Redis entry table URL
+/// - `chain_table_redis_url`   : Redis chain table URL
 ///
 /// # Safety
 ///
@@ -225,8 +223,7 @@ pub unsafe extern "C" fn h_instantiate_with_redis_interface(
     findex_handle: *mut i32,
     key_ptr: *const u8,
     key_len: i32,
-    label_ptr: *const u8,
-    label_len: i32,
+    label_ptr: *const i8,
     entry_table_redis_url_ptr: *const i8,
     chain_table_redis_url_ptr: *const i8,
 ) -> i32 {
@@ -241,8 +238,8 @@ pub unsafe extern "C" fn h_instantiate_with_redis_interface(
     );
     trace!("Key successfully parsed");
 
-    let label_bytes = ffi_read_bytes!("label", label_ptr, label_len);
-    let label = Label::from(label_bytes);
+    let label_bytes = ffi_read_string!("label", label_ptr);
+    let label = Label::from(label_bytes.as_str());
     trace!("Label successfully parsed: label: {label}");
 
     let entry_table_redis_url =
@@ -605,9 +602,8 @@ pub unsafe extern "C" fn h_compact(
     findex_handle: i32,
     new_key_ptr: *const u8,
     new_key_len: i32,
-    new_label_ptr: *const u8,
-    new_label_len: i32,
-    compacting_rate: f32,
+    new_label_ptr: *const i8,
+    compacting_rate: f64,
     filter_obsolete_data: FilterObsoleteData,
 ) -> i32 {
     #[cfg(debug_assertions)]
@@ -642,8 +638,8 @@ pub unsafe extern "C" fn h_compact(
         ErrorCode::Serialization
     );
 
-    let new_label_bytes = ffi_read_bytes!("new label", new_label_ptr, new_label_len);
-    let new_label = Label::from(new_label_bytes);
+    let new_label_bytes = ffi_read_string!("new label", new_label_ptr);
+    let new_label = Label::from(new_label_bytes.as_str());
 
     let mut cache = FINDEX_INSTANCES
         .lock()
@@ -669,7 +665,7 @@ pub unsafe extern "C" fn h_compact(
         &new_key,
         old_label,
         &new_label,
-        compacting_rate as f64,
+        compacting_rate,
         &filter,
     ));
 
