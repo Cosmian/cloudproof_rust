@@ -105,7 +105,7 @@ impl From<TryFromIntError> for DbInterfaceError {
     }
 }
 
-#[cfg(feature = "backend-rest")]
+#[cfg(feature = "rest-interface")]
 impl From<TryFromSliceError> for DbInterfaceError {
     fn from(e: TryFromSliceError) -> Self {
         Self::SliceConversion(e)

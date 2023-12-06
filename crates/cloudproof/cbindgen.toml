@@ -3,7 +3,6 @@ language = "C"
 cpp_compat = true
 after_includes = """
 #define DEFINE_FFI 1
-#define DEFINE_BACKEND_FFI
 """
 
 [parse]
@@ -30,12 +29,9 @@ parse_deps = true
 "feature = ffi" = "DEFINE_FFI"
 "feature = wasm" = "DEFINE_WASM"
 "feature = python" = "DEFINE_PYTHON"
-"feature = backend-rest" = "DEFINE_BACKEND_REST"
-"feature = backend-ffi" = "DEFINE_BACKEND_FFI"
-"feature = backend-redis" = "DEFINE_BACKEND_REDIS"
-"feature = backend-python" = "DEFINE_BACKEND_PYTHON"
-"feature = backend-sqlite" = "DEFINE_BACKEND_SQLITE"
-"feature = backend-wasm" = "DEFINE_BACKEND_WASM"
+"feature = rest-interface" = "DEFINE_REST_INTERFACE"
+"feature = sqlite-interface" = "DEFINE_SQLITE_INTERFACE"
+"feature = redis-interface" = "DEFINE_REDIS_INTERFACE"
 
 "target_os = ios" = "TARGET_OS_IOS"
 "target_os = macos" = "TARGET_OS_MACOS"
