@@ -72,9 +72,9 @@ impl WasmFindex {
     pub async fn search(
         &self,
         key: Uint8Array,
-        label: Uint8Array,
+        label: String,
         keywords: ArrayOfKeywords,
-        interrupt: &Function,
+        interrupt: Option<Function>,
     ) -> Result<SearchResults, JsError> {
         let key = SymmetricKey::try_from_slice(&key.to_vec()).map_err(|e| {
             WasmError(format!(
@@ -82,7 +82,7 @@ impl WasmFindex {
             ))
         })?;
 
-        let label = Label::from(label.to_vec());
+        let label = Label::from(label.as_str());
 
         let keywords = Array::from(&JsValue::from(keywords))
             .iter()
@@ -90,25 +90,30 @@ impl WasmFindex {
             .collect::<HashSet<_>>();
 
         let user_interrupt = |res: HashMap<Keyword, HashSet<IndexedValue<Keyword, Data>>>| async {
-            let res = <InterruptInput>::try_from(res).map_err(|e| {
-                format!(
-                    "Findex search: failed converting input of user interrupt into Js object: \
+            if let Some(interrupt) = &interrupt {
+                let res = <InterruptInput>::try_from(res).map_err(|e| {
+                    format!(
+                        "Findex search: failed converting input of user interrupt into Js object: \
                      {e:?}"
-                )
-            })?;
-            let res = interrupt
-                .call1(&JsValue::null(), &res)
-                .map_err(|e| format!("failed calling user interrupt: {e:?}"))?;
-            let interruption_flag = JsFuture::from(Promise::resolve(&res)).await.map_err(|e| {
-                format!(
+                    )
+                })?;
+                let res = interrupt
+                    .call1(&JsValue::null(), &res)
+                    .map_err(|e| format!("failed calling user interrupt: {e:?}"))?;
+                let interruption_flag =
+                    JsFuture::from(Promise::resolve(&res)).await.map_err(|e| {
+                        format!(
                     "Findex search: failed getting the promised results from user interrupt: {e:?}"
                 )
-            })?;
-            interruption_flag.as_bool().ok_or_else(|| {
-                format!(
+                    })?;
+                interruption_flag.as_bool().ok_or_else(|| {
+                    format!(
                     "Findex search: user interrupt does not return a boolean value: {interrupt:?}"
                 )
-            })
+                })
+            } else {
+                Ok(false)
+            }
         };
 
         let res = self
@@ -124,13 +129,13 @@ impl WasmFindex {
     pub async fn add(
         &self,
         key: Uint8Array,
-        label: Uint8Array,
+        label: String,
         additions: IndexedValuesAndKeywords,
     ) -> Result<ArrayOfKeywords, JsError> {
         log::info!("add: entering");
         let key = SymmetricKey::try_from_slice(&key.to_vec())
             .map_err(|e| WasmError(format!("Findex add: failed parsing key: {e}")))?;
-        let label = Label::from(label.to_vec());
+        let label = Label::from(label.as_str());
         let additions =
             <HashMap<IndexedValue<Keyword, Data>, HashSet<Keyword>>>::try_from(&additions)
                 .map_err(|e| {
@@ -159,12 +164,12 @@ impl WasmFindex {
     pub async fn delete(
         &self,
         key: Uint8Array,
-        label: Uint8Array,
+        label: String,
         deletions: IndexedValuesAndKeywords,
     ) -> Result<ArrayOfKeywords, JsError> {
         let key = SymmetricKey::try_from_slice(&key.to_vec())
             .map_err(|e| WasmError(format!("Findex delete: failed parsing Findex key: {e}")))?;
-        let label = Label::from(label.to_vec());
+        let label = Label::from(label.as_str());
         let deletions =
             <HashMap<IndexedValue<Keyword, Data>, HashSet<Keyword>>>::try_from(&deletions)
                 .map_err(|e| {
@@ -188,44 +193,48 @@ impl WasmFindex {
 
     pub async fn compact(
         &self,
-        old_key: &Uint8Array,
-        new_key: &Uint8Array,
-        old_label: &Uint8Array,
-        new_label: &Uint8Array,
+        old_key: Uint8Array,
+        new_key: Uint8Array,
+        old_label: String,
+        new_label: String,
         compacting_rate: f32,
-        data_filter: Filter,
+        data_filter: Option<Filter>,
     ) -> Result<(), JsError> {
         let old_key = SymmetricKey::try_from_slice(&old_key.to_vec())
             .map_err(|e| WasmError(format!("Findex compact: failed parsing old key: {e}")))?;
         let new_key = SymmetricKey::try_from_slice(&new_key.to_vec())
             .map_err(|e| WasmError(format!("Findex compact: failed parsing new key: {e}")))?;
-        let old_label = Label::from(old_label.to_vec());
-        let new_label = Label::from(new_label.to_vec());
+        let old_label = Label::from(old_label.as_str());
+        let new_label = Label::from(new_label.as_str());
         let compacting_rate = compacting_rate as usize;
 
         let data_filter = |data: HashSet<Data>| async {
-            // This is necessary to take ownership of the `data` parameter and avoid using
-            // the `move` semantic.
-            let moved_data = data;
-            let data = <IndexedData>::from(&moved_data);
-            let js_function = Function::from(JsValue::from(&data_filter));
-            let promise =
-                Promise::resolve(&js_function.call1(&JsValue::null(), &data).map_err(|e| {
-                    format!("Findex compact: failed calling the obsolete data filter: {e:?}")
-                })?);
-            let filtered_data = JsFuture::from(promise).await.map_err(|e| {
-                format!(
+            if let Some(data_filter) = &data_filter {
+                // This is necessary to take ownership of the `data` parameter and avoid using
+                // the `move` semantic.
+                let moved_data = data;
+                let data = <IndexedData>::from(&moved_data);
+                let js_function = Function::from(JsValue::from(data_filter));
+                let promise =
+                    Promise::resolve(&js_function.call1(&JsValue::null(), &data).map_err(|e| {
+                        format!("Findex compact: failed calling the obsolete data filter: {e:?}")
+                    })?);
+                let filtered_data = JsFuture::from(promise).await.map_err(|e| {
+                    format!(
                     "Findex compact: failed getting the promised results from the obsolete data \
                      filter: {e:?}"
                 )
-            })?;
-            let filtered_data = <HashSet<Data>>::try_from(IndexedData::from(filtered_data))
-                .map_err(|e| {
-                    format!(
+                })?;
+                let filtered_data = <HashSet<Data>>::try_from(IndexedData::from(filtered_data))
+                    .map_err(|e| {
+                        format!(
                         "Findex compact: failed converting Js array back to filtered data: {e:?}"
                     )
-                })?;
-            Ok(filtered_data)
+                    })?;
+                Ok(filtered_data)
+            } else {
+                Ok(data)
+            }
         };
 
         self.0

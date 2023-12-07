@@ -32,9 +32,9 @@ use crate::{
         DbInterfaceError,
     },
     ser_de::ffi_ser_de::{
-        deserialize_indexed_values, deserialize_keyword_set, deserialize_location_set,
-        get_upsert_output_size, serialize_intermediate_results, serialize_keyword_set,
-        serialize_location_set,
+        deserialize_data_set, deserialize_indexed_values, deserialize_keyword_set,
+        get_upsert_output_size, serialize_data_set, serialize_intermediate_results,
+        serialize_keyword_set,
     },
     Configuration, InstantiatedFindex,
 };
@@ -364,20 +364,20 @@ pub unsafe extern "C" fn h_search(
         "error serializing length",
         ErrorCode::Serialization
     );
-    for (keyword, locations) in results {
+    for (keyword, data) in results {
         ffi_unwrap!(
             serializer.write_vec(&keyword),
             "error serializing keyword",
             ErrorCode::Serialization
         );
-        let serialized_location_set = ffi_unwrap!(
-            serialize_location_set(&locations),
+        let serialized_data = ffi_unwrap!(
+            serialize_data_set(&data),
             "error serializing set",
             ErrorCode::Serialization
         );
         ffi_unwrap!(
-            serializer.write_array(&serialized_location_set),
-            "error serializing locations",
+            serializer.write_array(&serialized_data),
+            "error serializing data",
             ErrorCode::Serialization
         );
     }
@@ -609,10 +609,10 @@ pub unsafe extern "C" fn h_compact(
     #[cfg(debug_assertions)]
     log_init();
 
-    let filter = |locations: HashSet<Data>| async {
-        let move_locations = locations;
-        let bytes = serialize_location_set(&move_locations)
-            .map_err(|e| format!("error serializing locations: {e}"))?;
+    let filter = |data: HashSet<Data>| async {
+        let moved_data = data;
+        let bytes =
+            serialize_data_set(&moved_data).map_err(|e| format!("error serializing data: {e}"))?;
         let mut res = vec![0; bytes.len()];
         let mut res_length = res.len() as u32;
         let err = (filter_obsolete_data)(
@@ -627,8 +627,7 @@ pub unsafe extern "C" fn h_compact(
             return Err(String::from("Filter error."));
         }
 
-        deserialize_location_set(&res)
-            .map_err(|e| format!("error deserializing filtered locations: {e}"))
+        deserialize_data_set(&res).map_err(|e| format!("error deserializing filtered data: {e}"))
     };
 
     let new_key_bytes = ffi_read_bytes!("new key", new_key_ptr, new_key_len);

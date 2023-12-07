@@ -96,22 +96,22 @@ pub fn deserialize_keyword_set(keywords: &[u8]) -> Result<HashSet<Keyword>, Seri
     }
 }
 
-pub fn serialize_location_set(set: &HashSet<Data>) -> Result<Vec<u8>, SerializationError> {
+pub fn serialize_data_set(set: &HashSet<Data>) -> Result<Vec<u8>, SerializationError> {
     let mut ser = Serializer::with_capacity(set.len());
     ser.write_leb128_u64(set.len() as u64)?;
-    for element in set {
-        ser.write_vec(element)?;
+    for datum in set {
+        ser.write_vec(datum)?;
     }
     Ok(ser.finalize().to_vec())
 } //TODO: merge functions
 
-pub fn deserialize_location_set(bytes: &[u8]) -> Result<HashSet<Data>, SerializationError> {
+pub fn deserialize_data_set(bytes: &[u8]) -> Result<HashSet<Data>, SerializationError> {
     let mut de = Deserializer::new(bytes);
     let length = <usize>::try_from(de.read_leb128_u64()?)?;
     let mut res = HashSet::with_capacity(length);
     for _ in 0..length {
-        let location = Data::from(de.read_vec()?);
-        res.insert(location);
+        let datum = Data::from(de.read_vec()?);
+        res.insert(datum);
     }
     Ok(res)
 } //TODO: merge functions

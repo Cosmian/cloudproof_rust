@@ -208,10 +208,10 @@ impl Findex {
             .collect::<HashSet<_>>())
     }
 
-    /// Recursively search Findex graphs for `Location` corresponding to the
+    /// Recursively search Findex graphs for data corresponding to the
     /// given `Keyword`.
     ///
-    /// Returns: `Locations` found by `Keyword`
+    /// Returns: data found by `Keyword`
     ///
     /// # Parameters
     ///
@@ -282,7 +282,7 @@ impl Findex {
     /// values with new ones (UID will be re-hash with the new label and
     /// values will be re-encrypted with a new nonce).
     /// This function will also select a random portion of all the index entries
-    /// and recreate the associated chains without removed `Location` from
+    /// and recreate the associated chains without removed data from
     /// the main database.
     ///
     /// Parameters

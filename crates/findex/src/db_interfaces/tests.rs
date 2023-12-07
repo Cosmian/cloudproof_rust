@@ -178,10 +178,10 @@ async fn find_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label) {
 
         for word in user.values() {
             let keyword = Keyword::from(word.as_bytes());
-            let location = Data::from((idx as i64).to_be_bytes().as_slice());
+            let data = Data::from((idx as i64).to_be_bytes().as_slice());
             assert!(res.contains_key(&keyword));
             let word_res = res.get(&keyword).unwrap();
-            assert!(word_res.contains(&location));
+            assert!(word_res.contains(&data));
         }
     }
 }
@@ -256,7 +256,7 @@ pub async fn test_non_regression(config: Configuration) {
         .get(&keyword)
         .unwrap()
         .iter()
-        .map(|location| i64::from_be_bytes(location.as_ref().try_into().unwrap()))
+        .map(|data| i64::from_be_bytes(data.as_ref().try_into().unwrap()))
         .collect::<Vec<_>>();
     results.sort_unstable();
 
