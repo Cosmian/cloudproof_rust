@@ -18,8 +18,8 @@ crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof"
 
 [features]
-findex-redis = ["cloudproof_findex/backend-redis"]
-findex-sqlite = ["cloudproof_findex/backend-sqlite"]
+findex-redis = ["cloudproof_findex/redis-interface"]
+findex-sqlite = ["cloudproof_findex/sqlite-interface"]
 default = [
   "cloudproof_aesgcm/default",
   "cloudproof_anonymization/default",

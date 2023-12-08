@@ -3,36 +3,32 @@
 
 mod error;
 
-#[cfg(feature = "backend-rest")]
+#[cfg(feature = "rest-interface")]
 pub mod rest;
 
-#[cfg(any(
-    feature = "backend-wasm",
-    feature = "backend-python",
-    feature = "backend-ffi",
-))]
+#[cfg(any(feature = "wasm", feature = "python", feature = "ffi",))]
 pub mod custom;
 
-#[cfg(feature = "backend-redis")]
+#[cfg(feature = "redis-interface")]
 pub mod redis;
 
-#[cfg(feature = "backend-sqlite")]
+#[cfg(feature = "sqlite-interface")]
 pub mod sqlite;
 
 #[cfg(all(
     test,
     any(
-        feature = "backend-ffi",
-        feature = "backend-python",
-        feature = "backend-redis",
-        feature = "backend-rest",
-        feature = "backend-sqlite",
-        feature = "backend-wasm",
+        feature = "ffi",
+        feature = "python",
+        feature = "redis-interface",
+        feature = "rest-interface",
+        feature = "sqlite-interface",
+        feature = "wasm",
     )
 ))]
 mod tests;
 
-pub use error::BackendError;
+pub use error::DbInterfaceError;
 
 /// The backend prefix is used in serialization to identify the targeted
 /// backend.
@@ -59,7 +55,7 @@ impl From<&BackendPrefix> for u8 {
 }
 
 impl TryFrom<u8> for BackendPrefix {
-    type Error = BackendError;
+    type Error = DbInterfaceError;
 
     fn try_from(prefix: u8) -> Result<Self, Self::Error> {
         match prefix {
@@ -69,7 +65,7 @@ impl TryFrom<u8> for BackendPrefix {
             3 => Ok(Self::Ffi),
             4 => Ok(Self::Wasm),
             5 => Ok(Self::Python),
-            _ => Err(BackendError::Serialization(format!(
+            _ => Err(DbInterfaceError::Serialization(format!(
                 "unknown backend prefix {prefix}"
             ))),
         }

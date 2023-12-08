@@ -28,13 +28,19 @@
 //! |     +--------+ +---------+ +-----------+     //                 |
 //! |                                                                 |
 //! +-----------------------------------------------------------------+
-//! |                         CloudproofRust                          |
+//! |                         Cloudproof Rust                         |
 //! +-----------------------------------------------------------------+
 //!                                  ^
 //!                                  |
 //!                                  v
 //! +-----------------------------------------------------------------+
-//! |                            User App                             |
+//! |           Cloudproof Js/Python/Java/Flutter (optional)          |
+//! +-----------------------------------------------------------------+
+//!                                  ^
+//!                                  |
+//!                                  v
+//! +-----------------------------------------------------------------+
+//! |                            User Code                            |
 //! +-----------------------------------------------------------------+
 //! ```
 //!
@@ -44,8 +50,8 @@
 //! This also has the advantage of gathering all instantiation information in a
 //! single place.
 
-mod backend_config;
+mod db_config;
 mod findex;
 
-pub use backend_config::BackendConfiguration;
+pub use db_config::Configuration;
 pub use findex::InstantiatedFindex;

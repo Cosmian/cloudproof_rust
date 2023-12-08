@@ -7,7 +7,7 @@ use std::{
 use cosmian_crypto_core::bytes_ser_de::{to_leb128_len, Deserializer, Serializable, Serializer};
 use cosmian_findex::{EncryptedValue, Token, TokenToEncryptedValueMap};
 
-use crate::backends::BackendError;
+use crate::db_interfaces::DbInterfaceError;
 
 #[derive(Debug, PartialEq, Eq)]
 #[must_use]
@@ -95,7 +95,7 @@ impl<const VALUE_LENGTH: usize> IntoIterator for UpsertData<VALUE_LENGTH> {
 }
 
 impl<const VALUE_LENGTH: usize> Serializable for UpsertData<VALUE_LENGTH> {
-    type Error = BackendError;
+    type Error = DbInterfaceError;
 
     fn length(&self) -> usize {
         self.values()

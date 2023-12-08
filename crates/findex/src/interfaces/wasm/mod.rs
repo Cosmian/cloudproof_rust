@@ -5,7 +5,7 @@ use std::fmt::Display;
 use cosmian_findex::Error as FindexError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::backends::BackendError;
+use crate::db_interfaces::DbInterfaceError;
 
 pub mod api;
 pub mod types;
@@ -26,16 +26,16 @@ impl Display for WasmError {
     }
 }
 
-impl From<BackendError> for WasmError {
-    fn from(error: BackendError) -> Self {
+impl From<DbInterfaceError> for WasmError {
+    fn from(error: DbInterfaceError) -> Self {
         Self(format!("backend error: {error}"))
     }
 }
 
-impl From<FindexError<BackendError>> for WasmError {
-    fn from(error: FindexError<BackendError>) -> Self {
+impl From<FindexError<DbInterfaceError>> for WasmError {
+    fn from(error: FindexError<DbInterfaceError>) -> Self {
         match error {
-            FindexError::Callback(_) => Self(format!("backend error: {error}")),
+            FindexError::DbInterface(_) => Self(format!("DB interface error: {error}")),
             _ => Self(format!("findex error: {error}")),
         }
     }

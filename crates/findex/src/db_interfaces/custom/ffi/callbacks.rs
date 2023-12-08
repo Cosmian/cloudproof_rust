@@ -5,7 +5,7 @@ use cosmian_findex::{Token, TokenToEncryptedValueMap, Tokens};
 use tracing::{debug, instrument, trace};
 
 use crate::{
-    backends::BackendError,
+    db_interfaces::DbInterfaceError,
     ser_de::ffi_ser_de::{
         deserialize_edx_lines, deserialize_token_set, get_serialized_edx_lines_size_bound,
         serialize_edx_lines, serialize_token_set,
@@ -103,7 +103,7 @@ impl FfiCallbacks {
     pub(crate) async fn fetch<const LENGTH: usize>(
         &self,
         tokens: cosmian_findex::Tokens,
-    ) -> Result<cosmian_findex::TokenWithEncryptedValueList<LENGTH>, BackendError> {
+    ) -> Result<cosmian_findex::TokenWithEncryptedValueList<LENGTH>, DbInterfaceError> {
         trace!("fetch: entering: tokens: {tokens}");
         debug!(
             "fetch: entering: tokens number: {}, table_number: {}",
@@ -111,10 +111,9 @@ impl FfiCallbacks {
             self.table_number
         );
 
-        let fetch = self
-            .fetch
-            .as_ref()
-            .ok_or_else(|| BackendError::MissingCallback("no fetch callback found".to_string()))?;
+        let fetch = self.fetch.as_ref().ok_or_else(|| {
+            DbInterfaceError::MissingCallback("no fetch callback found".to_string())
+        })?;
 
         let allocation_size =
             get_serialized_edx_lines_size_bound::<LENGTH>(tokens.len(), self.table_number);
@@ -145,14 +144,14 @@ impl FfiCallbacks {
             };
 
             let token_encrypted_value_list =
-                deserialize_edx_lines(&res).map_err(BackendError::from)?;
+                deserialize_edx_lines(&res).map_err(DbInterfaceError::from)?;
             debug!(
                 "fetch: exiting successfully with {} values",
                 token_encrypted_value_list.len()
             );
             Ok(token_encrypted_value_list)
         } else {
-            Err(BackendError::Ffi("fetch error".to_string(), err.into()))
+            Err(DbInterfaceError::Ffi("fetch error".to_string(), err.into()))
         }
     }
 
@@ -161,7 +160,7 @@ impl FfiCallbacks {
         &self,
         old_values: cosmian_findex::TokenToEncryptedValueMap<LENGTH>,
         new_values: cosmian_findex::TokenToEncryptedValueMap<LENGTH>,
-    ) -> Result<cosmian_findex::TokenToEncryptedValueMap<LENGTH>, BackendError> {
+    ) -> Result<cosmian_findex::TokenToEncryptedValueMap<LENGTH>, DbInterfaceError> {
         trace!("upsert: entering: old_values: {old_values}");
         trace!("upsert: entering: new_values: {new_values}");
         debug!(
@@ -170,10 +169,9 @@ impl FfiCallbacks {
             new_values.len()
         );
 
-        let upsert = self
-            .upsert
-            .as_ref()
-            .ok_or_else(|| BackendError::MissingCallback("no upsert callback found".to_string()))?;
+        let upsert = self.upsert.as_ref().ok_or_else(|| {
+            DbInterfaceError::MissingCallback("no upsert callback found".to_string())
+        })?;
 
         let allocation_size =
             get_serialized_edx_lines_size_bound::<LENGTH>(new_values.len(), self.table_number);
@@ -208,7 +206,10 @@ impl FfiCallbacks {
             );
             Ok(token_encrypted_value_map)
         } else {
-            Err(BackendError::Ffi("upsert error".to_string(), err.into()))
+            Err(DbInterfaceError::Ffi(
+                "upsert error".to_string(),
+                err.into(),
+            ))
         }
     }
 
@@ -216,14 +217,13 @@ impl FfiCallbacks {
     pub(crate) async fn insert<const LENGTH: usize>(
         &self,
         map: TokenToEncryptedValueMap<LENGTH>,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DbInterfaceError> {
         trace!("insert: entering: map: {map}");
         debug!("insert: entering: map size: {}", map.len());
 
-        let insert = self
-            .insert
-            .as_ref()
-            .ok_or_else(|| BackendError::MissingCallback("no insert callback found".to_string()))?;
+        let insert = self.insert.as_ref().ok_or_else(|| {
+            DbInterfaceError::MissingCallback("no insert callback found".to_string())
+        })?;
 
         let serialized_map = serialize_edx_lines(&map)?;
         let serialized_map_len = <u32>::try_from(serialized_map.len())?;
@@ -237,18 +237,17 @@ impl FfiCallbacks {
             );
             Ok(())
         } else {
-            Err(BackendError::Ffi("insert error".to_string(), err))
+            Err(DbInterfaceError::Ffi("insert error".to_string(), err))
         }
     }
 
     #[instrument(err, skip_all)]
-    pub(crate) async fn delete(&self, tokens: Tokens) -> Result<(), BackendError> {
+    pub(crate) async fn delete(&self, tokens: Tokens) -> Result<(), DbInterfaceError> {
         trace!("delete: entering: tokens: {tokens}");
         debug!("delete: entering: tokens number {}", tokens.len());
-        let delete = self
-            .delete
-            .as_ref()
-            .ok_or_else(|| BackendError::MissingCallback("no delete callback found".to_string()))?;
+        let delete = self.delete.as_ref().ok_or_else(|| {
+            DbInterfaceError::MissingCallback("no delete callback found".to_string())
+        })?;
 
         let serialized_uids = serialize_token_set(&tokens)?;
         let serialized_uids_len = <u32>::try_from(serialized_uids.len())?;
@@ -262,16 +261,16 @@ impl FfiCallbacks {
             );
             Ok(())
         } else {
-            Err(BackendError::Ffi("delete error".to_string(), err))
+            Err(DbInterfaceError::Ffi("delete error".to_string(), err))
         }
     }
 
     #[instrument(ret(Display), err, skip_all)]
-    pub(crate) async fn dump_tokens(&self) -> Result<Tokens, BackendError> {
+    pub(crate) async fn dump_tokens(&self) -> Result<Tokens, DbInterfaceError> {
         debug!("dump_tokens: entering");
 
         let dump_tokens = self.dump_tokens.as_ref().ok_or_else(|| {
-            BackendError::MissingCallback("no dump_tokens callback found".to_string())
+            DbInterfaceError::MissingCallback("no dump_tokens callback found".to_string())
         })?;
 
         let mut allocation_size = 1_000_000 * Token::LENGTH;
@@ -295,11 +294,11 @@ impl FfiCallbacks {
             // TODO: why not directly use `output_bytes`?
             let tokens_bytes =
                 unsafe { std::slice::from_raw_parts(output_ptr.cast_const(), output_len as usize) };
-            let tokens = deserialize_token_set(tokens_bytes).map_err(BackendError::from)?;
+            let tokens = deserialize_token_set(tokens_bytes).map_err(DbInterfaceError::from)?;
             debug!("dump_tokens: exiting with {} tokens", tokens.len());
             Ok(tokens)
         } else {
-            Err(BackendError::Ffi(
+            Err(DbInterfaceError::Ffi(
                 "FfiCallbacks token dump".to_string(),
                 err,
             ))

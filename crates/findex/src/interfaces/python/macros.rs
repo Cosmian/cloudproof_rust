@@ -4,7 +4,7 @@ macro_rules! pyo3_unwrap {
     };
 }
 
-/// Implements the basic functionalities of keyword and location in python.
+/// Implements the basic functionalities of keyword and data in python.
 ///
 /// # Parameters
 ///

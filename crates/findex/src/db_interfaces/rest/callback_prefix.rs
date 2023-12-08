@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::backends::BackendError;
+use crate::db_interfaces::DbInterfaceError;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Copy)]
 #[repr(u8)]
@@ -15,7 +15,7 @@ pub enum CallbackPrefix {
 }
 
 impl CallbackPrefix {
-    #[cfg(feature = "backend-rest")]
+    #[cfg(feature = "rest-interface")]
     #[must_use]
     pub fn get_uri(self) -> &'static str {
         match self {
@@ -31,7 +31,7 @@ impl CallbackPrefix {
 }
 
 impl TryFrom<u8> for CallbackPrefix {
-    type Error = BackendError;
+    type Error = DbInterfaceError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {

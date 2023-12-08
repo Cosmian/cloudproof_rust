@@ -15,10 +15,10 @@ jobs:
       toolchain: stable
       kms-version: 4.9.1
       findex-cloud-version: 0.3.1
-      branch-java: fix/ffi_reserved_return_code
-      branch-js: develop
+      branch-java: fix/rename_findex_trait
+      branch-js: fix/rename_calbacks_to_backend
       branch-kms-js: v2.0.0
-      branch-flutter: develop
-      branch-python: develop
+      branch-flutter: fix/use_insert_entry_in_compact
+      branch-python: fix/use_insert_entry_in_compact
       exclusions: --exclude=cloudproof_findex
     secrets: inherit

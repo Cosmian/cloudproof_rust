@@ -6,7 +6,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use crate::backends::BackendError;
+use crate::db_interfaces::DbInterfaceError;
 
 /// Structure storing the callback functions passed through the Python
 /// interface.
@@ -69,7 +69,7 @@ impl PythonCallbacks {
     pub(crate) async fn fetch<const LENGTH: usize>(
         &self,
         tokens: HashSet<Token>,
-    ) -> Result<Vec<(Token, EncryptedValue<LENGTH>)>, BackendError> {
+    ) -> Result<Vec<(Token, EncryptedValue<LENGTH>)>, DbInterfaceError> {
         if let Some(fetch) = &self.fetch {
             Python::with_gil(|py| {
                 let py_tokens = tokens
@@ -77,11 +77,11 @@ impl PythonCallbacks {
                     .map(|token| PyBytes::new(py, &token))
                     .collect::<Vec<_>>();
                 let results = fetch.call1(py, (py_tokens,)).map_err(|e| {
-                    BackendError::Python(format!("unwrapping error: {e} (fetch_entry)"))
+                    DbInterfaceError::Python(format!("unwrapping error: {e} (fetch_entry)"))
                 })?;
                 let results: HashMap<[u8; Token::LENGTH], Vec<u8>> =
                     results.extract(py).map_err(|e| {
-                        BackendError::Python(format!(
+                        DbInterfaceError::Python(format!(
                             "converting Python results: {e} (fetch_entry)"
                         ))
                     })?;
@@ -90,13 +90,13 @@ impl PythonCallbacks {
                     .into_iter()
                     .map(|(k, v)| {
                         EncryptedValue::try_from(v.as_slice())
-                            .map_err(BackendError::Findex)
+                            .map_err(DbInterfaceError::Findex)
                             .map(|encrypted_value| (Token::from(k), encrypted_value))
                     })
                     .collect()
             })
         } else {
-            Err(BackendError::MissingCallback(
+            Err(DbInterfaceError::MissingCallback(
                 "No attribute fetch is defined for `self`".to_string(),
             ))
         }
@@ -106,7 +106,7 @@ impl PythonCallbacks {
         &self,
         old_values: HashMap<Token, EncryptedValue<LENGTH>>,
         new_values: HashMap<Token, EncryptedValue<LENGTH>>,
-    ) -> Result<HashMap<Token, EncryptedValue<LENGTH>>, BackendError> {
+    ) -> Result<HashMap<Token, EncryptedValue<LENGTH>>, DbInterfaceError> {
         if let Some(upsert) = &self.upsert {
             Python::with_gil(|py| {
                 let py_new_values = PyDict::new(py);
@@ -117,7 +117,7 @@ impl PythonCallbacks {
                             PyBytes::new(py, <Vec<u8>>::from(value).as_slice()),
                         )
                         .map_err(|e| {
-                            BackendError::Python(format!(
+                            DbInterfaceError::Python(format!(
                                 "converting new values to Python: {e} (upsert)"
                             ))
                         })?;
@@ -131,7 +131,7 @@ impl PythonCallbacks {
                             PyBytes::new(py, <Vec<u8>>::from(&value).as_slice()),
                         )
                         .map_err(|e| {
-                            BackendError::Python(format!(
+                            DbInterfaceError::Python(format!(
                                 "converting old values to Python: {e} (upsert)"
                             ))
                         })?;
@@ -139,11 +139,11 @@ impl PythonCallbacks {
 
                 let rejected_lines = upsert
                     .call1(py, (py_old_values, py_new_values))
-                    .map_err(|e| BackendError::Python(format!("{e} (upsert)")))?;
+                    .map_err(|e| DbInterfaceError::Python(format!("{e} (upsert)")))?;
 
                 let rejected_lines: HashMap<[u8; Token::LENGTH], Vec<u8>> =
                     rejected_lines.extract(py).map_err(|e| {
-                        BackendError::Python(format!(
+                        DbInterfaceError::Python(format!(
                             "converting rejections from Python: {e} (upsert)"
                         ))
                     })?;
@@ -153,7 +153,7 @@ impl PythonCallbacks {
                     .map(|(k, v)| {
                         <EncryptedValue<LENGTH>>::try_from(v.as_slice())
                             .map_err(|e| {
-                                BackendError::Python(format!(
+                                DbInterfaceError::Python(format!(
                                     "converting rejections from Python: {e} (upsert)"
                                 ))
                             })
@@ -162,7 +162,7 @@ impl PythonCallbacks {
                     .collect()
             })
         } else {
-            Err(BackendError::MissingCallback(
+            Err(DbInterfaceError::MissingCallback(
                 "No attribute upsert is defined for `self`".to_string(),
             ))
         }
@@ -171,7 +171,7 @@ impl PythonCallbacks {
     pub(crate) async fn insert<const LENGTH: usize>(
         &self,
         new_links: HashMap<Token, EncryptedValue<LENGTH>>,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DbInterfaceError> {
         if let Some(insert) = &self.insert {
             Python::with_gil(|py| {
                 let py_new_links = PyDict::new(py);
@@ -182,24 +182,26 @@ impl PythonCallbacks {
                             PyBytes::new(py, <Vec<u8>>::from(value).as_slice()),
                         )
                         .map_err(|e| {
-                            BackendError::Python(format!(
+                            DbInterfaceError::Python(format!(
                                 "adding new links to the Python dictionary: {e} (insert_chain)"
                             ))
                         })?;
                 }
                 insert.call1(py, (py_new_links,)).map_err(|e| {
-                    BackendError::Python(format!("unwrapping callback error: {e} (insert_chain)"))
+                    DbInterfaceError::Python(format!(
+                        "unwrapping callback error: {e} (insert_chain)"
+                    ))
                 })?;
                 Ok(())
             })
         } else {
-            Err(BackendError::MissingCallback(
-                "No attribute upsert is defined for `self`".to_string(),
+            Err(DbInterfaceError::MissingCallback(
+                "No attribute insert is defined for `self`".to_string(),
             ))
         }
     }
 
-    pub(crate) async fn delete(&self, uids: HashSet<Token>) -> Result<(), BackendError> {
+    pub(crate) async fn delete(&self, uids: HashSet<Token>) -> Result<(), DbInterfaceError> {
         if let Some(delete) = &self.delete {
             Python::with_gil(|py| {
                 let py_uids = uids
@@ -207,31 +209,33 @@ impl PythonCallbacks {
                     .map(|uid| PyBytes::new(py, uid))
                     .collect::<Vec<_>>();
                 delete.call1(py, (py_uids,)).map_err(|e| {
-                    BackendError::Python(format!("unwrapping callback error: {e} (insert_chain)"))
+                    DbInterfaceError::Python(format!(
+                        "unwrapping callback error: {e} (insert_chain)"
+                    ))
                 })?;
                 Ok(())
             })
         } else {
-            Err(BackendError::MissingCallback(
-                "No attribute upsert is defined for `self`".to_string(),
+            Err(DbInterfaceError::MissingCallback(
+                "No attribute delete is defined for `self`".to_string(),
             ))
         }
     }
 
-    pub(crate) async fn dump_tokens(&self) -> Result<HashSet<Token>, BackendError> {
+    pub(crate) async fn dump_tokens(&self) -> Result<HashSet<Token>, DbInterfaceError> {
         if let Some(dump_token) = &self.dump_tokens {
             Python::with_gil(|py| {
                 let results = dump_token.call0(py).map_err(|e| {
-                    BackendError::Python(format!("unwrapping callback error: {e} (dump_token)"))
+                    DbInterfaceError::Python(format!("unwrapping callback error: {e} (dump_token)"))
                 })?;
                 let py_result_table: HashSet<[u8; Token::LENGTH]> = results
                     .extract(py)
-                    .map_err(|e| BackendError::Python(format!("{e} (fetch_entry)")))?;
+                    .map_err(|e| DbInterfaceError::Python(format!("{e} (fetch_entry)")))?;
 
                 Ok(py_result_table.into_iter().map(Token::from).collect())
             })
         } else {
-            Err(BackendError::MissingCallback(
+            Err(DbInterfaceError::MissingCallback(
                 "No attribute dump_token is defined for `self`".to_string(),
             ))
         }

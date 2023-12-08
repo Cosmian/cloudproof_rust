@@ -4,14 +4,13 @@ import requests
 import redis
 import unittest
 
-from typing import Dict, List, Sequence, Set, Tuple
+from typing import Set
 
 from cloudproof_findex import (
     AuthorizationToken,
     Findex,
     IndexedValuesAndKeywords,
     Keyword,
-    Label,
     Location,
     Key,
     ProgressResults,
@@ -90,14 +89,6 @@ class TestStructures(unittest.TestCase):
         self.assertEqual(kw_str, kw_bytes)
         self.assertNotEqual(kw_str, kw_int)
 
-    def test_label(self) -> None:
-        rand_label = Label.random()
-        self.assertIsInstance(rand_label, Label)
-
-        saved_bytes = rand_label.to_bytes()
-        reloaded_label = Label.from_bytes(saved_bytes)
-        self.assertEqual(saved_bytes, reloaded_label.to_bytes())
-
     def test_keys(self) -> None:
         msk = Key.random()
         self.assertIsInstance(msk, Key)
@@ -110,184 +101,93 @@ class TestStructures(unittest.TestCase):
             Key.from_bytes(b'wrong size')
 
 
-class FindexHashmap:
-    """Implement Findex callbacks using hashmaps"""
+def define_custom_db_interface(is_with_test: bool = False):
+    table: dict = {}
 
-    def __init__(self, db: Dict[int, List[str]]):
-        self.db = db
-        self.entry_table: Dict[bytes, bytes] = {}
-        self.chain_table: Dict[bytes, bytes] = {}
-
-    # Create callback functions
-    def fetch_entry(self, uids: List[bytes]) -> Sequence[Tuple[bytes, bytes]]:
-        """DB request to fetch entry_table elements"""
-        res = []
-        for uid in uids:
-            if uid in self.entry_table:
-                res.append((uid, self.entry_table[uid]))
-        return res
-
-    def fetch_all_entry_table_uids(self) -> Set[bytes]:
-        return set(self.entry_table.keys())
-
-    def fetch_chain(self, uids: List[bytes]) -> Dict[bytes, bytes]:
-        """DB request to fetch chain_table elements"""
-        res = {}
-        for uid in uids:
-            if uid in self.chain_table:
-                res[uid] = self.chain_table[uid]
-        return res
-
-    def upsert_entry(
-        self, entries: Dict[bytes, Tuple[bytes, bytes]]
-    ) -> Dict[bytes, bytes]:
-        """DB request to upsert entry_table elements.
-        WARNING: This implementation will not work with concurrency.
-        """
-        rejected_lines = {}
-        for uid, (old_val, new_val) in entries.items():
-            if uid in self.entry_table:
-                if self.entry_table[uid] == old_val:
-                    self.entry_table[uid] = new_val
-                else:
-                    rejected_lines[uid] = self.entry_table[uid]
-            elif not old_val:
-                self.entry_table[uid] = new_val
-            else:
-                raise Exception('Line got deleted in Entry Table')
-
-        return rejected_lines
-
-    def insert_entry(self, entries: Dict[bytes, bytes]) -> None:
-        """DB request to insert entry_table elements"""
-        for uid in entries:
-            if uid in self.entry_table:
-                raise KeyError('Conflict in Entry Table for UID: {uid}')
-            self.entry_table[uid] = entries[uid]
-
-    def insert_chain(self, entries: Dict[bytes, bytes]) -> None:
-        """DB request to insert chain_table elements"""
-        for uid in entries:
-            if uid in self.chain_table:
-                raise KeyError('Conflict in Chain Table for UID: {uid}')
-            self.chain_table[uid] = entries[uid]
-
-    def list_removed_locations(self, locations: List[Location]) -> List[Location]:
-        res = []
-        for loc in locations:
-            if not int(loc) in self.db:
-                res.append(loc)
-        return res
-
-    def update_lines(
-        self,
-        removed_chain_table_uids: List[bytes],
-        new_encrypted_entry_table_items: Dict[bytes, bytes],
-        new_encrypted_chain_table_items: Dict[bytes, bytes],
-    ) -> None:
-        # remove all entries from entry table
-        self.entry_table.clear()
-
-        # remove entries from chain table
-        for uid in removed_chain_table_uids:
-            del self.chain_table[uid]
-
-        # insert new chains
-        self.insert_chain(new_encrypted_chain_table_items)
-
-        # insert newly encrypted entries
-        self.insert_entry(new_encrypted_entry_table_items)
-
-
-# Define closures to implement an in-memory backend.
-def define_custom_backends(is_with_test: bool = False):
-    entry_table: dict = {}
-    chain_table: dict = {}
-
-    def fetch(uids, table: dict):
+    def fetch(uids):
         res = {}
         for uid in uids:
             if uid in table:
-                res[uid] = table.get(uid)
+                res[uid] = table[uid]
         return res
 
-    def upsert_entries(old_values: dict, new_values: dict):
+    def upsert(old_values: dict, new_values: dict):
         res = {}
         for uid, new_value in new_values.items():
-            if old_values.get(uid) == entry_table.get(uid):
-                entry_table[uid] = new_value
-            elif uid in entry_table:
-                res[uid] = entry_table[uid]
+            current_value = table.get(uid)
+            old_value = old_values.get(uid)
+            if old_value == current_value:
+                table[uid] = new_value
+            elif not current_value:
+                raise ValueError('The current value needs to be defined as long as the old value is defined ')
+            else:
+                res[uid] = current_value
         return res
 
-    def insert_links(new_links: Dict):
-        for uid, value in new_links.items():
-            if uid in chain_table:
-                raise ValueError('collision in the Chain Table on uid: ' + uid)
-            chain_table[uid] = value
+    def insert(items):
+        for uid, value in items.items():
+            if uid in table:
+                raise ValueError('collision in insert operation on UID: ' + uid)
+            table[uid] = value
 
-    def delete(uids, table: Dict):
+    def delete(uids):
         for uid in uids:
             table.pop(uid)
 
-    def dump_entry_tokens():
-        return entry_table.keys()
+    def dump_tokens():
+        return table.keys()
 
     if is_with_test:
         k1 = 'my first key'
         k2 = 'my second key'
+        k3 = 'my third key'
         v1 = [1, 2, 3]
         v2 = [4, 5, 6]
         v3 = [7, 8, 9]
 
         # Test values can be upserted.
-        res = upsert_entries({}, {k1: v1})
+        res = upsert({}, {k1: v1})
         assert not res
-        assert v1 == fetch([k1], entry_table)[k1]
+        assert v1 == fetch([k1])[k1]
 
-        res = upsert_entries({k1: v1}, {k1: v2})
+        res = upsert({k1: v1}, {k1: v2})
         assert not res
-        assert v2 == fetch([k1], entry_table)[k1]
+        assert v2 == fetch([k1])[k1]
 
-        res = upsert_entries({k1: v1}, {k1: v3})
+        res = upsert({k1: v1}, {k1: v3})
         assert res == {k1: v2}
-        assert v2 == fetch([k1], entry_table)[k1]
+        assert v2 == fetch([k1])[k1]
 
-        assert {k1} == dump_entry_tokens()
+        assert {k1} == dump_tokens()
 
-        insert_links({k1: v1})
-        assert v1 == fetch([k1], chain_table)[k1]
-        assert not fetch([k2], chain_table)
+        insert({k3: v1})
+        assert v1 == fetch([k3])[k3]
+        assert not fetch([k2])
 
         try:
-            insert_links({k1: v2})
+            insert({k1: v2})
             raise ValueError('collision on key: ' + k1)
         except:
             pass
 
         # clear test values
-        entry_table = {}
-        chain_table = {}
+        table = {}
 
-    entry_callbacks = PythonCallbacks.new()
-    entry_callbacks.set_fetch(lambda uids: fetch(uids, entry_table))
-    entry_callbacks.set_upsert(upsert_entries)
-    entry_callbacks.set_delete(lambda uids: delete(uids, entry_table))
-    entry_callbacks.set_dump_tokens(dump_entry_tokens)
+    in_memory_db_interface = PythonCallbacks.new()
+    in_memory_db_interface.set_fetch(fetch)
+    in_memory_db_interface.set_upsert(upsert)
+    in_memory_db_interface.set_insert(insert)
+    in_memory_db_interface.set_delete(delete)
+    in_memory_db_interface.set_dump_tokens(dump_tokens)
 
-    chain_callbacks = PythonCallbacks.new()
-    chain_callbacks.set_fetch(lambda uids: fetch(uids, chain_table))
-    chain_callbacks.set_insert(insert_links)
-    chain_callbacks.set_delete(lambda uids: delete(uids, chain_table))
-
-    return (entry_callbacks, chain_callbacks)
+    return in_memory_db_interface
 
 
 class TestFindex(unittest.TestCase):
     def setUp(self) -> None:
         # Create structures needed by Findex
         self.findex_key = Key.random()
-        self.label = Label.random()
+        self.label = "My label."
 
         self.db = {
             1: ['Martin', 'Sheperd'],
@@ -295,10 +195,10 @@ class TestFindex(unittest.TestCase):
             3: ['John', 'Sheperd'],
         }
 
-        # Parameters used by the cloud backend.
-        url = 'http://localhost:8080'
+        # Parameters used by the REST interface
+        rest_server_url = 'http://localhost:8080'
         res = requests.post(
-            url + '/indexes',
+            rest_server_url + '/indexes',
             headers={'Content-Type': 'application/json'},
             json={'name': 'Test'},
             timeout=5,
@@ -313,39 +213,36 @@ class TestFindex(unittest.TestCase):
             insert_chains_key=Key.from_bytes(response['insert_chains_key']),
         )
 
-        # Parameters used by the custom backend.
-        (entry_callbacks, chain_callbacks) = define_custom_backends()
+        in_memory_db_interface = define_custom_db_interface()
 
-        sqlite_db = '/tmp/cloudproof_findex.sqlite'
+        sqlite_path = '/tmp/cloudproof_findex.sqlite'
         redis_host = 'localhost'
         redis_port = 6379
         redis_url = f'redis://{redis_host}:{redis_port}'
 
-        if os.path.exists(sqlite_db):
-            os.remove(sqlite_db)
+        if os.path.exists(sqlite_path):
+            os.remove(sqlite_path)
 
         r = redis.Redis(host=redis_host, port=redis_port, db=0)
         print(redis_url)
         r.flushdb()
 
         self.findex_interfaces = {
-            'sqlite': Findex.new_with_sqlite_backend(
+            'sqlite': Findex.new_with_sqlite_interface(
                 self.findex_key,
                 self.label,
-                sqlite_db,
-                sqlite_db,
+                sqlite_path,
             ),
-            'redis': Findex.new_with_redis_backend(
+            'redis': Findex.new_with_redis_interface(
                 self.findex_key,
                 self.label,
                 redis_url,
-                redis_url,
             ),
-            'rest': Findex.new_with_rest_backend(
-                self.findex_key, self.label, str(token), url
-            ),
-            'custom': Findex.new_with_custom_backend(
-                self.findex_key, self.label, entry_callbacks, chain_callbacks
+            'rest': Findex.new_with_rest_interface(self.label,
+                                                   str(token),
+                                                   rest_server_url),
+            'custom': Findex.new_with_custom_interface(
+                self.findex_key, self.label, in_memory_db_interface, in_memory_db_interface
             ),
         }
 
@@ -354,8 +251,8 @@ class TestFindex(unittest.TestCase):
             Location.from_int(k): v for k, v in self.db.items()
         }
 
-        for backend, instance in self.findex_interfaces.items():
-            print('Test upserting on {} backend.', backend)
+        for interface, instance in self.findex_interfaces.items():
+            print('Test upserting on {} interface.', interface)
             res = instance.add(indexed_values_and_keywords)
             # 5 keywords returned since "Sheperd" is duplicated
             self.assertEqual(len(res), 5)
@@ -369,8 +266,8 @@ class TestFindex(unittest.TestCase):
             Location.from_int(k): v for k, v in self.db.items()
         }
 
-        for backend, instance in self.findex_interfaces.items():
-            print('Test upserting and search on {} backend.', backend)
+        for interface, instance in self.findex_interfaces.items():
+            print('Test upserting and search on {} interface.', interface)
             instance.add(indexed_values_and_keywords)
 
             res = instance.search([Keyword.from_bytes(b'Martial')])
@@ -387,8 +284,8 @@ class TestFindex(unittest.TestCase):
             Location.from_int(k): v for k, v in self.db.items()
         }
 
-        for backend, instance in self.findex_interfaces.items():
-            print(f'Test graph upserting and search on {backend} backend.')
+        for interface, instance in self.findex_interfaces.items():
+            print(f'Test graph upserting and search on {interface} interface.')
             instance.add(indexed_values_and_keywords)
 
             # Adding custom keywords graph
@@ -433,26 +330,27 @@ class TestFindex(unittest.TestCase):
         indexed_values_and_keywords: IndexedValuesAndKeywords = {
             Location.from_int(k): v for k, v in self.db.items()
         }
-        del self.db[2]
 
         interfaces = [
-            (backend, instance)
-            for backend, instance in self.findex_interfaces.items()
-            if backend == 'sqlite'
+            (interface, instance)
+            for interface, instance in self.findex_interfaces.items()
+            if interface == 'sqlite'
         ]
 
-        for backend, instance in interfaces:
-            print(f'Test compacting and search on {backend} backend.')
+        for interface, instance in interfaces:
+            print(f'Test compacting and search on {interface} interface.')
 
             instance.add(indexed_values_and_keywords)
 
             # removing 2nd db line
-            new_label = Label.random()
+            new_label = "My renewed label"
+
+            filtered_locations = { Location.from_int(2) }
 
             def filter_obsolete_data(dataset: Set[Location]):
                 res = set()
                 for data in dataset:
-                    if int(data) in self.db:
+                    if data not in filtered_locations:
                         res.add(data)
                 return res
 
@@ -469,5 +367,5 @@ class TestFindex(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    define_custom_backends(True)
+    define_custom_db_interface(True)
     unittest.main()

@@ -4,76 +4,76 @@ use std::{
 };
 
 use cosmian_findex::{
-    ChainTable, DxEnc, EntryTable, Error as FindexError, Findex, Index, IndexedValue,
-    IndexedValueToKeywordsMap, Keyword, KeywordToDataMap, Keywords, Label, Location, UserKey,
-    ENTRY_LENGTH, LINK_LENGTH,
+    ChainTable, Data, DxEnc, EntryTable, Error as FindexError, Findex, Index, IndexedValue,
+    IndexedValueToKeywordsMap, Keyword, KeywordToDataMap, Keywords, Label, UserKey, ENTRY_LENGTH,
+    LINK_LENGTH,
 };
 
-#[cfg(feature = "backend-ffi")]
-use crate::backends::custom::ffi::{FfiChainBackend, FfiEntryBackend};
-#[cfg(feature = "backend-python")]
-use crate::backends::custom::python::{PythonChainBackend, PythonEntryBackend};
-#[cfg(feature = "backend-wasm")]
-use crate::backends::custom::wasm::{WasmChainBackend, WasmEntryBackend};
-#[cfg(feature = "backend-redis")]
-use crate::backends::redis::{RedisChainBackend, RedisEntryBackend};
-#[cfg(feature = "backend-rest")]
-use crate::backends::rest::{RestChainBackend, RestEntryBackend, RestParameters};
-#[cfg(feature = "backend-sqlite")]
-use crate::backends::sqlite::{SqlChainBackend, SqlEntryBackend};
-use crate::{backends::BackendError, BackendConfiguration};
+#[cfg(feature = "ffi")]
+use crate::db_interfaces::custom::ffi::{FfiChainBackend, FfiEntryBackend};
+#[cfg(feature = "python")]
+use crate::db_interfaces::custom::python::{PythonChainBackend, PythonEntryBackend};
+#[cfg(feature = "wasm")]
+use crate::db_interfaces::custom::wasm::{WasmChainBackend, WasmEntryBackend};
+#[cfg(feature = "redis-interface")]
+use crate::db_interfaces::redis::{RedisChainBackend, RedisEntryBackend};
+#[cfg(feature = "rest-interface")]
+use crate::db_interfaces::rest::{RestChainBackend, RestEntryBackend, RestParameters};
+#[cfg(feature = "sqlite-interface")]
+use crate::db_interfaces::sqlite::{SqlChainBackend, SqlEntryBackend};
+use crate::{db_interfaces::DbInterfaceError, Configuration};
 
 /// Wrapper around Findex instantiations used for static dispatch.
 #[derive(Debug)]
 pub enum InstantiatedFindex {
-    #[cfg(feature = "backend-sqlite")]
+    #[cfg(feature = "sqlite-interface")]
     Sqlite(
         Findex<
-            BackendError,
+            DbInterfaceError,
             EntryTable<ENTRY_LENGTH, SqlEntryBackend>,
             ChainTable<LINK_LENGTH, SqlChainBackend>,
         >,
     ),
 
-    #[cfg(feature = "backend-redis")]
+    #[cfg(feature = "redis-interface")]
     Redis(
         Findex<
-            BackendError,
+            DbInterfaceError,
             EntryTable<ENTRY_LENGTH, RedisEntryBackend>,
             ChainTable<LINK_LENGTH, RedisChainBackend>,
         >,
     ),
 
-    #[cfg(feature = "backend-ffi")]
+    #[cfg(feature = "ffi")]
     Ffi(
         Findex<
-            BackendError,
+            DbInterfaceError,
             EntryTable<ENTRY_LENGTH, FfiEntryBackend>,
             ChainTable<LINK_LENGTH, FfiChainBackend>,
         >,
     ),
 
-    #[cfg(feature = "backend-python")]
+    #[cfg(feature = "python")]
     Python(
         Findex<
-            BackendError,
+            DbInterfaceError,
             EntryTable<ENTRY_LENGTH, PythonEntryBackend>,
             ChainTable<LINK_LENGTH, PythonChainBackend>,
         >,
     ),
-    #[cfg(feature = "backend-wasm")]
+    #[cfg(feature = "wasm")]
     Wasm(
         Findex<
-            BackendError,
+            DbInterfaceError,
             EntryTable<ENTRY_LENGTH, WasmEntryBackend>,
             ChainTable<LINK_LENGTH, WasmChainBackend>,
         >,
     ),
 
-    #[cfg(feature = "backend-rest")]
+    #[cfg(feature = "rest-interface")]
     Rest(
         Findex<
-            BackendError,
+            DbInterfaceError,
             EntryTable<ENTRY_LENGTH, RestEntryBackend>,
             ChainTable<LINK_LENGTH, RestChainBackend>,
         >,
@@ -82,43 +82,43 @@ pub enum InstantiatedFindex {
 
 impl InstantiatedFindex {
     /// Wrapper around Findex [`new`](Index::new) for static dispatch.
-    pub async fn new(config: BackendConfiguration) -> Result<Self, BackendError> {
+    pub async fn new(config: Configuration) -> Result<Self, DbInterfaceError> {
         let findex = match config {
-            #[cfg(feature = "backend-sqlite")]
-            BackendConfiguration::Sqlite(entry_params, chain_params) => Self::Sqlite(Findex::new(
+            #[cfg(feature = "sqlite-interface")]
+            Configuration::Sqlite(entry_params, chain_params) => Self::Sqlite(Findex::new(
                 EntryTable::setup(SqlEntryBackend::new(&entry_params)?),
                 ChainTable::setup(SqlChainBackend::new(&chain_params)?),
             )),
 
-            #[cfg(feature = "backend-redis")]
-            BackendConfiguration::Redis(entry_params, chain_params) => Self::Redis(Findex::new(
+            #[cfg(feature = "redis-interface")]
+            Configuration::Redis(entry_params, chain_params) => Self::Redis(Findex::new(
                 EntryTable::setup(RedisEntryBackend::connect(&entry_params).await?),
                 ChainTable::setup(RedisChainBackend::connect(&chain_params).await?),
             )),
 
-            #[cfg(feature = "backend-rest")]
-            BackendConfiguration::Rest(token, url) => Self::Rest(Findex::new(
+            #[cfg(feature = "rest-interface")]
+            Configuration::Rest(token, entry_url, chain_url) => Self::Rest(Findex::new(
                 EntryTable::setup(RestEntryBackend::new(RestParameters::new(
                     token.clone(),
-                    Some(url.clone()),
+                    entry_url,
                 ))),
-                ChainTable::setup(RestChainBackend::new(RestParameters::new(token, Some(url)))),
+                ChainTable::setup(RestChainBackend::new(RestParameters::new(token, chain_url))),
             )),
 
-            #[cfg(feature = "backend-ffi")]
-            BackendConfiguration::Ffi(entry_params, chain_params) => Self::Ffi(Findex::new(
+            #[cfg(feature = "ffi")]
+            Configuration::Ffi(entry_params, chain_params) => Self::Ffi(Findex::new(
                 EntryTable::setup(FfiEntryBackend::new(entry_params)),
                 ChainTable::setup(FfiChainBackend::new(chain_params)),
             )),
 
-            #[cfg(feature = "backend-python")]
-            BackendConfiguration::Python(entry_params, chain_params) => Self::Python(Findex::new(
+            #[cfg(feature = "python")]
+            Configuration::Python(entry_params, chain_params) => Self::Python(Findex::new(
                 EntryTable::setup(PythonEntryBackend::new(entry_params)),
                 ChainTable::setup(PythonChainBackend::new(chain_params)),
             )),
 
-            #[cfg(feature = "backend-wasm")]
-            BackendConfiguration::Wasm(entry_params, chain_params) => Self::Wasm(Findex::new(
+            #[cfg(feature = "wasm")]
+            Configuration::Wasm(entry_params, chain_params) => Self::Wasm(Findex::new(
                 EntryTable::setup(WasmEntryBackend::new(entry_params)),
                 ChainTable::setup(WasmChainBackend::new(chain_params)),
             )),
@@ -131,17 +131,17 @@ impl InstantiatedFindex {
     #[must_use]
     pub fn keygen(&self) -> UserKey {
         match self {
-            #[cfg(feature = "backend-sqlite")]
+            #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.keygen(),
-            #[cfg(feature = "backend-redis")]
+            #[cfg(feature = "redis-interface")]
             Self::Redis(findex) => findex.keygen(),
-            #[cfg(feature = "backend-ffi")]
+            #[cfg(feature = "ffi")]
             Self::Ffi(findex) => findex.keygen(),
-            #[cfg(feature = "backend-python")]
+            #[cfg(feature = "python")]
             Self::Python(findex) => findex.keygen(),
-            #[cfg(feature = "backend-wasm")]
+            #[cfg(feature = "wasm")]
             Self::Wasm(findex) => findex.keygen(),
-            #[cfg(feature = "backend-rest")]
+            #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => findex.keygen(),
         }
     }
@@ -149,26 +149,26 @@ impl InstantiatedFindex {
     /// Wrapper around Findex [`search`](Index::search) for static dispatch.
     pub async fn search<
         F: Future<Output = Result<bool, String>>,
-        Interrupt: Fn(HashMap<Keyword, HashSet<IndexedValue<Keyword, Location>>>) -> F,
+        Interrupt: Fn(HashMap<Keyword, HashSet<IndexedValue<Keyword, Data>>>) -> F,
     >(
         &self,
         key: &UserKey,
         label: &Label,
         keywords: Keywords,
         interrupt: &Interrupt,
-    ) -> Result<KeywordToDataMap, FindexError<BackendError>> {
+    ) -> Result<KeywordToDataMap, FindexError<DbInterfaceError>> {
         match self {
-            #[cfg(feature = "backend-rest")]
+            #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => findex.search(key, label, keywords, interrupt).await,
-            #[cfg(feature = "backend-ffi")]
+            #[cfg(feature = "ffi")]
             Self::Ffi(findex) => findex.search(key, label, keywords, interrupt).await,
-            #[cfg(feature = "backend-python")]
+            #[cfg(feature = "python")]
             Self::Python(findex) => findex.search(key, label, keywords, interrupt).await,
-            #[cfg(feature = "backend-sqlite")]
+            #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.search(key, label, keywords, interrupt).await,
-            #[cfg(feature = "backend-redis")]
+            #[cfg(feature = "redis-interface")]
             Self::Redis(findex) => findex.search(key, label, keywords, interrupt).await,
-            #[cfg(feature = "backend-wasm")]
+            #[cfg(feature = "wasm")]
             Self::Wasm(findex) => findex.search(key, label, keywords, interrupt).await,
         }
     }
@@ -179,19 +179,19 @@ impl InstantiatedFindex {
         key: &UserKey,
         label: &Label,
         additions: IndexedValueToKeywordsMap,
-    ) -> Result<Keywords, FindexError<BackendError>> {
+    ) -> Result<Keywords, FindexError<DbInterfaceError>> {
         match self {
-            #[cfg(feature = "backend-sqlite")]
+            #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.add(key, label, additions).await,
-            #[cfg(feature = "backend-redis")]
+            #[cfg(feature = "redis-interface")]
             Self::Redis(findex) => findex.add(key, label, additions).await,
-            #[cfg(feature = "backend-ffi")]
+            #[cfg(feature = "ffi")]
             Self::Ffi(findex) => findex.add(key, label, additions).await,
-            #[cfg(feature = "backend-python")]
+            #[cfg(feature = "python")]
             Self::Python(findex) => findex.add(key, label, additions).await,
-            #[cfg(feature = "backend-wasm")]
+            #[cfg(feature = "wasm")]
             Self::Wasm(findex) => findex.add(key, label, additions).await,
-            #[cfg(feature = "backend-rest")]
+            #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => findex.add(key, label, additions).await,
         }
     }
@@ -202,38 +202,38 @@ impl InstantiatedFindex {
         key: &UserKey,
         label: &Label,
         deletions: IndexedValueToKeywordsMap,
-    ) -> Result<Keywords, FindexError<BackendError>> {
+    ) -> Result<Keywords, FindexError<DbInterfaceError>> {
         match self {
-            #[cfg(feature = "backend-sqlite")]
+            #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.delete(key, label, deletions).await,
-            #[cfg(feature = "backend-redis")]
+            #[cfg(feature = "redis-interface")]
             Self::Redis(findex) => findex.delete(key, label, deletions).await,
-            #[cfg(feature = "backend-ffi")]
+            #[cfg(feature = "ffi")]
             Self::Ffi(findex) => findex.delete(key, label, deletions).await,
-            #[cfg(feature = "backend-python")]
+            #[cfg(feature = "python")]
             Self::Python(findex) => findex.delete(key, label, deletions).await,
-            #[cfg(feature = "backend-wasm")]
+            #[cfg(feature = "wasm")]
             Self::Wasm(findex) => findex.delete(key, label, deletions).await,
-            #[cfg(feature = "backend-rest")]
+            #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => findex.delete(key, label, deletions).await,
         }
     }
 
     /// Wrapper around Findex [`compact`](Findex::compact) for static dispatch.
     pub async fn compact<
-        F: Future<Output = Result<HashSet<Location>, String>>,
-        Filter: Fn(HashSet<Location>) -> F,
+        F: Future<Output = Result<HashSet<Data>, String>>,
+        Filter: Fn(HashSet<Data>) -> F,
     >(
         &self,
         old_key: &UserKey,
         new_key: &UserKey,
         old_label: &Label,
         new_label: &Label,
-        n_compact_to_full: usize,
-        filter_obsolete_data: &Filter,
-    ) -> Result<(), FindexError<BackendError>> {
+        compacting_rate: f64,
+        data_filter: &Filter,
+    ) -> Result<(), FindexError<DbInterfaceError>> {
         match self {
-            #[cfg(feature = "backend-sqlite")]
+            #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => {
                 findex
                     .compact(
@@ -241,12 +241,12 @@ impl InstantiatedFindex {
                         new_key,
                         old_label,
                         new_label,
-                        n_compact_to_full,
-                        filter_obsolete_data,
+                        compacting_rate,
+                        data_filter,
                     )
                     .await
             }
-            #[cfg(feature = "backend-redis")]
+            #[cfg(feature = "redis-interface")]
             Self::Redis(findex) => {
                 findex
                     .compact(
@@ -254,12 +254,12 @@ impl InstantiatedFindex {
                         new_key,
                         old_label,
                         new_label,
-                        n_compact_to_full,
-                        filter_obsolete_data,
+                        compacting_rate,
+                        data_filter,
                     )
                     .await
             }
-            #[cfg(feature = "backend-ffi")]
+            #[cfg(feature = "ffi")]
             Self::Ffi(findex) => {
                 findex
                     .compact(
@@ -267,12 +267,12 @@ impl InstantiatedFindex {
                         new_key,
                         old_label,
                         new_label,
-                        n_compact_to_full,
-                        filter_obsolete_data,
+                        compacting_rate,
+                        data_filter,
                     )
                     .await
             }
-            #[cfg(feature = "backend-python")]
+            #[cfg(feature = "python")]
             Self::Python(findex) => {
                 findex
                     .compact(
@@ -280,12 +280,12 @@ impl InstantiatedFindex {
                         new_key,
                         old_label,
                         new_label,
-                        n_compact_to_full,
-                        filter_obsolete_data,
+                        compacting_rate,
+                        data_filter,
                     )
                     .await
             }
-            #[cfg(feature = "backend-wasm")]
+            #[cfg(feature = "wasm")]
             Self::Wasm(findex) => {
                 findex
                     .compact(
@@ -293,12 +293,12 @@ impl InstantiatedFindex {
                         new_key,
                         old_label,
                         new_label,
-                        n_compact_to_full,
-                        filter_obsolete_data,
+                        compacting_rate,
+                        data_filter,
                     )
                     .await
             }
-            #[cfg(feature = "backend-rest")]
+            #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => {
                 findex
                     .compact(
@@ -306,8 +306,8 @@ impl InstantiatedFindex {
                         new_key,
                         old_label,
                         new_label,
-                        n_compact_to_full,
-                        filter_obsolete_data,
+                        compacting_rate,
+                        data_filter,
                     )
                     .await
             }

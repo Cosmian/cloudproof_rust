@@ -10,7 +10,7 @@ use pyo3::prelude::*;
 use types::{Key, Keyword, Label, Location};
 
 use self::types::AuthorizationToken;
-use crate::backends::custom::python::PythonCallbacks;
+use crate::db_interfaces::custom::python::PythonCallbacks;
 
 #[pymodule]
 fn cloudproof_findex(_py: Python, m: &PyModule) -> PyResult<()> {

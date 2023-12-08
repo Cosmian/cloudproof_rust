@@ -4,13 +4,13 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use cosmian_findex::{
-    CoreError as FindexCoreError, EdxStore, EncryptedValue, Token, TokenToEncryptedValueMap,
+    CoreError as FindexCoreError, DbInterface, EncryptedValue, Token, TokenToEncryptedValueMap,
     TokenWithEncryptedValueList, Tokens, ENTRY_LENGTH, LINK_LENGTH,
 };
 use redis::{aio::ConnectionManager, pipe, AsyncCommands, Script};
 use tracing::trace;
 
-use crate::backends::BackendError;
+use crate::db_interfaces::DbInterfaceError;
 
 /// The length of the prefix of the table name in bytes
 /// 0x00ee for the entry table
@@ -54,7 +54,7 @@ const CONDITIONAL_UPSERT_SCRIPT: &str = r"
 
 impl RedisEntryBackend {
     /// Connects to a Redis server using the given URL.
-    pub async fn connect(url: &str) -> Result<Self, BackendError> {
+    pub async fn connect(url: &str) -> Result<Self, DbInterfaceError> {
         let client = redis::Client::open(url)?;
         let manager = ConnectionManager::new(client).await?;
 
@@ -65,7 +65,9 @@ impl RedisEntryBackend {
     }
 
     /// Connects to a Redis server with a `ConnectionManager`.
-    pub async fn connect_with_manager(manager: ConnectionManager) -> Result<Self, BackendError> {
+    pub async fn connect_with_manager(
+        manager: ConnectionManager,
+    ) -> Result<Self, DbInterfaceError> {
         Ok(Self {
             manager,
             upsert_script: Script::new(CONDITIONAL_UPSERT_SCRIPT),
@@ -76,7 +78,7 @@ impl RedisEntryBackend {
     ///
     /// # Warning
     /// This is definitive
-    pub async fn clear_indexes(&self) -> Result<(), BackendError> {
+    pub async fn clear_indexes(&self) -> Result<(), DbInterfaceError> {
         redis::cmd("FLUSHDB")
             .query_async(&mut self.manager.clone())
             .await?;
@@ -85,8 +87,8 @@ impl RedisEntryBackend {
 }
 
 #[async_trait(?Send)]
-impl EdxStore<ENTRY_LENGTH> for RedisEntryBackend {
-    type Error = BackendError;
+impl DbInterface<ENTRY_LENGTH> for RedisEntryBackend {
+    type Error = DbInterfaceError;
 
     async fn dump_tokens(&self) -> Result<Tokens, Self::Error> {
         let keys: Vec<Vec<u8>> = self
@@ -215,14 +217,16 @@ impl std::fmt::Debug for RedisChainBackend {
 
 impl RedisChainBackend {
     /// Connects to a Redis server using the given `url`.
-    pub async fn connect(url: &str) -> Result<Self, BackendError> {
+    pub async fn connect(url: &str) -> Result<Self, DbInterfaceError> {
         let client = redis::Client::open(url)?;
         let manager = ConnectionManager::new(client).await?;
         Ok(Self(manager))
     }
 
     /// Connects to a Redis server with a `ConnectionManager`.
-    pub async fn connect_with_manager(manager: ConnectionManager) -> Result<Self, BackendError> {
+    pub async fn connect_with_manager(
+        manager: ConnectionManager,
+    ) -> Result<Self, DbInterfaceError> {
         Ok(Self(manager))
     }
 
@@ -230,7 +234,7 @@ impl RedisChainBackend {
     ///
     /// # Warning
     /// This is definitive
-    pub async fn clear_indexes(&self) -> Result<(), BackendError> {
+    pub async fn clear_indexes(&self) -> Result<(), DbInterfaceError> {
         redis::cmd("FLUSHDB")
             .query_async(&mut self.0.clone())
             .await?;
@@ -239,8 +243,8 @@ impl RedisChainBackend {
 }
 
 #[async_trait(?Send)]
-impl EdxStore<LINK_LENGTH> for RedisChainBackend {
-    type Error = BackendError;
+impl DbInterface<LINK_LENGTH> for RedisChainBackend {
+    type Error = DbInterfaceError;
 
     async fn dump_tokens(&self) -> Result<Tokens, Self::Error> {
         panic!("No token dump is performed for the Chain Table.")
@@ -322,7 +326,7 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
-    use crate::{backends::tests::test_backend, logger::log_init, BackendConfiguration};
+    use crate::{db_interfaces::tests::test_backend, logger::log_init, Configuration};
 
     pub fn get_redis_url() -> String {
         if let Ok(var_env) = std::env::var("REDIS_HOST") {
@@ -334,7 +338,7 @@ mod tests {
 
     #[actix_rt::test]
     #[serial]
-    async fn test_upsert_conflict() -> Result<(), BackendError> {
+    async fn test_upsert_conflict() -> Result<(), DbInterfaceError> {
         log_init();
         trace!("Test Redis upsert.");
 
@@ -452,7 +456,7 @@ mod tests {
             .await
             .unwrap();
 
-        let config = BackendConfiguration::Redis(url.clone(), url);
+        let config = Configuration::Redis(url.clone(), url.clone());
         test_backend(config).await;
     }
 }

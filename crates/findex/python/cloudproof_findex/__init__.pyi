@@ -108,43 +108,6 @@ class Location:
             bytes
         """
 
-class Label:
-    """Additional data used to encrypt the entry table."""
-
-    def to_bytes(self) -> bytes:
-        """Convert to bytes.
-
-        Returns:
-            bytes
-        """
-    @staticmethod
-    def random() -> Label:
-        """Initialize a random label.
-
-        Returns:
-            Label
-        """
-    @staticmethod
-    def from_bytes(label_bytes: bytes) -> Label:
-        """Load from bytes.
-
-        Args:
-            label_bytes (bytes)
-
-        Returns:
-            Label
-        """
-    @staticmethod
-    def from_string(label_str: str) -> Label:
-        """Load from a string.
-
-        Args:
-            label_str (str)
-
-        Returns:
-            Label
-        """
-
 class Key:
     """Input key used to derive Findex keys."""
 
@@ -173,7 +136,7 @@ class Key:
         """
 
 class PythonCallbacks:
-    """Callback structure used to instantiate a Findex backend."""
+    """Callback structure used to instantiate a Findex DB interface."""
 
     @staticmethod
     def new() -> PythonCallbacks:
@@ -225,38 +188,39 @@ class AuthorizationToken:
 
 class Findex:
     @staticmethod
-    def new_with_sqlite_backend(
-        key: Key, label: Label, entry_path: str, chain_path: str
+    def new_with_sqlite_interface(
+        key: Key, label: str, entry_path: str, chain_path: Optional[str]=None
     ) -> Findex:
-        """Instantiate a new Findex instance using an SQLite backend.
+        """Instantiate a new Findex instance using an SQLite interface.
 
         Returns:
             Findex
         """
     @staticmethod
-    def new_with_redis_backend(
-        key: Key, label: Label, entry_url: str, chain_url: str
+    def new_with_redis_interface(
+        key: Key, label: str, entry_url: str, chain_url: Optional[str]=None
     ) -> Findex:
-        """Instantiate a new Findex instance using Redis backend.
+        """Instantiate a new Findex instance using a Redis interface.
 
         Returns:
             Findex
         """
     @staticmethod
-    def new_with_rest_backend(key: Key, label: Label, token: str, url: str) -> Findex:
-        """Instantiate a new Findex instance using REST backend.
+    def new_with_rest_interface(label: str, token: str, entry_url: str,
+                                chain_url: Optional[str]=None) -> Findex:
+        """Instantiate a new Findex instance using a REST interface.
 
         Returns:
             Findex
         """
     @staticmethod
-    def new_with_custom_backend(
+    def new_with_custom_interface(
         key: Key,
-        label: Label,
+        label: str,
         entry_callbacks: PythonCallbacks,
-        chain_callbacks: PythonCallbacks,
+        chain_callbacks: Optional[PythonCallbacks]=None,
     ) -> Findex:
-        """Instantiate a new Findex instance using custom backend.
+        """Instantiate a new Findex instance using a custom interface.
 
         Returns:
             Findex
@@ -289,9 +253,9 @@ class Findex:
     def compact(
         self,
         new_key: Key,
-        new_label: Label,
-        n_compact_to_full: int,
-        filter_obsolete_data: Optional[Callable] = None,
+        new_label: str,
+        compacting_rate: float,
+        data_filter: Optional[Callable] = None,
     ) -> None:
         """Compact the index. Encrypts the compacted index using the new key
         and new label.

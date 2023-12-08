@@ -2,9 +2,9 @@ use cosmian_findex::{TokenToEncryptedValueMap, TokenWithEncryptedValueList, Toke
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    backends::{
+    db_interfaces::{
         custom::wasm::callbacks::{Delete, DumpTokens, Fetch, Insert, Upsert},
-        BackendError,
+        DbInterfaceError,
     },
     ser_de::wasm_ser_de::{
         edx_lines_to_js_array, js_value_to_edx_lines, js_value_to_uids, uids_to_js_array,
@@ -92,21 +92,21 @@ impl WasmCallbacks {
 }
 
 impl WasmCallbacks {
-    pub(crate) async fn dump_tokens(&self) -> Result<Tokens, BackendError> {
+    pub(crate) async fn dump_tokens(&self) -> Result<Tokens, DbInterfaceError> {
         let res = call0!(self, dump_tokens);
         js_value_to_uids(&res)
-            .map_err(BackendError::from)
+            .map_err(DbInterfaceError::from)
             .map(Into::into)
     }
 
     pub(crate) async fn fetch<const LENGTH: usize>(
         &self,
         uids: Tokens,
-    ) -> Result<TokenWithEncryptedValueList<LENGTH>, BackendError> {
+    ) -> Result<TokenWithEncryptedValueList<LENGTH>, DbInterfaceError> {
         let js_uids = uids_to_js_array(&uids)?;
         let res = call1!(self, fetch, &js_uids);
         js_value_to_edx_lines(&res)
-            .map_err(BackendError::from)
+            .map_err(DbInterfaceError::from)
             .map(Into::into)
     }
 
@@ -114,7 +114,7 @@ impl WasmCallbacks {
         &self,
         old_values: TokenToEncryptedValueMap<LENGTH>,
         new_values: TokenToEncryptedValueMap<LENGTH>,
-    ) -> Result<TokenToEncryptedValueMap<LENGTH>, BackendError> {
+    ) -> Result<TokenToEncryptedValueMap<LENGTH>, DbInterfaceError> {
         let serialized_old_values = edx_lines_to_js_array(&old_values)?;
         let serialized_new_values = edx_lines_to_js_array(&new_values)?;
 
@@ -126,13 +126,13 @@ impl WasmCallbacks {
     pub(crate) async fn insert<const LENGTH: usize>(
         &self,
         map: TokenToEncryptedValueMap<LENGTH>,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DbInterfaceError> {
         let serialized_map = edx_lines_to_js_array(&map)?;
         let _ = call1!(self, insert, &serialized_map);
         Ok(())
     }
 
-    pub(crate) async fn delete(&self, uids: Tokens) -> Result<(), BackendError> {
+    pub(crate) async fn delete(&self, uids: Tokens) -> Result<(), DbInterfaceError> {
         let serialized_uids = uids_to_js_array(&uids)?;
         let _ = call1!(self, delete, &serialized_uids);
         Ok(())
