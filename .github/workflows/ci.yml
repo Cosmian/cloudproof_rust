@@ -8,14 +8,32 @@ jobs:
     uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@develop
     with:
       toolchain: stable
+      exclusions: --exclude=cloudproof_findex
 
   cargo-doc:
     uses: Cosmian/reusable_workflows/.github/workflows/cargo-doc.yml@develop
     with:
       toolchain: stable
+      exclusions: --exclude=cloudproof_findex
 
   test_and_dry_publish:
     runs-on: ubuntu-latest
+    services:
+      findex_cloud:
+        image: ghcr.io/cosmian/findex_cloud:0.3.1
+        ports:
+          - 8080:8080
+
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
     steps:
       - uses: actions/checkout@v1
       - name: Set up cargo cache
@@ -28,14 +46,30 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-semver-
-          restore-keys: ${{ runner.os }}-cargo-semver-
+          key: ${{ runner.os }}-cargo-individual-tests-
+          restore-keys: ${{ runner.os }}-individual-tests-
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2023-06-27
+          toolchain: stable
           override: true
 
       - name: Run python tests
         run: |
           bash scripts/test_python.sh
+
+      - name: Test ffi feature for cloudproof_findex
+        run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features ffi -- -D warnings
+          cargo test --release --workspace -p cloudproof_findex --all-targets --features ffi
+
+      - name: Test wasm feature for cloudproof_findex
+        run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features wasm -- -D warnings
+          cargo test --release --workspace -p cloudproof_findex --all-targets --features wasm
+
+      - name: Test python feature for cloudproof_findex
+        run: |
+          cargo clippy --workspace -p cloudproof_findex --all-targets --features python -- -D warnings
+          # Not testable but "bash scripts/test_python.sh" should be enough
+          # cargo test --release --workspace -p cloudproof_findex --all-targets --features python

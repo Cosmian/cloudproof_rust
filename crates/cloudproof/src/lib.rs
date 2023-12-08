@@ -1,4 +1,4 @@
-//! Meta crate in order to merge other crates
+//! Meta crate used to merge other crates
 
 #[cfg(feature = "ffi")]
 pub use cloudproof_aesgcm::ffi as aesgcm_ffi;
@@ -9,7 +9,7 @@ pub use cloudproof_cover_crypt::ffi as cover_crypt_ffi;
 #[cfg(feature = "ffi")]
 pub use cloudproof_ecies::ffi as ecies_ffi;
 #[cfg(feature = "ffi")]
-pub use cloudproof_findex::ffi as findex_ffi;
+pub use cloudproof_findex::interfaces::ffi as findex_ffi;
 #[cfg(feature = "ffi")]
 pub use cloudproof_fpe::ffi as fpe_ffi;
 

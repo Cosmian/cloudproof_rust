@@ -1,4 +1,4 @@
-use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap};
+use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ErrorCode};
 
 use crate::core::{Float, KEY_LENGTH};
 
@@ -15,16 +15,28 @@ unsafe extern "C" fn fpe(
     let tweak_bytes = ffi_read_bytes!("tweak", tweak_ptr, tweak_len);
 
     // Copy the contents of the slice into the 32-array
-    let key: [u8; KEY_LENGTH] = ffi_unwrap!(key_bytes.try_into(), "key size is 32 bytes");
+    let key: [u8; KEY_LENGTH] = ffi_unwrap!(
+        key_bytes.try_into(),
+        "key size is 32 bytes",
+        ErrorCode::Serialization
+    );
 
-    let itg = ffi_unwrap!(Float::instantiate(), "cannot instantiate FPE float");
+    let itg = ffi_unwrap!(
+        Float::instantiate(),
+        "cannot instantiate FPE float",
+        ErrorCode::Fpe
+    );
 
     let operation = match encrypt_flag {
         true => itg.encrypt(&key, tweak_bytes, input),
         false => itg.decrypt(&key, tweak_bytes, input),
     };
 
-    *output = ffi_unwrap!(operation, "fpe encryption/decryption process");
+    *output = ffi_unwrap!(
+        operation,
+        "fpe encryption/decryption process",
+        ErrorCode::Fpe
+    );
 
     0
 }

@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_fpe"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -8,7 +8,7 @@ repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Cloudproof FPE library"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_fpe"
 
 [[bench]]
@@ -19,7 +19,7 @@ name = "benches"
 default = []
 ffi = ["cosmian_ffi_utils"]
 python = ["pyo3"]
-wasm_bindgen = ["wasm-bindgen"]
+wasm = ["wasm-bindgen"]
 
 [dependencies]
 aes = { version = "0.8" }
@@ -30,13 +30,15 @@ num-traits = { version = "0.2", default-features = false }
 
 # Optional dependencies
 cosmian_ffi_utils = { workspace = true, optional = true }
-pyo3 = { workspace = true, features = ["extension-module"], optional = true }
+pyo3 = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", default-features = false }
-getrandom = { version = "0.2", features = ["js"] } # required by wasm-bindgen-test
+getrandom = { version = "0.2", features = [
+  "js",
+] } # required by wasm-bindgen-test
 rand = "0.8"
 rand_chacha = "0.3"
 rand_distr = "0.4"
-wasm-bindgen-test = "0.3.38"
+wasm-bindgen-test = "0.3.39"

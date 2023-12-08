@@ -11,7 +11,13 @@ macro_rules! ffi_not_null {
     ($name:literal, $ptr:expr) => {
         if $ptr.is_null() {
             $crate::error::set_last_error($crate::error::FfiError::NullPointer($name.to_string()));
-            return 1_i32;
+            return -1_i32;
+        }
+    };
+    ($name:literal, $ptr:expr, $code:expr) => {
+        if $ptr.is_null() {
+            $crate::error::set_last_error($crate::error::FfiError::NullPointer($name.to_string()));
+            return $code;
         }
     };
 }
@@ -19,13 +25,13 @@ macro_rules! ffi_not_null {
 /// Unwraps an `std::result::Result`.
 ///
 /// If the result is an error, sets the last error to this error and returns
-/// early with 1.
+/// early with -1 or the given error code.
 ///
 /// - `res` : result to unwrap
-/// - `msg` : (optional) additional message to use as error
+/// - `msg` : additional message to use as error
 #[macro_export]
 macro_rules! ffi_unwrap {
-    ($res:expr, $msg:expr) => {
+    ($res:expr, $msg:expr, $code:expr) => {
         match $res {
             Ok(v) => v,
             Err(e) => {
@@ -33,7 +39,7 @@ macro_rules! ffi_unwrap {
                     "{}: {}",
                     $msg, e
                 )));
-                return 1_i32;
+                return $code.into();
             }
         }
     };
@@ -50,15 +56,15 @@ macro_rules! ffi_unwrap {
 macro_rules! ffi_bail {
     ($msg:literal $(,)?) => {
         $crate::error::set_last_error($crate::error::FfiError::Generic($msg.to_owned()));
-        return 1_i32;
+        return -1_i32;
     };
     ($err:expr $(,)?) => {
         $crate::error::set_last_error($crate::error::FfiError::Generic($err.to_string()));
-        return 1_i32;
+        return -1_i32;
     };
     ($fmt:expr, $($arg:tt)*) => {
         $crate::error::set_last_error($crate::error::FfiError::Generic(format!($fmt, $($arg)*)));
-        return 1_i32;
+        return -1_i32;
     };
 }
 
@@ -95,13 +101,13 @@ macro_rules! ffi_write_bytes {
     ($($name: literal, $bytes: expr, $ptr: ident, $len: ident $(,)?)+) => {
 
         let mut error_code = 0_i32;
+        let mut nul_error = false;
 
-        // Write outputs one by one. Do not return on error, increment the
-        // `error_code` instead.
+        // Write outputs one by one. Do not return on error
         $(
             if $ptr.is_null() {
                 $crate::error::set_last_error($crate::error::FfiError::NullPointer($name.to_string()));
-                error_code += 1;
+                nul_error = true;
             } else {
                 let allocated = *$len;
                 *$len = $bytes.len() as i32;
@@ -110,7 +116,7 @@ macro_rules! ffi_write_bytes {
                         "The pre-allocated {} buffer is too small; need {} bytes, allocated {allocated}",
                         $name, *$len
                     )));
-                    error_code += 1;
+                    error_code = 1_i32;
                 } else {
                     std::slice::from_raw_parts_mut($ptr.cast(), $bytes.len()).copy_from_slice($bytes);
                 }
@@ -118,10 +124,9 @@ macro_rules! ffi_write_bytes {
 
         )+;
 
-        // Return here if there was an error. This allows for returning the
-        // correct size for several output buffers at once. The number of
-        // errors is returned.
-        if error_code > 0 {
+        if nul_error {
+            return -1_i32;
+        }else {
             return error_code;
         }
     };

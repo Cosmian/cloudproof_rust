@@ -1,4 +1,4 @@
-use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes};
+use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes, ErrorCode};
 use num_bigint::BigUint;
 use num_traits::Num;
 
@@ -19,22 +19,29 @@ unsafe extern "C" fn fpe(
     let tweak_bytes = ffi_read_bytes!("tweak", tweak_ptr, tweak_len);
 
     // Copy the contents of the slice into the 32-array
-    let key: [u8; KEY_LENGTH] = ffi_unwrap!(key_bytes.try_into(), "key size is 32 bytes");
+    let key: [u8; KEY_LENGTH] = ffi_unwrap!(
+        key_bytes.try_into(),
+        "key size is 32 bytes",
+        ErrorCode::Serialization
+    );
 
     let itg = ffi_unwrap!(
         Integer::instantiate(radix, digits as usize),
-        "cannot instantiate FPE integer"
+        "cannot instantiate FPE integer",
+        ErrorCode::Fpe
     );
 
     *output = if encrypt_flag {
         ffi_unwrap!(
             itg.encrypt(&key, tweak_bytes, input),
-            "fpe encryption process"
+            "fpe encryption process",
+            ErrorCode::Encryption
         )
     } else {
         ffi_unwrap!(
             itg.decrypt(&key, tweak_bytes, input),
-            "fpe decryption process"
+            "fpe decryption process",
+            ErrorCode::Decryption
         )
     };
 
@@ -139,34 +146,39 @@ unsafe extern "C" fn fpe_big_integer(
 
     let itg = ffi_unwrap!(
         Integer::instantiate(radix, digits as usize),
-        "cannot instantiate FPE integer"
+        "cannot instantiate FPE integer",
+        ErrorCode::Fpe
     );
     let input_biguint = ffi_unwrap!(
         BigUint::from_str_radix(&input_str, radix),
-        "failed to convert
-input to BigUint"
+        "failed to convert input to BigUint",
+        ErrorCode::Serialization
     );
 
     // Copy the contents of the slice into the 32-array
-    let key: [u8; KEY_LENGTH] = ffi_unwrap!(key_bytes.try_into(), "key size is 32 bytes");
+    let key: [u8; KEY_LENGTH] = ffi_unwrap!(
+        key_bytes.try_into(),
+        "key size is 32 bytes",
+        ErrorCode::Serialization
+    );
 
     let output = if encrypt_flag {
         ffi_unwrap!(
             itg.encrypt_big(&key, tweak_bytes, &input_biguint),
-            "fpe encryption process"
+            "fpe encryption process",
+            ErrorCode::Encryption
         )
     } else {
         ffi_unwrap!(
             itg.decrypt_big(&key, tweak_bytes, &input_biguint),
-            "fpe decryption process"
+            "fpe decryption process",
+            ErrorCode::Decryption
         )
     };
 
     let output_str = output.to_str_radix(radix);
 
     ffi_write_bytes!("output_ptr", output_str.as_bytes(), output_ptr, output_len);
-
-    0
 }
 
 /// Encrypts an input big integer using the FPE algorithm and returns the

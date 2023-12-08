@@ -2,7 +2,7 @@ use cosmian_crypto_core::{
     reexport::rand_core::SeedableRng, CsRng, Ecies, EciesSalsaSealBox, FixedSizeCBytes,
     X25519PrivateKey, X25519PublicKey,
 };
-use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes};
+use cosmian_ffi_utils::{ffi_read_bytes, ffi_unwrap, ffi_write_bytes, ErrorCode};
 
 #[no_mangle]
 pub unsafe extern "C" fn h_ecies_x25519_generate_key_pair(
@@ -25,8 +25,6 @@ pub unsafe extern "C" fn h_ecies_x25519_generate_key_pair(
         private_key_ptr,
         private_key_len
     );
-
-    0
 }
 
 unsafe extern "C" fn ecies_salsa_seal_box(
@@ -55,11 +53,13 @@ unsafe extern "C" fn ecies_salsa_seal_box(
             format!(
                 "ECIES error: public key length incorrect: expected {}",
                 X25519PublicKey::LENGTH
-            )
+            ),
+            ErrorCode::Serialization
         );
         let public_key = ffi_unwrap!(
             X25519PublicKey::try_from_bytes(public_key),
-            format!("ECIES error: public key deserializing")
+            format!("ECIES error: public key deserializing"),
+            ErrorCode::Serialization
         );
 
         ffi_unwrap!(
@@ -69,7 +69,8 @@ unsafe extern "C" fn ecies_salsa_seal_box(
                 input_data_bytes,
                 Some(authenticated_data_bytes)
             ),
-            "ECIES error: encryption"
+            "ECIES error: encryption",
+            ErrorCode::Encryption
         )
     } else {
         let private_key: [u8; X25519PrivateKey::LENGTH] = ffi_unwrap!(
@@ -77,11 +78,13 @@ unsafe extern "C" fn ecies_salsa_seal_box(
             format!(
                 "ECIES error: private key length incorrect: expected {}",
                 X25519PrivateKey::LENGTH
-            )
+            ),
+            ErrorCode::Serialization
         );
         let private_key = ffi_unwrap!(
             X25519PrivateKey::try_from_bytes(private_key),
-            format!("ECIES error: private key deserializing")
+            format!("ECIES error: private key deserializing"),
+            ErrorCode::Serialization
         );
 
         ffi_unwrap!(
@@ -90,12 +93,11 @@ unsafe extern "C" fn ecies_salsa_seal_box(
                 input_data_bytes,
                 Some(authenticated_data_bytes)
             ),
-            "ECIES error: decryption"
+            "ECIES error: decryption",
+            ErrorCode::Decryption
         )
     };
     ffi_write_bytes!("output_ptr", &output, output_ptr, output_len);
-
-    0
 }
 
 #[no_mangle]

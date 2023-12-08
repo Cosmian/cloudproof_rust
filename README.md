@@ -1,12 +1,12 @@
 # Cosmian Cloudproof Data Protection Library
 
-![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/ci.yml/badge.svg)
-![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/build.yml/badge.svg)
-![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/benches.yml/badge.svg)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/ci.yml/badge.svg?branch=main)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/build.yml/badge.svg?branch=main)
+![Build status](https://github.com/Cosmian/cloudproof_rust/actions/workflows/benches.yml/badge.svg?branch=main)
 
 Cloudproof Encryption provides libraries and tools to encrypt and securely index large repositories of data with advanced, high-performance security primitives with Post-Quantum resistance.
 
-See [the use cases and benefits](https://docs.cosmian.com/cloudproof_encryption/use_cases_benefits/) and a description of the [cryptosystems](https://docs.cosmian.com/cloudproof_encryption/crypto_systems/) used.
+See [an introduction to Cosmian libraries](https://docs.cosmian.com/cloudproof_encryption/how_it_works/) and a description of the [cryptosystems](https://docs.cosmian.com/cloudproof_encryption/crypto_systems/) used.
 
 The libraries are available in multiple languages to facilitate encryption close to the data source and decryption close to the decryption target, including mobile devices and browsers.
 
@@ -103,7 +103,7 @@ The `.so` libraries can then be found in `target/release/`.
 From the root directory:
 
 ```bash
-wasm-pack build -t web --release --features wasm_bindgen
+wasm-pack build -t web --release --features wasm
 ```
 
 The `.wasm` libraries can then be found in `pkg/`.
@@ -118,8 +118,7 @@ From the root directory:
 maturin build --release --manifest-path crates/<cover_crypt or findex>/Cargo.toml --features python
 ```
 
-**Note**: when a new function or class is added to the PyO3 interface, its
-signature needs to be added to
+**Note**: when a new function or class is added to the PyO3 interface, its signature needs to be added to
 [`**init**.pyi`](./crates/<cover*crypt or findex>/python/cloudproof*<cover_crypt or findex>/**init**.pyi).
 
 To run tests on the Python interface, run:
@@ -132,7 +131,7 @@ The `.whl` libraries can then be found in `target/wheels/`.
 
 ### Building the library for a different glibc
 
-Go to the [build](build/glibc-2.17/) directory for an example on how to build for GLIBC 2.17
+Go to the [build](glibc-2.17/) directory for an example on how to build for GLIBC 2.17
 
 ## Benchmarks
 

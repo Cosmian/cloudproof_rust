@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_anonymization"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Hugo Rosenkranz-costa<hugo.rosenkranz@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -8,14 +8,14 @@ repository = "https://github.com/cosmian/cloudproof_rust/"
 description = "Cosmian Cloudproof Anonymization library"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_anonymization"
 
 [features]
 default = []
 ffi = []
 python = ["pyo3"]
-wasm_bindgen = ["js-sys", "wasm-bindgen"]
+wasm = ["js-sys", "wasm-bindgen"]
 
 # waiting for ffi and js
 [package.metadata.cargo-udeps.ignore]
@@ -24,8 +24,11 @@ normal = ["js-sys", "wasm-bindgen"]
 [dependencies]
 argon2 = "0.5"
 base64 = { workspace = true }
-chrono = { version = "0.4", default-features = false, features = ["clock", "wasmbind"] }
-cosmian_crypto_core = { workspace = true }
+chrono = { version = "0.4", default-features = false, features = [
+  "clock",
+  "wasmbind",
+] }
+cosmian_crypto_core = { workspace = true, features = ["sha3"] }
 hex = { workspace = true }
 rand = { workspace = true }
 rand_distr = "0.4"
@@ -40,4 +43,4 @@ wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"
-wasm-bindgen-test = "0.3.38"
+wasm-bindgen-test = "0.3.39"
