@@ -242,52 +242,8 @@ pub unsafe extern "C" fn h_rename_policy_attribute(
         attribute,
         cc_policy,
         cc_attr,
-        cc_policy.rename_attribute(&cc_attr, &new_attribute_name),
+        cc_policy.rename_attribute(&cc_attr, new_attribute_name),
         "error renaming policy attribute"
-    )
-}
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn h_rotate_attribute(
-    updated_policy_ptr: *mut i8,
-    updated_policy_len: *mut i32,
-    current_policy_ptr: *const i8,
-    current_policy_len: i32,
-    attribute: *const i8,
-) -> i32 {
-    update_policy!(
-        updated_policy_ptr,
-        updated_policy_len,
-        current_policy_ptr,
-        current_policy_len,
-        attribute,
-        cc_policy,
-        cc_attr,
-        cc_policy.rotate(&cc_attr),
-        "error rotating policy"
-    )
-}
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn h_clear_old_attribute_values(
-    updated_policy_ptr: *mut i8,
-    updated_policy_len: *mut i32,
-    current_policy_ptr: *const i8,
-    current_policy_len: i32,
-    attribute: *const i8,
-) -> i32 {
-    update_policy!(
-        updated_policy_ptr,
-        updated_policy_len,
-        current_policy_ptr,
-        current_policy_len,
-        attribute,
-        cc_policy,
-        cc_attr,
-        cc_policy.clear_old_attribute_values(&cc_attr),
-        "error clearing old rotations policy"
     )
 }
 
@@ -317,115 +273,11 @@ pub unsafe extern "C" fn h_validate_attribute(attribute_ptr: *const i8) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::{CStr, CString};
+    use std::ffi::CString;
 
     use cosmian_cover_crypt::test_utils::policy;
-    use cosmian_ffi_utils::error::h_get_error;
 
     use super::*;
-
-    #[test]
-    fn test_rotate() {
-        let mut policy = policy().unwrap();
-        let mut policy_bytes = <Vec<u8>>::try_from(&policy).unwrap();
-        let attributes = policy.attributes();
-
-        // Rotate attributes using the ffi method.
-        let attribute = CString::new(attributes[0].to_string()).unwrap();
-
-        policy_bytes = unsafe {
-            let current_policy_ptr = policy_bytes.as_ptr().cast();
-            let current_policy_len = policy_bytes.len() as i32;
-            let mut updated_policy_bytes = vec![0u8; 8192];
-            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
-            let mut updated_policy_len = updated_policy_bytes.len() as i32;
-
-            let res = h_rotate_attribute(
-                updated_policy_ptr,
-                &mut updated_policy_len,
-                current_policy_ptr,
-                current_policy_len,
-                attribute.as_ptr().cast(),
-            );
-
-            if res != 0 {
-                let mut error = vec![0u8; 8192];
-                let error_ptr = error.as_mut_ptr().cast();
-                let mut error_len = error.len() as i32;
-                h_get_error(error_ptr, &mut error_len);
-                panic!("{}", CStr::from_ptr(error_ptr).to_str().unwrap());
-            }
-            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
-                .to_vec()
-        };
-
-        let attribute = CString::new(attributes[2].to_string()).unwrap();
-
-        policy_bytes = unsafe {
-            let current_policy_ptr = policy_bytes.as_ptr().cast();
-            let current_policy_len = policy_bytes.len() as i32;
-            let mut updated_policy_bytes = vec![0u8; 8192];
-            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
-            let mut updated_policy_len = updated_policy_bytes.len() as i32;
-
-            let res = h_rotate_attribute(
-                updated_policy_ptr,
-                &mut updated_policy_len,
-                current_policy_ptr,
-                current_policy_len,
-                attribute.as_ptr().cast(),
-            );
-            if res != 0 {
-                let mut error = vec![0u8; 8192];
-                let error_ptr = error.as_mut_ptr().cast();
-                let mut error_len = error.len() as i32;
-                h_get_error(error_ptr, &mut error_len);
-                panic!("{}", CStr::from_ptr(error_ptr).to_str().unwrap());
-            }
-            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
-                .to_vec()
-        };
-
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-
-        // Rotate the same attributes using the classic method.
-        policy.rotate(&attributes[0]).unwrap();
-        policy.rotate(&attributes[2]).unwrap();
-
-        // assert ffi and non-ffi have same behavior.
-        assert_eq!(policy, ffi_rotated_policy);
-
-        // clear old rotations for attribute 2
-        let attr_rotations = ffi_rotated_policy.attribute_values(&attributes[2]).unwrap();
-        assert_eq!(attr_rotations.len(), 2);
-        policy_bytes = unsafe {
-            let current_policy_ptr = policy_bytes.as_ptr().cast();
-            let current_policy_len = policy_bytes.len() as i32;
-            let mut updated_policy_bytes = vec![0u8; 8192];
-            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
-            let mut updated_policy_len = updated_policy_bytes.len() as i32;
-
-            let res = h_clear_old_attribute_values(
-                updated_policy_ptr,
-                &mut updated_policy_len,
-                current_policy_ptr,
-                current_policy_len,
-                attribute.as_ptr().cast(),
-            );
-            if res != 0 {
-                let mut error = vec![0u8; 8192];
-                let error_ptr = error.as_mut_ptr().cast();
-                let mut error_len = error.len() as i32;
-                h_get_error(error_ptr, &mut error_len);
-                panic!("{}", CStr::from_ptr(error_ptr).to_str().unwrap());
-            }
-            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
-                .to_vec()
-        };
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let attr_rotations = ffi_rotated_policy.attribute_values(&attributes[2]).unwrap();
-        assert_eq!(attr_rotations.len(), 1);
-    }
 
     #[test]
     fn test_edit_policy() {

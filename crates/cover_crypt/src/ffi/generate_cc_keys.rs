@@ -236,13 +236,13 @@ pub unsafe extern "C" fn h_refresh_user_secret_key(
         ErrorCode::Serialization
     );
     let policy_bytes = ffi_read_bytes!("policy", policy_ptr, policy_len);
-    let policy = ffi_unwrap!(
+    let _policy = ffi_unwrap!(
         Policy::parse_and_convert(policy_bytes),
         "error deserializing policy",
         ErrorCode::Serialization
     );
     let user_policy_string = ffi_read_string!("user policy", user_policy_ptr);
-    let user_policy = ffi_unwrap!(
+    let _user_policy = ffi_unwrap!(
         AccessPolicy::from_boolean_expression(&user_policy_string),
         "error parsing user policy",
         ErrorCode::Serialization
@@ -251,9 +251,7 @@ pub unsafe extern "C" fn h_refresh_user_secret_key(
     ffi_unwrap!(
         Covercrypt::default().refresh_user_secret_key(
             &mut usk,
-            &user_policy,
             &msk,
-            &policy,
             preserve_old_partitions_access != 0
         ),
         "error refreshing user secret key",

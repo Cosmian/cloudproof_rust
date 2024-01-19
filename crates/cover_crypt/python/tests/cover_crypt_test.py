@@ -71,26 +71,6 @@ class TestPolicy(unittest.TestCase):
         self.assertTrue(secrecy_axis.is_hierarchical())
         self.assertEqual(secrecy_axis.get_name(), 'Secrecy')
 
-    def test_policy_creation_rotation(self) -> None:
-        policy = self.policy()
-        # test attributes
-        attributes = policy.attributes()
-        self.assertEqual(len(attributes), 4 + 3)
-        # rotate
-        france_attribute = Attribute('Country', 'France')
-        france_value = policy.attribute_current_value(france_attribute)
-        self.assertEqual(france_value, 1)
-        policy.rotate(france_attribute)
-        new_france_value = policy.attribute_current_value(france_attribute)
-        self.assertEqual(new_france_value, 8)
-        self.assertEqual(policy.attribute_values(france_attribute), [8, 1])
-        # clear rotation
-        policy.clear_old_attribute_values(france_attribute)
-        self.assertEqual(policy.attribute_values(france_attribute), [8])
-        # clearing rotation of non existing attribute will raise an Error
-        with self.assertRaises(Exception):
-            policy.clear_old_attribute_values(Attribute('Department', 'Missing'))
-
     def test_edit_policy(self) -> None:
         # Create and initialize policy
         policy = self.policy()
@@ -213,9 +193,10 @@ class TestKeyGeneration(unittest.TestCase):
             MasterPublicKey.from_bytes(b'wrong data')
 
     def test_user_key_serialization(self) -> None:
+        target_policy = 'Secrecy::High && (Country::France || Country::Spain)'
         usk = self.cc.generate_user_secret_key(
             self.msk,
-            'Secrecy::High && (Country::France || Country::Spain)',
+            target_policy,
             self.policy,
         )
 
@@ -225,14 +206,10 @@ class TestKeyGeneration(unittest.TestCase):
         self.assertIsInstance(deserialized_usk, UserSecretKey)
 
         # test KMAC authenticity of the deserialized key
-        france_attribute = Attribute('Country', 'France')
-        self.policy.rotate(france_attribute)
-        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+        self.cc.rekey_master_keys(target_policy, self.policy, self.msk, self.pk)
         self.cc.refresh_user_secret_key(
             deserialized_usk,
-            'Secrecy::High && (Country::France || Country::Spain)',
             self.msk,
-            self.policy,
             keep_old_accesses=True,
         )
 
@@ -321,70 +298,81 @@ class TestEncryption(unittest.TestCase):
         with self.assertRaises(Exception):
             self.cc.decrypt(sec_low_fr_sp_user, ciphertext, self.authenticated_data)
 
-    def test_policy_rotation_encryption_decryption(self) -> None:
+    def test_rekey_prune_encryption_decryption(self) -> None:
+        target_policy = 'Secrecy::High && Country::France'
         ciphertext = self.cc.encrypt(
             self.policy,
-            'Secrecy::High && Country::France',
+            target_policy,
             self.pk,
             self.plaintext,
             self.header_metadata,
             self.authenticated_data,
         )
 
-        sec_high_fr_sp_user = self.cc.generate_user_secret_key(
+        user1 = self.cc.generate_user_secret_key(
             self.msk,
             'Secrecy::High && (Country::France || Country::Spain)',
             self.policy,
         )
 
-        france_attribute = Attribute('Country', 'France')
-        self.policy.rotate(france_attribute)
+        user2 = self.cc.generate_user_secret_key(
+            self.msk,
+            'Secrecy::High && (Country::France || Country::Spain)',
+            self.policy,
+        )
 
-        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+        # Generate new master keys for target_policy
+        self.cc.rekey_master_keys(target_policy, self.policy, self.msk, self.pk)
+
         new_plaintext = b'My secret data 2'
         new_ciphertext = self.cc.encrypt(
             self.policy,
-            'Secrecy::High && Country::France',
+            target_policy,
             self.pk,
             new_plaintext,
             self.header_metadata,
             self.authenticated_data,
         )
 
-        # user cannot decrypt the new message until its key is refreshed
+        # user1 cannot decrypt the new message until its key is refreshed
         with self.assertRaises(Exception):
-            self.cc.decrypt(
-                sec_high_fr_sp_user, new_ciphertext, self.authenticated_data
-            )
+            self.cc.decrypt(user1, new_ciphertext, self.authenticated_data)
 
-        # new user can still decrypt old message with keep_old_accesses
+        # user1 can still decrypt old message with keep_old_accesses
         self.cc.refresh_user_secret_key(
-            sec_high_fr_sp_user,
-            'Secrecy::High && (Country::France || Country::Spain)',
+            user1,
             self.msk,
-            self.policy,
             keep_old_accesses=True,
         )
 
-        plaintext, _ = self.cc.decrypt(
-            sec_high_fr_sp_user, ciphertext, self.authenticated_data
-        )
+        plaintext, _ = self.cc.decrypt(user1, ciphertext, self.authenticated_data)
         self.assertEqual(plaintext, self.plaintext)
 
-        # new user key can no longer decrypt the old message
+        # user2 key can no longer decrypt the old message
         self.cc.refresh_user_secret_key(
-            sec_high_fr_sp_user,
-            'Secrecy::High && (Country::France || Country::Spain)',
+            user2,
             self.msk,
-            self.policy,
             keep_old_accesses=False,
         )
         with self.assertRaises(Exception):
-            self.cc.decrypt(sec_high_fr_sp_user, ciphertext, self.authenticated_data)
+            self.cc.decrypt(user2, ciphertext, self.authenticated_data)
 
-        plaintext, _ = self.cc.decrypt(
-            sec_high_fr_sp_user, new_ciphertext, self.authenticated_data
+        plaintext, _ = self.cc.decrypt(user2, new_ciphertext, self.authenticated_data)
+        self.assertEqual(bytes(plaintext), new_plaintext)
+
+        # Prune old
+        self.cc.prune_master_secret_key(target_policy, self.policy, self.msk)
+        # Even with keep_old_accesses, user1 will no longer decrypt old messages
+        self.cc.refresh_user_secret_key(
+            user1,
+            self.msk,
+            keep_old_accesses=True,
         )
+
+        with self.assertRaises(Exception):
+            self.cc.decrypt(user2, ciphertext, self.authenticated_data)
+
+        plaintext, _ = self.cc.decrypt(user2, new_ciphertext, self.authenticated_data)
         self.assertEqual(bytes(plaintext), new_plaintext)
 
     def test_decomposed_encryption_decryption(self) -> None:
@@ -441,12 +429,7 @@ class TestEncryption(unittest.TestCase):
         with self.assertRaises(Exception):
             self.cc.decrypt(low_secret_usk, ciphertext)
 
-        self.cc.refresh_user_secret_key(
-            low_secret_usk, decryption_policy, self.msk, self.policy, False
-        )
-
-        decrypted_text, _ = self.cc.decrypt(low_secret_usk, ciphertext)
-        self.assertEqual(decrypted_text, plaintext)
+        # TODO: should user with "Secrecy::Low && Country::*" have access to new countries?
 
     def test_delete_attribute(self) -> None:
         # User secret key
@@ -473,10 +456,7 @@ class TestEncryption(unittest.TestCase):
         self.assertEqual(decrypted_text, plaintext)
 
         # Refreshing the user key will remove access to removed partitions
-        new_decryption_policy = 'Secrecy::High && Country::UK'
-        self.cc.refresh_user_secret_key(
-            usk, new_decryption_policy, self.msk, self.policy, True
-        )
+        self.cc.refresh_user_secret_key(usk, self.msk, True)
         with self.assertRaises(Exception):
             self.cc.decrypt(usk, ciphertext)
 
@@ -510,17 +490,14 @@ class TestEncryption(unittest.TestCase):
             )
 
         # Refreshing the user key will keep access to the attribute
-        new_decryption_policy = 'Secrecy::High && Country::France'
-        self.cc.refresh_user_secret_key(
-            usk, new_decryption_policy, self.msk, self.policy, False
-        )
+        self.cc.refresh_user_secret_key(usk, self.msk, False)
         decrypted_text, _ = self.cc.decrypt(usk, ciphertext)
         self.assertEqual(decrypted_text, plaintext)
 
-        # Rotating the disabled attribute
-        self.policy.rotate(Attribute('Country', 'France'))
-        # Update the master keys without error
-        self.cc.update_master_keys(self.policy, self.msk, self.pk)
+        # Secret keys related to a disabled Attribute can still be renewed
+        self.cc.rekey_master_keys(
+            'Secrecy::High && Country::France', self.policy, self.msk, self.pk
+        )
 
     def test_rename_attribute(self) -> None:
         # User secret key
@@ -543,10 +520,7 @@ class TestEncryption(unittest.TestCase):
         self.cc.update_master_keys(self.policy, self.msk, self.pk)
 
         # Refreshing the user key will keep access to the attribute
-        new_decryption_policy = 'Secrecy::High && Country::Espagne'
-        self.cc.refresh_user_secret_key(
-            usk, new_decryption_policy, self.msk, self.policy, False
-        )
+        self.cc.refresh_user_secret_key(usk, self.msk, False)
         decrypted_text, _ = self.cc.decrypt(usk, ciphertext)
         self.assertEqual(decrypted_text, plaintext)
 

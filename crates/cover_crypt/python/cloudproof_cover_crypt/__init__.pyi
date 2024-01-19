@@ -143,18 +143,6 @@ class Policy:
         Args:
             attribute (Attribute)
         """
-    def rotate(self, attribute: Attribute) -> None:
-        """Rotates an attribute, changing its underlying value with a new value.
-
-        Args:
-            attribute (Attribute)
-        """
-    def clear_old_attribute_values(self, attribute: Attribute) -> None:
-        """Removes old attribute values of an attribute
-
-        Args:
-            attribute (Attribute)
-        """
     def attributes(self) -> List[Attribute]:
         """Returns the list of Attributes of this Policy.
 
@@ -300,6 +288,33 @@ class CoverCrypt:
             msk (MasterSecretKey): master secret key
             pk (MasterPublicKey): master public key
         """
+    def rekey_master_keys(
+        self,
+        access_policy_str: str,
+        policy: Policy,
+        msk: MasterSecretKey,
+        mpk: MasterPublicKey,
+    ):
+        """Generate new keys associated to the given access policy in the master keys.
+        User keys will need to be refreshed after this step.
+
+        Args:
+            access_policy_str (str): describe the keys to renew
+            policy (Policy): global policy
+            msk (MasterSecretKey): master secret key
+            mpk (MasterPublicKey): master public key
+        """
+    def prune_master_secret_key(
+        self, access_policy_str: str, policy: Policy, msk: MasterSecretKey
+    ):
+        """Removes old keys associated to the given master keys from the master keys.
+        This will permanently remove access to old ciphers.
+
+        Args:
+            access_policy_str (str): describe the keys to prune
+            policy (Policy): global policy
+            msk (MasterSecretKey): master secret key
+        """
     def generate_user_secret_key(
         self, msk: MasterSecretKey, access_policy_str: str, policy: Policy
     ) -> UserSecretKey:
@@ -317,20 +332,16 @@ class CoverCrypt:
     def refresh_user_secret_key(
         self,
         usk: UserSecretKey,
-        access_policy_str: str,
         msk: MasterSecretKey,
-        policy: Policy,
         keep_old_accesses: bool,
     ):
-        """Refreshes the user key according to the given master key and access policy.
+        """Refreshes the user key according to the given master key.
         The user key will be granted access to the current partitions, as determined by its access policy.
         If `keep_old_accesses` is set, the user access to rotated partitions will be preserved
 
         Args:
             usk (UserSecretKey): the user key to refresh
-            access_policy_str (str): the access policy of the user key
             msk (MasterSecretKey): master secret key
-            policy (Policy): global policy of the master secret key
             keep_old_accesses (bool): whether access to old partitions (i.e. before rotation) should be kept
         """
     def encrypt_symmetric_block(

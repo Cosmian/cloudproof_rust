@@ -197,7 +197,7 @@ pub fn webassembly_rename_attribute(
         attribute,
         cc_policy,
         cc_attr,
-        cc_policy.rename_attribute(&cc_attr, &new_name),
+        cc_policy.rename_attribute(&cc_attr, new_name),
         "Error renaming attribute from the policy"
     )
 }
@@ -220,14 +220,7 @@ pub fn webassembly_rotate_attributes(
         "Error deserializing the policy"
     );
 
-    // Rotate attributes of the current policy
-    for attr in attributes.values() {
-        let attribute = wasm_unwrap!(
-            Attribute::try_from(String::from(JsString::from(attr?)).as_str()),
-            "Error deserializing the attribute"
-        );
-        wasm_unwrap!(cc_policy.rotate(&attribute), "Error rotating the policy");
-    }
+    todo!();
 
     serde_json::to_vec(&cc_policy).map_err(|e| {
         JsValue::from_str(&format!(
@@ -247,17 +240,7 @@ pub fn webassembly_clear_old_attribute_values(
         "Error deserializing the policy"
     );
 
-    // Remove old attribute values from the policy
-    for attr in attributes.values() {
-        let attribute = wasm_unwrap!(
-            Attribute::try_from(String::from(JsString::from(attr?)).as_str()),
-            "Error deserializing the attribute"
-        );
-        wasm_unwrap!(
-            cc_policy.clear_old_attribute_values(&attribute),
-            "Error clearing old attribute values from the policy"
-        );
-    }
+    todo!();
 
     serde_json::to_vec(&cc_policy).map_err(|e| {
         JsValue::from_str(&format!(

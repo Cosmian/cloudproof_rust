@@ -43,4 +43,4 @@ wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"
-wasm-bindgen-test = "0.3.39"
+wasm-bindgen-test = "0.3.40"
