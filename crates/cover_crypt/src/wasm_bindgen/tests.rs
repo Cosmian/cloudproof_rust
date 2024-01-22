@@ -3,12 +3,12 @@ use cosmian_cover_crypt::{
     MasterPublicKey, MasterSecretKey, UserSecretKey,
 };
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializable};
-use js_sys::{Array, JsString, Object, Reflect, Uint8Array};
+use js_sys::{Object, Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_test::wasm_bindgen_test;
 
 use crate::wasm_bindgen::{
-    abe_policy::{webassembly_rotate_attributes, Attributes},
+    abe_policy::webassembly_rename_attribute,
     generate_cc_keys::{webassembly_generate_master_keys, webassembly_generate_user_secret_key},
     hybrid_cc_aes::{
         webassembly_decrypt_hybrid_header, webassembly_encrypt_hybrid_header,
@@ -192,12 +192,12 @@ fn test_generate_keys() {
     .to_vec();
     let usk = UserSecretKey::deserialize(&usk_bytes).unwrap();
 
-    let access_policy_string = "Security Level::Low Secret".to_string();
-    let attributes = Array::new();
-    attributes.push(&JsString::from(access_policy_string.as_str()));
-    let new_policy = webassembly_rotate_attributes(
-        Attributes::from(JsValue::from(attributes)),
+    //
+    // Rename attribute `Department::FIN` -> `Department::Finance`
+    let new_policy = webassembly_rename_attribute(
         policy_bytes.clone(),
+        "Department::FIN".to_string(),
+        "Finance".to_string(),
     )
     .unwrap();
 
@@ -220,7 +220,7 @@ fn test_generate_keys() {
 
     let encrypted_header = encrypt_header(
         &policy,
-        access_policy_string,
+        "Department::Finance && Security Level::Low Secret".to_string(),
         &master_public_key,
         &header_metadata,
         &authentication_data,

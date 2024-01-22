@@ -360,7 +360,7 @@ class TestEncryption(unittest.TestCase):
         plaintext, _ = self.cc.decrypt(user2, new_ciphertext, self.authenticated_data)
         self.assertEqual(bytes(plaintext), new_plaintext)
 
-        # Prune old
+        # Prune old key for target policy
         self.cc.prune_master_secret_key(target_policy, self.policy, self.msk)
         # Even with keep_old_accesses, user1 will no longer decrypt old messages
         self.cc.refresh_user_secret_key(

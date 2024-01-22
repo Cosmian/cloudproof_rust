@@ -307,8 +307,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 4);
 
@@ -335,8 +335,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 5);
 
@@ -362,8 +362,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 4);
 
@@ -389,8 +389,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 4);
 
@@ -418,8 +418,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 4);
     }

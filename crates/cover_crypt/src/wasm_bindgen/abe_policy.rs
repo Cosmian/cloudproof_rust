@@ -1,5 +1,5 @@
 use cosmian_cover_crypt::abe_policy::{Attribute, DimensionBuilder, EncryptionHint, Policy};
-use js_sys::{Array, Boolean, JsString, Reflect};
+use js_sys::{Boolean, JsString, Reflect};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 /// This macro handles deserializing the policy from JS, deserializing an
@@ -200,51 +200,4 @@ pub fn webassembly_rename_attribute(
         cc_policy.rename_attribute(&cc_attr, new_name),
         "Error renaming attribute from the policy"
     )
-}
-
-/// Rotates attributes, changing their underlying values with that of an unused
-/// slot
-///
-/// - `attributes`  : list of attributes to rotate
-/// - `policy`      : global policy data (bytes)
-///
-/// Returns the `rotated` policy
-#[wasm_bindgen]
-pub fn webassembly_rotate_attributes(
-    attributes: Attributes,
-    policy: Vec<u8>,
-) -> Result<Vec<u8>, JsValue> {
-    let attributes = Array::from(&JsValue::from(attributes));
-    let mut cc_policy = wasm_unwrap!(
-        Policy::parse_and_convert(&policy),
-        "Error deserializing the policy"
-    );
-
-    todo!();
-
-    serde_json::to_vec(&cc_policy).map_err(|e| {
-        JsValue::from_str(&format!(
-            "Error serializing the policy into the response: {e}"
-        ))
-    })
-}
-
-#[wasm_bindgen]
-pub fn webassembly_clear_old_attribute_values(
-    attributes: Attributes,
-    policy: Vec<u8>,
-) -> Result<Vec<u8>, JsValue> {
-    let attributes = Array::from(&JsValue::from(attributes));
-    let mut cc_policy = wasm_unwrap!(
-        Policy::parse_and_convert(&policy),
-        "Error deserializing the policy"
-    );
-
-    todo!();
-
-    serde_json::to_vec(&cc_policy).map_err(|e| {
-        JsValue::from_str(&format!(
-            "Error serializing the policy into the response: {e}"
-        ))
-    })
 }
