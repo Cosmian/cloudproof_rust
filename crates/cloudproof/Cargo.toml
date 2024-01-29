@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof"
-version = "2.4.0"
+version = "2.4.1"
 authors = [
   "Théophile Brézot<theophile.brezot@cosmian.com>",
   "Emmanuel Coste<emmanuel.coste@cosmian.com>",
