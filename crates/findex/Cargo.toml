@@ -101,6 +101,6 @@ base64 = { workspace = true }
 faker_rand = "0.1"
 futures = "0.3.30"
 rand = { workspace = true }
-serde_json = "1.0.111"
+serde_json = "1.0.113"
 serial_test = "2.0.0"
 wasm-bindgen-test = "0.3.40"

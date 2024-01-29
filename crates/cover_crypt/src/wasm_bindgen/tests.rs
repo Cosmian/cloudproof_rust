@@ -194,16 +194,17 @@ fn test_generate_keys() {
 
     //
     // Rename attribute `Department::FIN` -> `Department::Finance`
-    let new_policy = webassembly_rename_attribute(
+    let new_policy_bytes = webassembly_rename_attribute(
         policy_bytes.clone(),
         "Department::FIN".to_string(),
         "Finance".to_string(),
     )
     .unwrap();
+    let new_policy = serde_json::from_slice(&new_policy_bytes).unwrap();
 
     //
     // Generate master keys
-    let master_keys = webassembly_generate_master_keys(new_policy).unwrap();
+    let master_keys = webassembly_generate_master_keys(new_policy_bytes.clone()).unwrap();
     let master_keys_vec = master_keys.to_vec();
     let secret_key_size = u32::from_be_bytes(master_keys_vec[..4].try_into().unwrap()) as usize;
     let secret_key_bytes = &master_keys_vec[4..4 + secret_key_size];
@@ -219,7 +220,7 @@ fn test_generate_keys() {
     let authentication_data = vec![10, 11, 12, 13, 14];
 
     let encrypted_header = encrypt_header(
-        &policy,
+        &new_policy,
         "Department::Finance && Security Level::Low Secret".to_string(),
         &master_public_key,
         &header_metadata,
@@ -237,7 +238,7 @@ fn test_generate_keys() {
     let usk_bytes = webassembly_generate_user_secret_key(
         Uint8Array::from(secret_key_bytes),
         "Security Level::Low Secret",
-        policy_bytes,
+        new_policy_bytes,
     )
     .unwrap()
     .to_vec();
