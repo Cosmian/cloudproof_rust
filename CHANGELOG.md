@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.1] - 2024-01-29
+
+### Fix
+
+- reexport `CryptoCore` with default features
+
 ## [2.4.0] - 2023-11-21
 
 ### Features
