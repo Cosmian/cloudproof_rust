@@ -13,11 +13,11 @@ jobs:
     with:
       project-name: cloudproof_rust
       toolchain: stable
-      kms-version: 4.11.2
+      kms-version: 4.11.3
       findex-cloud-version: 0.3.1
       branch-java: develop
       branch-js: develop
-      branch-kms-js: v2.0.0
+      branch-kms-js: develop
       branch-flutter: develop
       branch-python: develop
       exclusions: --exclude=cloudproof_findex
