@@ -13,12 +13,12 @@ jobs:
     with:
       project-name: cloudproof_rust
       toolchain: stable
-      kms-version: 4.9.1
+      kms-version: 4.11.3
       findex-cloud-version: 0.3.1
-      branch-java: fix/rename_findex_trait
-      branch-js: fix/rename_calbacks_to_backend
-      branch-kms-js: v2.0.0
-      branch-flutter: fix/use_insert_entry_in_compact
-      branch-python: fix/use_insert_entry_in_compact
+      branch-java: develop
+      branch-js: develop
+      branch-kms-js: develop
+      branch-flutter: develop
+      branch-python: develop
       exclusions: --exclude=cloudproof_findex
     secrets: inherit
