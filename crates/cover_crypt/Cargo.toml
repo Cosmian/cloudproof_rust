@@ -10,6 +10,7 @@ description = "Cosmian Covercrypt Cloudproof library"
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_cover_crypt"
+doctest = false
 
 [features]
 default = []

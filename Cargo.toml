@@ -36,3 +36,16 @@ wasm-bindgen = "0.2.89"
 [profile.release]
 lto = true
 strip = true
+
+[profile.dev]
+strip = "debuginfo"
+incremental = false
+
+# proc-macros and build-scripts
+[profile.dev.build-override]
+strip = "debuginfo"
+incremental = false
+
+# external dependencies
+[profile.dev.package."*"]
+opt-level = 0

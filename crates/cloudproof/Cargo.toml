@@ -16,6 +16,8 @@ description = "Cosmian Cloudproof library"
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof"
+test = false
+doctest = false
 
 [features]
 findex-redis = ["cloudproof_findex/redis-interface"]
