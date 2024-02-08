@@ -10,6 +10,7 @@ description = "Cosmian AES256GCM library"
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_aesgcm"
+doctest = false
 
 [features]
 default = []

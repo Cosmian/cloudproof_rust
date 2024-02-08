@@ -9,6 +9,7 @@ description = "Cosmian FFI tools library"
 
 [lib]
 name = "cosmian_ffi_utils"
+doctest = false
 
 [features]
 

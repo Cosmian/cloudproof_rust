@@ -10,6 +10,7 @@ description = "Cosmian Cloudproof FPE library"
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_fpe"
+doctest = false
 
 [[bench]]
 harness = false

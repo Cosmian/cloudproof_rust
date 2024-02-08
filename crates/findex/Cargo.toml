@@ -16,6 +16,7 @@ description = "Cosmian Findex Cloudproof library"
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_findex"
+doctest = false
 
 [features]
 # Actual user features.
@@ -55,7 +56,12 @@ wasm = [
 ]
 
 redis-interface = ["redis"]
-rest-interface = ["base64", "cosmian_crypto_core/ser", "reqwest", "serialization"]
+rest-interface = [
+  "base64",
+  "cosmian_crypto_core/ser",
+  "reqwest",
+  "serialization",
+]
 sqlite-interface = ["rusqlite"]
 
 [dependencies]
