@@ -31,7 +31,7 @@ tracing = "0.1"
 tracing-log = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-tree = "0.2"
-wasm-bindgen = "0.2.90"
+wasm-bindgen = "0.2.91"
 
 [profile.release]
 lto = true
