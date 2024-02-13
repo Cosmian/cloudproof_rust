@@ -32,5 +32,4 @@ wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 cosmian_cover_crypt = { git = "https://github.com/Cosmian/cover_crypt.git", branch = "feature/policy_parser", features = ["test_utils"] }
-# cosmian_cover_crypt = { version = "13.0.0", features = ["test_utils"] }
 wasm-bindgen-test = "0.3.41"
