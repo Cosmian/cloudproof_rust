@@ -195,11 +195,9 @@ pub unsafe extern "C" fn h_update_master_keys(
 ///
 /// Cf (`CoverCrypt::rekey_master_keys`)[`CoverCrypt::rekey_master_keys`].
 ///
-/// - `updated_msk_ptr`   : Output buffer containing the updated master secret
-///   key
+/// - `updated_msk_ptr`   : Output buffer for the updated master secret key
 /// - `updated_msk_len`   : Size of the updated master secret key output buffer
-/// - `updated_mpk_ptr`   : Output buffer containing the updated master public
-///   key
+/// - `updated_mpk_ptr`   : Output buffer for the updated master public key
 /// - `updated_mpk_len`   : Size of the updated master public key output buffer
 /// - `current_msk_ptr`   : current master secret key
 /// - `current_msk_len`   : current master secret key length

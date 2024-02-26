@@ -21,7 +21,7 @@ wasm = ["js-sys", "wasm-bindgen"]
 [dependencies]
 cosmian_cover_crypt = { git = "https://github.com/Cosmian/cover_crypt.git", branch = "feature/policy_parser", features = ["serialization"] }
 cosmian_crypto_core = { workspace = true }
-serde_json = "1.0.113"
+serde_json = "1.0"
 
 # Optional dependencies
 cosmian_ffi_utils = { workspace = true, optional = true }

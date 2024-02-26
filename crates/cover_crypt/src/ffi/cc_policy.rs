@@ -1,4 +1,6 @@
-use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, EncryptionHint, Policy};
+use cosmian_cover_crypt::abe_policy::{
+    AccessPolicy, Attribute, DimensionBuilder, EncryptionHint, Policy,
+};
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes, ErrorCode};
 
 /// This macro handles deserializing the policy from JS, deserializing an
@@ -94,7 +96,7 @@ pub unsafe extern "C" fn h_add_policy_axis(
         ErrorCode::Serialization
     );
     let axis_string = ffi_read_string!("axis", axis_ptr);
-    let axis = ffi_unwrap!(
+    let axis: DimensionBuilder = ffi_unwrap!(
         serde_json::from_str(&axis_string),
         "error deserializing policy axis",
         ErrorCode::Serialization
@@ -278,6 +280,46 @@ mod tests {
     use cosmian_cover_crypt::test_utils::policy;
 
     use super::*;
+
+    #[test]
+    fn test_create_policy() {
+        let policy = Policy::new();
+        let mut policy_bytes = <Vec<u8>>::try_from(&policy).unwrap();
+
+        let ordered_dim = r#"{ "name": "Security Level", "attributes_properties": [{ "name": "Protected", "encryption_hint": "Classic" }, { "name": "Confidential", "encryption_hint": "Classic" }, { "name": "Top Secret", "encryption_hint": "Hybridized" }], "hierarchical": true }"#.to_string();
+        policy_bytes = unsafe {
+            let current_policy_ptr = policy_bytes.as_ptr().cast();
+            let current_policy_len = policy_bytes.len() as i32;
+            let mut updated_policy_bytes = vec![0u8; 4096];
+            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
+            let res = h_add_policy_axis(
+                updated_policy_ptr,
+                &mut updated_policy_len,
+                current_policy_ptr,
+                current_policy_len,
+                ordered_dim.as_ptr().cast(),
+            );
+            assert_eq!(res, 0);
+            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
+                .to_vec()
+        };
+
+        let ffi_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_policy.attributes();
+
+        // Check policy size
+        assert_eq!(ffi_attributes.len(), 3);
+
+        // Check order
+        assert_eq!(
+            ffi_attributes
+                .into_iter()
+                .map(|attr| attr.name)
+                .collect::<Vec<_>>(),
+            vec!["Protected", "Confidential", "Top Secret"]
+        );
+    }
 
     #[test]
     fn test_edit_policy() {

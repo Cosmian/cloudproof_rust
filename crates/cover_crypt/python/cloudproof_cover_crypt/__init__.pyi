@@ -142,6 +142,7 @@ class Policy:
 
         Args:
             attribute (Attribute)
+            new_name (str)
         """
     def attributes(self) -> List[Attribute]:
         """Returns the list of Attributes of this Policy.
