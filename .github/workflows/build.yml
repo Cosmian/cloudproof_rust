@@ -9,11 +9,11 @@ on:
 
 jobs:
   cloudproof_rust:
-    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@main
+    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
     with:
       project-name: cloudproof_rust
       toolchain: stable
-      kms-version: feature-covercrypt_rekey
+      kms-version: ghcr.io/cosmian/kms:feature-covercrypt_rekey
       findex-cloud-version: 0.3.1
       branch-java: feature/covercrypt_rekey
       branch-js: develop
