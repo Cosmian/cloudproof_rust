@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.0] - 2024-02-27
+
+### Ci
+
+- Update repo reusable_workflow
+
 ## [2.4.1] - 2024-01-29
 
 ### Fix
