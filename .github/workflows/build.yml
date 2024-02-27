@@ -9,7 +9,7 @@ on:
 
 jobs:
   cloudproof_rust:
-    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
+    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@fix/pyo3_build
     with:
       project-name: cloudproof_rust
       toolchain: stable
