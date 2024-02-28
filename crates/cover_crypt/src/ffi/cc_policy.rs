@@ -275,7 +275,7 @@ pub unsafe extern "C" fn h_validate_attribute(attribute_ptr: *const i8) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::CString;
+    use std::{collections::HashSet, ffi::CString};
 
     use cosmian_cover_crypt::test_utils::policy;
 
@@ -286,7 +286,9 @@ mod tests {
         let policy = Policy::new();
         let mut policy_bytes = <Vec<u8>>::try_from(&policy).unwrap();
 
-        let ordered_dim = r#"{ "name": "Security Level", "attributes_properties": [{ "name": "Protected", "encryption_hint": "Classic" }, { "name": "Confidential", "encryption_hint": "Classic" }, { "name": "Top Secret", "encryption_hint": "Hybridized" }], "hierarchical": true }"#.to_string();
+        let ordered_dim = CString::new(
+            r#"{ "name": "Security Level", "attributes_properties": [{ "name": "Protected", "encryption_hint": "Classic" }, { "name": "Confidential", "encryption_hint": "Classic" }, { "name": "Top Secret", "encryption_hint": "Hybridized" }], "hierarchical": true }"#,
+        ).unwrap();
         policy_bytes = unsafe {
             let current_policy_ptr = policy_bytes.as_ptr().cast();
             let current_policy_len = policy_bytes.len() as i32;
@@ -305,20 +307,52 @@ mod tests {
                 .to_vec()
         };
 
+        let unordered_dim = CString::new(
+            r#"{ "name": "Department", "attributes_properties": [{ "name": "HR", "encryption_hint": "Classic" }, { "name": "MKG", "encryption_hint": "Classic" }, { "name": "FIN", "encryption_hint": "Classic" }], "hierarchical": false }"#,
+        ).unwrap();
+        policy_bytes = unsafe {
+            let current_policy_ptr = policy_bytes.as_ptr().cast();
+            let current_policy_len = policy_bytes.len() as i32;
+            let mut updated_policy_bytes = vec![0u8; 4096];
+            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
+            let mut updated_policy_len = updated_policy_bytes.len() as i32;
+            let res = h_add_policy_axis(
+                updated_policy_ptr,
+                &mut updated_policy_len,
+                current_policy_ptr,
+                current_policy_len,
+                unordered_dim.as_ptr().cast(),
+            );
+            assert_eq!(res, 0);
+            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
+                .to_vec()
+        };
+
         let ffi_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
         let ffi_attributes = ffi_policy.attributes();
 
         // Check policy size
-        assert_eq!(ffi_attributes.len(), 3);
+        assert_eq!(ffi_attributes.len(), 6);
 
-        // Check order
+        // Check ordered dimension
         assert_eq!(
             ffi_attributes
-                .into_iter()
-                .map(|attr| attr.name)
+                .iter()
+                .filter(|attr| attr.dimension == "Security Level")
+                .map(|attr| &attr.name)
                 .collect::<Vec<_>>(),
             vec!["Protected", "Confidential", "Top Secret"]
         );
+
+        // Check unordered dimension
+        let department_attrs = ffi_attributes
+            .into_iter()
+            .filter(|attr| attr.dimension == "Department")
+            .map(|attr| attr.name)
+            .collect::<HashSet<_>>();
+        assert!(department_attrs.contains("HR"));
+        assert!(department_attrs.contains("MKG"));
+        assert!(department_attrs.contains("FIN"));
     }
 
     #[test]
@@ -335,7 +369,7 @@ mod tests {
             let mut updated_policy_bytes = vec![0u8; 8192];
             let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
             let mut updated_policy_len = updated_policy_bytes.len() as i32;
-            let axis_name = "Security Level".to_string();
+            let axis_name = CString::new("Security Level").unwrap();
 
             let res = h_remove_policy_axis(
                 updated_policy_ptr,
