@@ -116,7 +116,11 @@ class TestPolicy(unittest.TestCase):
         policy.remove_attribute(new_attr)
         policy.remove_attribute(Attribute('Country', 'France'))
         policy.remove_attribute(Attribute('Country', 'UK'))
-        policy.remove_attribute(Attribute('Country', 'Germany'))
+
+        # TODO: temporary fix before we allow removing an entire dimension
+        # policy.remove_attribute(Attribute('Country', 'Germany'))
+        policy.remove_axis('Country')
+
         self.assertEqual(len(policy.attributes()), 3)
 
         # Add new dimension
