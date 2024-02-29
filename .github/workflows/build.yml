@@ -18,7 +18,7 @@ jobs:
       branch-java: feature/covercrypt_rekey
       branch-js: feature/covercrypt_rekey
       branch-kms-js: feature/covercrypt_rekey
-      branch-flutter: develop
+      branch-flutter: feature/covercrypt_rekey
       branch-python: feature/covercrypt-rekey
       exclusions: --exclude=cloudproof_findex
     secrets: inherit
