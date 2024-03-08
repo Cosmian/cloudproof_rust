@@ -13,11 +13,11 @@ jobs:
     with:
       project-name: cloudproof_rust
       toolchain: stable
-      kms-version: ghcr.io/cosmian/kms:feature-covercrypt_rekey
+      kms-version: ghcr.io/cosmian/kms:4.13.0
       findex-cloud-version: 0.3.1
       branch-java: feature/covercrypt_rekey
       branch-js: feature/covercrypt_rekey
-      branch-kms-js: feature/covercrypt_rekey
+      branch-kms-js: develop
       branch-flutter: feature/covercrypt_rekey
       branch-python: feature/covercrypt-rekey
       exclusions: --exclude=cloudproof_findex
