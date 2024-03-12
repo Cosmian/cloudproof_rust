@@ -126,6 +126,7 @@ pub unsafe extern "C" fn h_generate_user_secret_key(
 /// - `current_mpk_ptr` : current master public key
 /// - `current_mpk_len` : current master public key length
 /// - `policy_ptr`      : Policy to use to update the master keys (JSON)
+/// - `policy_len`      : length of the policy (in bytes)
 /// # Safety
 pub unsafe extern "C" fn h_update_master_keys(
     updated_msk_ptr: *mut i8,
@@ -205,6 +206,7 @@ pub unsafe extern "C" fn h_update_master_keys(
 /// - `current_mpk_len`   : current master public key length
 /// - `access_policy_ptr` : Policy to use to update the master keys (JSON)
 /// - `policy_ptr`        : Policy to use to update the master keys (JSON)
+/// - `policy_len`        : length of the policy (in bytes)
 /// # Safety
 pub unsafe extern "C" fn h_rekey_master_keys(
     updated_msk_ptr: *mut i8,
@@ -285,15 +287,11 @@ pub unsafe extern "C" fn h_rekey_master_keys(
 /// - `updated_msk_ptr`   : Output buffer containing the updated master secret
 ///   key
 /// - `updated_msk_len`   : Size of the updated master secret key output buffer
-/// - `updated_mpk_ptr`   : Output buffer containing the updated master public
-///   key
-/// - `updated_mpk_len`   : Size of the updated master public key output buffer
 /// - `current_msk_ptr`   : current master secret key
 /// - `current_msk_len`   : current master secret key length
-/// - `current_mpk_ptr`   : current master public key
-/// - `current_mpk_len`   : current master public key length
 /// - `access_policy_ptr` : Policy to use to update the master keys (JSON)
 /// - `policy_ptr`        : Policy to use to update the master keys (JSON)
+/// - `policy_len`        : length of the policy (in bytes)
 /// # Safety
 pub unsafe extern "C" fn h_prune_master_secret_key(
     updated_msk_ptr: *mut i8,
