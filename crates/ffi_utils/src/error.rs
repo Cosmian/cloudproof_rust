@@ -20,7 +20,7 @@ impl Display for FfiError {
 
 thread_local! {
     /// a thread-local variable which holds the most recent error
-    static LAST_ERROR: RefCell<Option<Box<FfiError>>> = RefCell::new(None);
+    static LAST_ERROR: RefCell<Option<Box<FfiError>>> = const { RefCell::new(None) };
 }
 
 /// Sets the most recent error, clearing whatever may have been there before.

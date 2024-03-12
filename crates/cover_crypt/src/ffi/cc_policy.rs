@@ -1,4 +1,6 @@
-use cosmian_cover_crypt::abe_policy::{AccessPolicy, Attribute, EncryptionHint, Policy};
+use cosmian_cover_crypt::abe_policy::{
+    AccessPolicy, Attribute, DimensionBuilder, EncryptionHint, Policy,
+};
 use cosmian_ffi_utils::{ffi_read_bytes, ffi_read_string, ffi_unwrap, ffi_write_bytes, ErrorCode};
 
 /// This macro handles deserializing the policy from JS, deserializing an
@@ -94,7 +96,7 @@ pub unsafe extern "C" fn h_add_policy_axis(
         ErrorCode::Serialization
     );
     let axis_string = ffi_read_string!("axis", axis_ptr);
-    let axis = ffi_unwrap!(
+    let axis: DimensionBuilder = ffi_unwrap!(
         serde_json::from_str(&axis_string),
         "error deserializing policy axis",
         ErrorCode::Serialization
@@ -242,52 +244,8 @@ pub unsafe extern "C" fn h_rename_policy_attribute(
         attribute,
         cc_policy,
         cc_attr,
-        cc_policy.rename_attribute(&cc_attr, &new_attribute_name),
+        cc_policy.rename_attribute(&cc_attr, new_attribute_name),
         "error renaming policy attribute"
-    )
-}
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn h_rotate_attribute(
-    updated_policy_ptr: *mut i8,
-    updated_policy_len: *mut i32,
-    current_policy_ptr: *const i8,
-    current_policy_len: i32,
-    attribute: *const i8,
-) -> i32 {
-    update_policy!(
-        updated_policy_ptr,
-        updated_policy_len,
-        current_policy_ptr,
-        current_policy_len,
-        attribute,
-        cc_policy,
-        cc_attr,
-        cc_policy.rotate(&cc_attr),
-        "error rotating policy"
-    )
-}
-
-/// # Safety
-#[no_mangle]
-pub unsafe extern "C" fn h_clear_old_attribute_values(
-    updated_policy_ptr: *mut i8,
-    updated_policy_len: *mut i32,
-    current_policy_ptr: *const i8,
-    current_policy_len: i32,
-    attribute: *const i8,
-) -> i32 {
-    update_policy!(
-        updated_policy_ptr,
-        updated_policy_len,
-        current_policy_ptr,
-        current_policy_len,
-        attribute,
-        cc_policy,
-        cc_attr,
-        cc_policy.clear_old_attribute_values(&cc_attr),
-        "error clearing old rotations policy"
     )
 }
 
@@ -317,114 +275,84 @@ pub unsafe extern "C" fn h_validate_attribute(attribute_ptr: *const i8) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::{CStr, CString};
+    use std::{collections::HashSet, ffi::CString};
 
     use cosmian_cover_crypt::test_utils::policy;
-    use cosmian_ffi_utils::error::h_get_error;
 
     use super::*;
 
     #[test]
-    fn test_rotate() {
-        let mut policy = policy().unwrap();
+    fn test_create_policy() {
+        let policy = Policy::new();
         let mut policy_bytes = <Vec<u8>>::try_from(&policy).unwrap();
-        let attributes = policy.attributes();
 
-        // Rotate attributes using the ffi method.
-        let attribute = CString::new(attributes[0].to_string()).unwrap();
-
+        let ordered_dim = CString::new(
+            r#"{ "name": "Security Level", "attributes_properties": [{ "name": "Protected", "encryption_hint": "Classic" }, { "name": "Confidential", "encryption_hint": "Classic" }, { "name": "Top Secret", "encryption_hint": "Hybridized" }], "hierarchical": true }"#,
+        ).unwrap();
         policy_bytes = unsafe {
             let current_policy_ptr = policy_bytes.as_ptr().cast();
             let current_policy_len = policy_bytes.len() as i32;
-            let mut updated_policy_bytes = vec![0u8; 8192];
+            let mut updated_policy_bytes = vec![0u8; 4096];
             let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
             let mut updated_policy_len = updated_policy_bytes.len() as i32;
-
-            let res = h_rotate_attribute(
+            let res = h_add_policy_axis(
                 updated_policy_ptr,
                 &mut updated_policy_len,
                 current_policy_ptr,
                 current_policy_len,
-                attribute.as_ptr().cast(),
+                ordered_dim.as_ptr().cast(),
             );
-
-            if res != 0 {
-                let mut error = vec![0u8; 8192];
-                let error_ptr = error.as_mut_ptr().cast();
-                let mut error_len = error.len() as i32;
-                h_get_error(error_ptr, &mut error_len);
-                panic!("{}", CStr::from_ptr(error_ptr).to_str().unwrap());
-            }
+            assert_eq!(res, 0);
             std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
                 .to_vec()
         };
 
-        let attribute = CString::new(attributes[2].to_string()).unwrap();
-
+        let unordered_dim = CString::new(
+            r#"{ "name": "Department", "attributes_properties": [{ "name": "HR", "encryption_hint": "Classic" }, { "name": "MKG", "encryption_hint": "Classic" }, { "name": "FIN", "encryption_hint": "Classic" }], "hierarchical": false }"#,
+        ).unwrap();
         policy_bytes = unsafe {
             let current_policy_ptr = policy_bytes.as_ptr().cast();
             let current_policy_len = policy_bytes.len() as i32;
-            let mut updated_policy_bytes = vec![0u8; 8192];
+            let mut updated_policy_bytes = vec![0u8; 4096];
             let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
             let mut updated_policy_len = updated_policy_bytes.len() as i32;
-
-            let res = h_rotate_attribute(
+            let res = h_add_policy_axis(
                 updated_policy_ptr,
                 &mut updated_policy_len,
                 current_policy_ptr,
                 current_policy_len,
-                attribute.as_ptr().cast(),
+                unordered_dim.as_ptr().cast(),
             );
-            if res != 0 {
-                let mut error = vec![0u8; 8192];
-                let error_ptr = error.as_mut_ptr().cast();
-                let mut error_len = error.len() as i32;
-                h_get_error(error_ptr, &mut error_len);
-                panic!("{}", CStr::from_ptr(error_ptr).to_str().unwrap());
-            }
+            assert_eq!(res, 0);
             std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_policy.attributes();
 
-        // Rotate the same attributes using the classic method.
-        policy.rotate(&attributes[0]).unwrap();
-        policy.rotate(&attributes[2]).unwrap();
+        // Check policy size
+        assert_eq!(ffi_attributes.len(), 6);
 
-        // assert ffi and non-ffi have same behavior.
-        assert_eq!(policy, ffi_rotated_policy);
+        // Check ordered dimension
+        assert_eq!(
+            ffi_attributes
+                .iter()
+                .filter(|attr| attr.dimension == "Security Level")
+                .map(|attr| &attr.name)
+                .collect::<Vec<_>>(),
+            vec!["Protected", "Confidential", "Top Secret"]
+        );
 
-        // clear old rotations for attribute 2
-        let attr_rotations = ffi_rotated_policy.attribute_values(&attributes[2]).unwrap();
-        assert_eq!(attr_rotations.len(), 2);
-        policy_bytes = unsafe {
-            let current_policy_ptr = policy_bytes.as_ptr().cast();
-            let current_policy_len = policy_bytes.len() as i32;
-            let mut updated_policy_bytes = vec![0u8; 8192];
-            let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
-            let mut updated_policy_len = updated_policy_bytes.len() as i32;
-
-            let res = h_clear_old_attribute_values(
-                updated_policy_ptr,
-                &mut updated_policy_len,
-                current_policy_ptr,
-                current_policy_len,
-                attribute.as_ptr().cast(),
-            );
-            if res != 0 {
-                let mut error = vec![0u8; 8192];
-                let error_ptr = error.as_mut_ptr().cast();
-                let mut error_len = error.len() as i32;
-                h_get_error(error_ptr, &mut error_len);
-                panic!("{}", CStr::from_ptr(error_ptr).to_str().unwrap());
-            }
-            std::slice::from_raw_parts(updated_policy_ptr.cast(), updated_policy_len as usize)
-                .to_vec()
-        };
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let attr_rotations = ffi_rotated_policy.attribute_values(&attributes[2]).unwrap();
-        assert_eq!(attr_rotations.len(), 1);
+        // Check unordered dimension
+        let department_attrs = ffi_attributes
+            .into_iter()
+            .filter(|attr| attr.dimension == "Department")
+            .map(|attr| attr.name)
+            .collect::<HashSet<_>>();
+        assert!(department_attrs.contains("HR"));
+        assert!(department_attrs.contains("MKG"));
+        assert!(department_attrs.contains("FIN"));
     }
 
     #[test]
@@ -441,7 +369,7 @@ mod tests {
             let mut updated_policy_bytes = vec![0u8; 8192];
             let updated_policy_ptr = updated_policy_bytes.as_mut_ptr().cast();
             let mut updated_policy_len = updated_policy_bytes.len() as i32;
-            let axis_name = "Security Level".to_string();
+            let axis_name = CString::new("Security Level").unwrap();
 
             let res = h_remove_policy_axis(
                 updated_policy_ptr,
@@ -455,8 +383,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 4);
 
@@ -483,8 +411,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 5);
 
@@ -510,8 +438,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 4);
 
@@ -537,8 +465,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 4);
 
@@ -566,8 +494,8 @@ mod tests {
                 .to_vec()
         };
 
-        let ffi_rotated_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
-        let ffi_attributes = ffi_rotated_policy.attributes();
+        let ffi_edited_policy = Policy::parse_and_convert(&policy_bytes).unwrap();
+        let ffi_attributes = ffi_edited_policy.attributes();
         // Check policy size
         assert_eq!(ffi_attributes.len(), 4);
     }
