@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof"
-version = "2.4.1"
+version = "3.0.0"
 authors = [
   "Théophile Brézot<theophile.brezot@cosmian.com>",
   "Emmanuel Coste<emmanuel.coste@cosmian.com>",
@@ -16,6 +16,8 @@ description = "Cosmian Cloudproof library"
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof"
+test = false
+doctest = false
 
 [features]
 findex-redis = ["cloudproof_findex/redis-interface"]
@@ -50,11 +52,11 @@ ffi = [
 #  - to publish `cloudproof` package, we must publish those sub-crates individually and manually.
 #  - cbindgen follows the cargo deps and fetch the crates from crates.io.
 ######
-cloudproof_aesgcm = { version = "0.1.3", optional = true }
-cloudproof_anonymization = { version = "0.1.2", optional = true }
-cloudproof_cover_crypt = { version = "13.0.1", optional = true }
-cloudproof_ecies = { version = "0.1.3", optional = true }
-cloudproof_findex = { version = "6.0.1", optional = true }
+cloudproof_aesgcm = { version = "0.1.5", optional = true }
+cloudproof_anonymization = { version = "0.1.3", optional = true }
+cloudproof_cover_crypt = { version = "14.0.0", optional = true }
+cloudproof_ecies = { version = "0.1.4", optional = true }
+cloudproof_findex = { version = "6.0.2", optional = true }
 cloudproof_fpe = { version = "0.2.2", optional = true }
 ######
 cosmian_crypto_core = { workspace = true, features = ["default"] }

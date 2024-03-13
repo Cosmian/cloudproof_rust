@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0] - 2024-03-12
+
+### Features
+
+- Replace old `Policy` rotation functions with master keys functions `rekey` and `prune` ([#64](https://github.com/Cosmian/cloudproof_rust/pull/64))
+
+### Ci
+
+- Update repo reusable_workflow
+- Fix pyo3 build ([#67](https://github.com/Cosmian/cloudproof_rust/pull/67))
+
 ## [2.4.1] - 2024-01-29
 
 ### Fix

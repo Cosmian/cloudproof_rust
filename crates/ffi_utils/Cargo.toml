@@ -1,6 +1,6 @@
 [package]
 name = "cosmian_ffi_utils"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Théophile Brézot<theophile.brezot@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -9,6 +9,7 @@ description = "Cosmian FFI tools library"
 
 [lib]
 name = "cosmian_ffi_utils"
+doctest = false
 
 [features]
 

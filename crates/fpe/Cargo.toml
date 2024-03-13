@@ -10,6 +10,7 @@ description = "Cosmian Cloudproof FPE library"
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_fpe"
+doctest = false
 
 [[bench]]
 harness = false
@@ -41,4 +42,4 @@ getrandom = { version = "0.2", features = [
 rand = "0.8"
 rand_chacha = "0.3"
 rand_distr = "0.4"
-wasm-bindgen-test = "0.3.39"
+wasm-bindgen-test = "0.3.41"

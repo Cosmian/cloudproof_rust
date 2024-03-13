@@ -97,6 +97,54 @@ impl CoverCrypt {
         Ok(())
     }
 
+    /// Generate new keys associated to the given access policy in the master
+    /// keys. User keys will need to be refreshed after this step.
+    ///  - `access_policy`  : describe the keys to renew
+    ///  - `policy`         : global policy
+    ///  - `msk`            : master secret key
+    ///  - `mpk`            : master public key
+    pub fn rekey_master_keys(
+        &self,
+        access_policy_str: &str,
+        policy: &Policy,
+        msk: &mut MasterSecretKey,
+        mpk: &mut MasterPublicKey,
+    ) -> PyResult<()> {
+        let access_policy = pyo3_unwrap!(
+            AccessPolicy::from_boolean_expression(access_policy_str),
+            "error parsing access policy"
+        );
+        pyo3_unwrap!(
+            self.0
+                .rekey_master_keys(&access_policy, &policy.0, &mut msk.0, &mut mpk.0),
+            "error rekeying master keys"
+        );
+        Ok(())
+    }
+
+    /// Removes old keys associated to the given master keys from the master
+    /// keys. This will permanently remove access to old ciphers.
+    ///  - `access_policy`  : describe the keys to prune
+    ///  - `policy`         : global policy
+    ///  - `msk`            : master secret key
+    pub fn prune_master_secret_key(
+        &self,
+        access_policy_str: &str,
+        policy: &Policy,
+        msk: &mut MasterSecretKey,
+    ) -> PyResult<()> {
+        let access_policy = pyo3_unwrap!(
+            AccessPolicy::from_boolean_expression(access_policy_str),
+            "error parsing access policy"
+        );
+        pyo3_unwrap!(
+            self.0
+                .prune_master_secret_key(&access_policy, &policy.0, &mut msk.0),
+            "error pruning master secret key"
+        );
+        Ok(())
+    }
+
     /// Generate a user secret key.
     ///
     /// A new user secret key does NOT include to old (i.e. rotated) partitions
@@ -127,8 +175,7 @@ impl CoverCrypt {
         Ok(UserSecretKey(usk))
     }
 
-    /// Refreshes the user key according to the given master key and access
-    /// policy.
+    /// Refreshes the user key according to the given master key.
     ///
     /// The user key will be granted access to the current partitions, as
     /// determined by its access policy. If `preserve_old_partitions_access`
@@ -137,32 +184,18 @@ impl CoverCrypt {
     /// Parameters:
     ///
     /// - `usk`                 : the user key to refresh
-    /// - `access_policy`       : the access policy of the user key
     /// - `msk`                 : master secret key
-    /// - `policy`              : global policy of the master secret key
     /// - `keep_old_accesses`   : whether access to old partitions (i.e. before
     ///   rotation) should be kept
     pub fn refresh_user_secret_key(
         &self,
         usk: &mut UserSecretKey,
-        access_policy_str: &str,
         msk: &MasterSecretKey,
-        policy: &Policy,
         keep_old_accesses: bool,
     ) -> PyResult<()> {
-        let access_policy = pyo3_unwrap!(
-            AccessPolicy::from_boolean_expression(access_policy_str),
-            "error parsing access policy"
-        );
-
         pyo3_unwrap!(
-            self.0.refresh_user_secret_key(
-                &mut usk.0,
-                &access_policy,
-                &msk.0,
-                &policy.0,
-                keep_old_accesses,
-            ),
+            self.0
+                .refresh_user_secret_key(&mut usk.0, &msk.0, keep_old_accesses,),
             "error refreshing user secret key"
         );
 

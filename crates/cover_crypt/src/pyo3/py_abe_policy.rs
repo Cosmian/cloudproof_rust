@@ -222,24 +222,9 @@ impl Policy {
     }
 
     /// Changes the name of an attribute.
-    pub fn rename_attribute(&mut self, attribute: &Attribute, new_name: &str) -> PyResult<()> {
+    pub fn rename_attribute(&mut self, attribute: &Attribute, new_name: String) -> PyResult<()> {
         self.0
             .rename_attribute(&attribute.0, new_name)
-            .map_err(|e| PyException::new_err(e.to_string()))
-    }
-
-    /// Rotates an attribute, changing its underlying value with an unused
-    /// value.
-    pub fn rotate(&mut self, attribute: &Attribute) -> PyResult<()> {
-        self.0
-            .rotate(&attribute.0)
-            .map_err(|e| PyException::new_err(e.to_string()))
-    }
-
-    /// Removes old rotations id of an attribute.
-    pub fn clear_old_attribute_values(&mut self, attr: &Attribute) -> PyResult<()> {
-        self.0
-            .clear_old_attribute_values(&attr.0)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 
@@ -248,18 +233,10 @@ impl Policy {
         self.0.attributes().into_iter().map(Attribute).collect()
     }
 
-    /// Returns the list of all attributes values given to this Attribute
-    /// over the time after rotations. The current value is returned first
-    pub fn attribute_values(&self, attribute: &Attribute) -> PyResult<Vec<u32>> {
-        self.0
-            .attribute_values(&attribute.0)
-            .map_err(|e| PyException::new_err(e.to_string()))
-    }
-
     /// Retrieves the current value of an attribute.
     pub fn attribute_current_value(&self, attribute: &Attribute) -> PyResult<u32> {
         self.0
-            .attribute_current_value(&attribute.0)
+            .get_attribute_id(&attribute.0)
             .map_err(|e| PyException::new_err(e.to_string()))
     }
 

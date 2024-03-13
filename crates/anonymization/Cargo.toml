@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_anonymization"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Hugo Rosenkranz-costa<hugo.rosenkranz@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -43,4 +43,4 @@ wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"
-wasm-bindgen-test = "0.3.39"
+wasm-bindgen-test = "0.3.41"

@@ -3,12 +3,12 @@ use cosmian_cover_crypt::{
     MasterPublicKey, MasterSecretKey, UserSecretKey,
 };
 use cosmian_crypto_core::bytes_ser_de::{Deserializer, Serializable};
-use js_sys::{Array, JsString, Object, Reflect, Uint8Array};
+use js_sys::{Object, Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_test::wasm_bindgen_test;
 
 use crate::wasm_bindgen::{
-    abe_policy::{webassembly_rotate_attributes, Attributes},
+    abe_policy::webassembly_rename_attribute,
     generate_cc_keys::{webassembly_generate_master_keys, webassembly_generate_user_secret_key},
     hybrid_cc_aes::{
         webassembly_decrypt_hybrid_header, webassembly_encrypt_hybrid_header,
@@ -192,18 +192,19 @@ fn test_generate_keys() {
     .to_vec();
     let usk = UserSecretKey::deserialize(&usk_bytes).unwrap();
 
-    let access_policy_string = "Security Level::Low Secret".to_string();
-    let attributes = Array::new();
-    attributes.push(&JsString::from(access_policy_string.as_str()));
-    let new_policy = webassembly_rotate_attributes(
-        Attributes::from(JsValue::from(attributes)),
+    //
+    // Rename attribute `Department::FIN` -> `Department::Finance`
+    let new_policy_bytes = webassembly_rename_attribute(
         policy_bytes.clone(),
+        "Department::FIN".to_string(),
+        "Finance".to_string(),
     )
     .unwrap();
+    let new_policy = serde_json::from_slice(&new_policy_bytes).unwrap();
 
     //
     // Generate master keys
-    let master_keys = webassembly_generate_master_keys(new_policy).unwrap();
+    let master_keys = webassembly_generate_master_keys(new_policy_bytes.clone()).unwrap();
     let master_keys_vec = master_keys.to_vec();
     let secret_key_size = u32::from_be_bytes(master_keys_vec[..4].try_into().unwrap()) as usize;
     let secret_key_bytes = &master_keys_vec[4..4 + secret_key_size];
@@ -219,8 +220,8 @@ fn test_generate_keys() {
     let authentication_data = vec![10, 11, 12, 13, 14];
 
     let encrypted_header = encrypt_header(
-        &policy,
-        access_policy_string,
+        &new_policy,
+        "Department::Finance && Security Level::Low Secret".to_string(),
         &master_public_key,
         &header_metadata,
         &authentication_data,
@@ -237,7 +238,7 @@ fn test_generate_keys() {
     let usk_bytes = webassembly_generate_user_secret_key(
         Uint8Array::from(secret_key_bytes),
         "Security Level::Low Secret",
-        policy_bytes,
+        new_policy_bytes,
     )
     .unwrap()
     .to_vec();

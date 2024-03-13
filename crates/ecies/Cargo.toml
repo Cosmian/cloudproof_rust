@@ -1,6 +1,6 @@
 [package]
 name = "cloudproof_ecies"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Emmanuel Coste<emmanuel.coste@cosmian.com>"]
 edition = "2021"
 license-file = "../../LICENSE.md"
@@ -10,6 +10,7 @@ description = "Cosmian ECIES scheme library"
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 name = "cloudproof_ecies"
+doctest = false
 
 [features]
 default = []
@@ -33,4 +34,4 @@ pyo3 = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.39"
+wasm-bindgen-test = "0.3.41"
