@@ -9,16 +9,16 @@ on:
 
 jobs:
   cloudproof_rust:
-    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@develop
+    uses: Cosmian/reusable_workflows/.github/workflows/cloudproof.yml@fix/publish_python
     with:
       project-name: cloudproof_rust
       toolchain: stable
       kms-version: ghcr.io/cosmian/kms:4.13.0
       findex-cloud-version: 0.3.1
-      branch-java: feature/covercrypt_rekey
-      branch-js: feature/covercrypt_rekey
+      branch-java: develop
+      branch-js: develop
       branch-kms-js: develop
-      branch-flutter: feature/covercrypt_rekey
-      branch-python: feature/covercrypt-rekey
+      branch-flutter: develop
+      branch-python: develop
       exclusions: --exclude=cloudproof_findex
     secrets: inherit
