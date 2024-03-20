@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.1] - 2024-03-20
+
+### Ci
+
+- Fix publishing on PyPI
+
 ## [3.0.0] - 2024-03-12
 
 ### Features
