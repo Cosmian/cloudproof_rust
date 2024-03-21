@@ -1,5 +1,3 @@
-use std::result::Result;
-
 use cosmian_cover_crypt::abe_policy::{
     Attribute as AttributeRust, DimensionBuilder, EncryptionHint, Policy as PolicyRust,
 };

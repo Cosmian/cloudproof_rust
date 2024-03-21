@@ -6,6 +6,8 @@ build-backend = "maturin"
 python-source = "python"
 
 [project]
+description = "Cosmian Cloudproof FPE library"
+readme = "README.md"
 name = "cloudproof_fpe"
 requires-python = ">=3.7"
 classifiers = [
