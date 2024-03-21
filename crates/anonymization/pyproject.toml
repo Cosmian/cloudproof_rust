@@ -6,6 +6,8 @@ build-backend = "maturin"
 python-source = "python"
 
 [project]
+description = "Cosmian Cloudproof Anonymization library"
+readme = "README.md"
 name = "cloudproof_anonymization"
 requires-python = ">=3.7"
 classifiers = [

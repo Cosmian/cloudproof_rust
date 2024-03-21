@@ -6,6 +6,8 @@ build-backend = "maturin"
 python-source = "python"
 
 [project]
+description = "Cosmian Cloudproof Covercrypt library"
+readme = "README.md"
 name = "cover_crypt"
 requires-python = ">=3.7"
 classifiers = [
