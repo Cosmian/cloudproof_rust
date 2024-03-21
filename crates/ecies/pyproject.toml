@@ -6,6 +6,8 @@ build-backend = "maturin"
 python-source = "python"
 
 [project]
+readme = "README.md"
+description = "Cosmian Cloudproof ECIES library"
 name = "cloudproof_ecies"
 requires-python = ">=3.7"
 classifiers = [
