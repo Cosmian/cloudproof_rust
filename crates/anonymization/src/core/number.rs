@@ -94,7 +94,7 @@ impl DateAggregator {
     ///
     /// * `time_unit`: The unit of time to round the date to.
     #[must_use]
-    pub fn new(time_unit: TimeUnit) -> Self {
+    pub const fn new(time_unit: TimeUnit) -> Self {
         Self { time_unit }
     }
 

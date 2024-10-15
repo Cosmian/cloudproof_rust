@@ -483,7 +483,7 @@ pub unsafe extern "C" fn h_decrypt_header(
 #[no_mangle]
 ///
 /// # Safety
-pub unsafe extern "C" fn h_symmetric_encryption_overhead() -> i32 {
+pub const unsafe extern "C" fn h_symmetric_encryption_overhead() -> i32 {
     (Aes256Gcm::NONCE_LENGTH + Aes256Gcm::MAC_LENGTH) as i32
 }
 

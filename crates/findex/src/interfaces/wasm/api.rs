@@ -45,15 +45,30 @@ impl WasmFindex {
             .map_err(JsError::from)
     }
 
-    /// Instantiates a Findex object using REST interfaces, using the given token
-    /// and URLs.
-    pub async fn new_with_rest_interface(
+    /// Instantiates a Findex object using REST interfaces, using the given
+    /// token and URLs.
+    pub async fn new_with_findex_cloud_interface(
         token: String,
         entry_url: String,
         chain_url: String,
     ) -> Result<WasmFindex, JsError> {
         let config =
-            Configuration::Rest(AuthorizationToken::from_str(&token)?, entry_url, chain_url);
+            Configuration::FindexCloud(AuthorizationToken::from_str(&token)?, entry_url, chain_url);
+
+        InstantiatedFindex::new(config)
+            .await
+            .map(Self)
+            .map_err(WasmError::from)
+            .map_err(JsError::from)
+    }
+
+    /// Instantiates a Findex object using REST interfaces, using the given
+    /// token and URLs.
+    pub async fn new_with_rest_interface(
+        entry_url: String,
+        chain_url: String,
+    ) -> Result<WasmFindex, JsError> {
+        let config = Configuration::Rest(reqwest::Client::new(), entry_url, chain_url);
 
         InstantiatedFindex::new(config)
             .await
@@ -94,7 +109,7 @@ impl WasmFindex {
                 let res = <InterruptInput>::try_from(res).map_err(|e| {
                     format!(
                         "Findex search: failed converting input of user interrupt into Js object: \
-                     {e:?}"
+                         {e:?}"
                     )
                 })?;
                 let res = interrupt
@@ -103,13 +118,15 @@ impl WasmFindex {
                 let interruption_flag =
                     JsFuture::from(Promise::resolve(&res)).await.map_err(|e| {
                         format!(
-                    "Findex search: failed getting the promised results from user interrupt: {e:?}"
-                )
+                            "Findex search: failed getting the promised results from user \
+                             interrupt: {e:?}"
+                        )
                     })?;
                 interruption_flag.as_bool().ok_or_else(|| {
                     format!(
-                    "Findex search: user interrupt does not return a boolean value: {interrupt:?}"
-                )
+                        "Findex search: user interrupt does not return a boolean value: \
+                         {interrupt:?}"
+                    )
                 })
             } else {
                 Ok(false)
@@ -221,15 +238,16 @@ impl WasmFindex {
                     })?);
                 let filtered_data = JsFuture::from(promise).await.map_err(|e| {
                     format!(
-                    "Findex compact: failed getting the promised results from the obsolete data \
-                     filter: {e:?}"
-                )
+                        "Findex compact: failed getting the promised results from the obsolete \
+                         data filter: {e:?}"
+                    )
                 })?;
                 let filtered_data = <HashSet<Data>>::try_from(IndexedData::from(filtered_data))
                     .map_err(|e| {
                         format!(
-                        "Findex compact: failed converting Js array back to filtered data: {e:?}"
-                    )
+                            "Findex compact: failed converting Js array back to filtered data: \
+                             {e:?}"
+                        )
                     })?;
                 Ok(filtered_data)
             } else {

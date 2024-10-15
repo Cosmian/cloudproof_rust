@@ -82,8 +82,8 @@ macro_rules! impl_sqlite_backend {
                 )?;
 
                 rows.map(|res| {
-                    // TODO: this fix is needed since error from conversion to encrypted value is not
-                    // easily convertible inside the `query_map`.
+                    // TODO: this fix is needed since error from conversion to encrypted value is
+                    // not easily convertible inside the `query_map`.
                     //
                     // Two paths to go forward:
                     // - find a way to convert the error inside `query_map`

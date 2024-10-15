@@ -6,6 +6,7 @@ pub mod db_interfaces;
     feature = "ffi",
     feature = "python",
     feature = "redis-interface",
+    feature = "findex-cloud",
     feature = "rest-interface",
     feature = "sqlite-interface",
     feature = "wasm",
@@ -25,8 +26,14 @@ pub mod ser_de;
     feature = "ffi",
     feature = "python",
     feature = "redis-interface",
+    feature = "findex-cloud",
     feature = "rest-interface",
     feature = "sqlite-interface",
     feature = "wasm",
 ))]
 pub use instantiation::{Configuration, InstantiatedFindex};
+
+pub mod reexport {
+    pub use cosmian_crypto_core;
+    pub use cosmian_findex;
+}

@@ -1,2 +1,2 @@
 #[test]
-fn ffi_anonymization() {}
+const fn ffi_anonymization() {}

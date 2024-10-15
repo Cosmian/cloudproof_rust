@@ -29,15 +29,16 @@ pub const fn get_serialized_edx_lines_size_bound<const VALUE_LENGTH: usize>(
 pub fn get_upsert_output_size(
     modifications: &HashMap<IndexedValue<Keyword, Data>, Keywords>,
 ) -> usize {
-    // Since `h_add` (resp. `h_delete`) returns the set of keywords that have been inserted (resp.
-    // deleted), caller MUST know in advance how much memory is needed before calling `h_add`
-    // (resp. `h_delete`).
+    // Since `h_add` (resp. `h_delete`) returns the set of keywords that have been
+    // inserted (resp. deleted), caller MUST know in advance how much memory is
+    // needed before calling `h_add` (resp. `h_delete`).
     //
-    // In order to centralize into Rust the computation of the allocation size, 2 calls to
-    // `h_upsert` are required:
+    // In order to centralize into Rust the computation of the allocation size, 2
+    // calls to `h_upsert` are required:
     //
-    // - the first call is made with `results_len` with a 0 value. No indexation at all is done. It
-    //   simply returns an upper bound estimation of the allocation needed store the results.
+    // - the first call is made with `results_len` with a 0 value. No indexation at
+    //   all is done. It simply returns an upper bound estimation of the allocation
+    //   needed store the results.
     // - the second call takes this returned value for `results_len`
     modifications
         .values()
@@ -136,8 +137,9 @@ pub fn deserialize_edx_lines<const VALUE_LENGTH: usize>(
     let mut items = Vec::with_capacity(length);
     for _ in 0..length {
         let key = Token::from(de.read_array()?);
-        // TODO: since constant generics cannot be used as constant values, there is no way to use
-        // `de.read_array<{ EncryptedValue::<VALUE_LENGTH>::LENGTH }>()` for now.
+        // TODO: since constant generics cannot be used as constant values, there is no
+        // way to use `de.read_array<{ EncryptedValue::<VALUE_LENGTH>::LENGTH
+        // }>()` for now.
         let value = EncryptedValue::<VALUE_LENGTH>::try_from(de.read_vec()?.as_slice())?;
         items.push((key, value));
     }

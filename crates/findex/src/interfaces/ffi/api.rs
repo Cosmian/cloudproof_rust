@@ -131,7 +131,7 @@ pub unsafe extern "C" fn h_instantiate_with_custom_interface(
     ErrorCode::Success.into()
 }
 
-/// Instantiate a Findex using a REST backend.
+/// Instantiate a Findex using a Findex Cloud backend.
 ///
 /// # Parameters
 ///
@@ -144,7 +144,7 @@ pub unsafe extern "C" fn h_instantiate_with_custom_interface(
 /// Cannot be safe since using FFI.
 #[no_mangle]
 #[tracing::instrument(ret, skip_all)]
-pub unsafe extern "C" fn h_instantiate_with_rest_interface(
+pub unsafe extern "C" fn h_instantiate_with_findex_cloud_interface(
     findex_handle: *mut i32,
     label_ptr: *const i8,
     token_ptr: *const i8,
@@ -177,7 +177,7 @@ pub unsafe extern "C" fn h_instantiate_with_rest_interface(
     } else {
         ffi_read_string!("REST server Chain Table URL", chain_url_ptr)
     };
-    let config = Configuration::Rest(authorization_token.clone(), entry_url, chain_url);
+    let config = Configuration::FindexCloud(authorization_token.clone(), entry_url, chain_url);
 
     let rt = ffi_unwrap!(
         tokio::runtime::Runtime::new(),
@@ -199,6 +199,81 @@ pub unsafe extern "C" fn h_instantiate_with_rest_interface(
         ErrorCode::Findex
     );
     cache.insert(handle, (authorization_token.findex_key, label, findex));
+
+    *findex_handle = handle;
+
+    ErrorCode::Success.into()
+}
+
+/// Instantiate a Findex using a REST backend.
+///
+/// # Parameters
+///
+/// - `label`   : label used by Findex
+/// - `token`   : token containing authentication keys
+/// - `url`     : REST server URL
+///
+/// # Safety
+///
+/// Cannot be safe since using FFI.
+#[no_mangle]
+#[tracing::instrument(ret, skip_all)]
+pub unsafe extern "C" fn h_instantiate_with_rest_interface(
+    findex_handle: *mut i32,
+    key_ptr: *const u8,
+    key_len: i32,
+    label_ptr: *const i8,
+    entry_url_ptr: *const i8,
+    chain_url_ptr: *const i8,
+) -> i32 {
+    #[cfg(debug_assertions)]
+    log_init();
+
+    let key_bytes = ffi_read_bytes!("key", key_ptr, key_len);
+    let key = ffi_unwrap!(
+        SymmetricKey::try_from_slice(key_bytes),
+        "error deserializing findex key",
+        ErrorCode::Serialization
+    );
+    trace!("Key successfully parsed");
+
+    let label_bytes = ffi_read_string!("label", label_ptr);
+    let label = Label::from(label_bytes.as_str());
+    trace!("Label successfully parsed: label: {label}");
+
+    let entry_url = if entry_url_ptr.is_null() {
+        String::new()
+    } else {
+        ffi_read_string!("REST server Entry Table URL", entry_url_ptr)
+    };
+
+    let chain_url = if chain_url_ptr.is_null() {
+        String::new()
+    } else {
+        ffi_read_string!("REST server Chain Table URL", chain_url_ptr)
+    };
+    let config = Configuration::Rest(reqwest::Client::new(), entry_url, chain_url);
+
+    let rt = ffi_unwrap!(
+        tokio::runtime::Runtime::new(),
+        "error creating Tokio runtime",
+        ErrorCode::Tokio
+    );
+    let findex = ffi_unwrap!(
+        rt.block_on(InstantiatedFindex::new(config)),
+        "error instantiating Findex with REST backend",
+        ErrorCode::Backend
+    );
+
+    let mut cache = FINDEX_INSTANCES
+        .lock()
+        .expect("Findex instance cache lock poisoned.");
+    let handle = ffi_unwrap!(
+        <i32>::try_from(cache.len()),
+        "findex instance cache capacity overflow",
+        ErrorCode::Findex
+    );
+    cache.insert(handle, (key, label, findex));
 
     *findex_handle = handle;
 
@@ -592,7 +667,7 @@ pub unsafe extern "C" fn h_delete(
 /// indexes every night this is the number of days to wait before
 /// being sure that a big portion of the indexes were checked
 /// (see the coupon problem to understand why it's not 100% sure)
-
+///
 /// # Safety
 ///
 /// Cannot be safe since using FFI.

@@ -20,13 +20,14 @@ doctest = false
 
 [features]
 # Actual user features.
-default = []
+default = ["rest-interface"]
 
 # Meta features implicitly activated.
 serialization = []
 
 ffi = [
   "redis-interface",
+  "findex-cloud",
   "rest-interface",
   "cosmian_ffi_utils",
   "lazy_static",
@@ -37,6 +38,7 @@ ffi = [
 
 python = [
   "redis-interface",
+  "findex-cloud",
   "rest-interface",
   "sqlite-interface",
   "futures",
@@ -45,6 +47,7 @@ python = [
 ]
 
 wasm = [
+  "findex-cloud",
   "rest-interface",
   "js-sys",
   "log",
@@ -56,12 +59,8 @@ wasm = [
 ]
 
 redis-interface = ["redis"]
-rest-interface = [
-  "base64",
-  "cosmian_crypto_core/ser",
-  "reqwest",
-  "serialization",
-]
+findex-cloud = ["base64", "cosmian_crypto_core/ser", "reqwest", "serialization"]
+rest-interface = ["base64", "cosmian_crypto_core/ser", "reqwest", "serialization"]
 sqlite-interface = ["rusqlite"]
 
 [dependencies]
@@ -71,7 +70,7 @@ async-trait = { workspace = true }
 base64 = { workspace = true, optional = true }
 cosmian_crypto_core = { workspace = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
-cosmian_findex = "6.0.0"
+cosmian_findex = { git = "https://www.github.com/Cosmian/findex", branch = "fix/missing_some_structs_serialization" }
 futures = { version = "0.3.30", optional = true }
 js-sys = { workspace = true, optional = true }
 lazy_static = { version = "1.4.0", optional = true }
