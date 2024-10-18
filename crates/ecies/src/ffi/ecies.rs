@@ -125,7 +125,7 @@ pub unsafe extern "C" fn h_ecies_salsa_seal_box_encrypt(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn h_ecies_salsa_seal_box_get_encryption_overhead() -> u32 {
+pub const unsafe extern "C" fn h_ecies_salsa_seal_box_get_encryption_overhead() -> u32 {
     EciesSalsaSealBox::ENCRYPTION_OVERHEAD as u32
 }
 

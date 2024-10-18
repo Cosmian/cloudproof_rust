@@ -128,7 +128,7 @@ impl Alphabet {
     /// secure. The minimum length is calculated based on the number of
     /// characters in the alphabet and recommended security thresholds.
     #[must_use]
-    pub fn minimum_plaintext_length(&self) -> usize {
+    pub const fn minimum_plaintext_length(&self) -> usize {
         self.min_text_length
     }
 

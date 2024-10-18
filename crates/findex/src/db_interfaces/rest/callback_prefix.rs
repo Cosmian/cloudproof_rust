@@ -15,9 +15,9 @@ pub enum CallbackPrefix {
 }
 
 impl CallbackPrefix {
-    #[cfg(feature = "rest-interface")]
+    #[cfg(any(feature = "findex-cloud", feature = "rest-interface"))]
     #[must_use]
-    pub fn get_uri(self) -> &'static str {
+    pub const fn get_uri(self) -> &'static str {
         match self {
             Self::FetchEntry => "fetch_entries",
             Self::FetchChain => "fetch_chains",

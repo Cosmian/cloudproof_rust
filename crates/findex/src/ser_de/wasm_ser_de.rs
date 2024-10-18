@@ -124,6 +124,7 @@ pub fn edx_lines_to_js_array<const VALUE_LENGTH: usize>(
     Ok(res)
 }
 
+#[allow(dead_code)]
 #[cfg(test)]
 mod tests {
 

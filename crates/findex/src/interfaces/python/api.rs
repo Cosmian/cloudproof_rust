@@ -104,7 +104,7 @@ impl Findex {
         );
         let instance = pyo3_unwrap!(
             runtime.block_on(InstantiatedFindex::new(configuration)),
-            "error instantiating Findex with Redis backend"
+            "error instantiating Findex with custom backend"
         );
         Ok(Self {
             key: UserKey::try_from_bytes(key.0.to_bytes())
@@ -117,7 +117,7 @@ impl Findex {
 
     /// Instantiates Findex with a REST backend.
     #[staticmethod]
-    pub fn new_with_rest_interface(
+    pub fn new_with_findex_cloud_interface(
         label: String,
         token: String,
         entry_url: String,
@@ -134,15 +134,44 @@ impl Findex {
         let key = UserKey::try_from_slice(&token.findex_key)
             .expect("the bytes passed represent a correct key");
         let instance = pyo3_unwrap!(
-            runtime.block_on(InstantiatedFindex::new(Configuration::Rest(
+            runtime.block_on(InstantiatedFindex::new(Configuration::FindexCloud(
                 token,
                 entry_url.clone(),
                 chain_url.unwrap_or(entry_url)
             ))),
-            "error instantiating Findex with Redis backend"
+            "error instantiating Findex with Findex Cloud backend"
         );
         Ok(Self {
             key,
+            label: Label::from(label.as_str()),
+            runtime,
+            instance,
+        })
+    }
+
+    /// Instantiates Findex with a REST backend.
+    #[staticmethod]
+    pub fn new_with_rest_interface(
+        key: &KeyPy,
+        label: String,
+        entry_url: String,
+        chain_url: Option<String>,
+    ) -> PyResult<Self> {
+        let runtime = pyo3_unwrap!(
+            tokio::runtime::Runtime::new(),
+            "error creating Tokio runtime"
+        );
+        let instance = pyo3_unwrap!(
+            runtime.block_on(InstantiatedFindex::new(Configuration::Rest(
+                reqwest::Client::new(),
+                entry_url.clone(),
+                chain_url.unwrap_or(entry_url)
+            ))),
+            "error instantiating Findex with REST backend"
+        );
+        Ok(Self {
+            key: UserKey::try_from_bytes(key.0.to_bytes())
+                .expect("the bytes passed represent a correct key"),
             label: Label::from(label.as_str()),
             runtime,
             instance,

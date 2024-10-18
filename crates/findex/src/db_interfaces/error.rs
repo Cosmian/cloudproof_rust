@@ -16,7 +16,12 @@ use wasm_bindgen::JsCast;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::JsValue;
 
-#[cfg(any(feature = "rest-interface", feature = "wasm", feature = "ffi"))]
+#[cfg(any(
+    feature = "findex-cloud",
+    feature = "rest-interface",
+    feature = "wasm",
+    feature = "ffi"
+))]
 use crate::ser_de::SerializationError;
 
 #[derive(Debug)]
@@ -30,11 +35,11 @@ pub enum DbInterfaceError {
     Ffi(String, ErrorCode),
     #[cfg(feature = "python")]
     Python(String),
-    #[cfg(feature = "rest-interface")]
+    #[cfg(feature = "findex-cloud")]
     MalformedToken(String),
     #[cfg(feature = "wasm")]
     Wasm(String),
-    #[cfg(feature = "rest-interface")]
+    #[cfg(feature = "findex-cloud")]
     MissingPermission(i32),
     Findex(FindexCoreError),
     CryptoCore(CryptoCoreError),
@@ -55,13 +60,13 @@ impl Display for DbInterfaceError {
             Self::MissingCallback(err) => write!(f, "unknown callback: {err}"),
             #[cfg(feature = "ffi")]
             Self::Ffi(err, code) => write!(f, "{err}: {code}"),
-            #[cfg(feature = "rest-interface")]
+            #[cfg(feature = "findex-cloud")]
             Self::MalformedToken(err) => write!(f, "{err}"),
             #[cfg(feature = "python")]
             Self::Python(err) => write!(f, "{err}"),
             #[cfg(feature = "wasm")]
             Self::Wasm(err) => write!(f, "wasm callback error: {err}"),
-            #[cfg(feature = "rest-interface")]
+            #[cfg(feature = "findex-cloud")]
             Self::MissingPermission(err) => write!(f, "missing permission: {err}"),
             Self::CryptoCore(err) => write!(f, "crypto_core: {err}"),
             Self::Findex(err) => write!(f, "findex: {err}"),
@@ -92,7 +97,12 @@ impl From<RedisError> for DbInterfaceError {
     }
 }
 
-#[cfg(any(feature = "rest-interface", feature = "wasm", feature = "ffi"))]
+#[cfg(any(
+    feature = "findex-cloud",
+    feature = "rest-interface",
+    feature = "wasm",
+    feature = "ffi"
+))]
 impl From<SerializationError> for DbInterfaceError {
     fn from(e: SerializationError) -> Self {
         Self::Serialization(e.to_string())
@@ -105,7 +115,7 @@ impl From<TryFromIntError> for DbInterfaceError {
     }
 }
 
-#[cfg(feature = "rest-interface")]
+#[cfg(any(feature = "findex-cloud", feature = "rest-interface"))]
 impl From<TryFromSliceError> for DbInterfaceError {
     fn from(e: TryFromSliceError) -> Self {
         Self::SliceConversion(e)

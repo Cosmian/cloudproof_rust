@@ -22,6 +22,7 @@ doctest = false
 [features]
 findex-redis = ["cloudproof_findex/redis-interface"]
 findex-sqlite = ["cloudproof_findex/sqlite-interface"]
+findex-rest = ["cloudproof_findex/rest-interface"]
 default = [
   "cloudproof_aesgcm/default",
   "cloudproof_anonymization/default",
@@ -59,4 +60,3 @@ cloudproof_ecies = { version = "0.1.4", optional = true }
 cloudproof_findex = { version = "6.0.2", optional = true }
 cloudproof_fpe = { version = "0.2.2", optional = true }
 ######
-cosmian_crypto_core = { workspace = true, features = ["default"] }

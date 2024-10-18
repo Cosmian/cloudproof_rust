@@ -189,7 +189,7 @@ class AuthorizationToken:
 class Findex:
     @staticmethod
     def new_with_sqlite_interface(
-        key: Key, label: str, entry_path: str, chain_path: Optional[str]=None
+        key: Key, label: str, entry_path: str, chain_path: Optional[str] = None
     ) -> Findex:
         """Instantiate a new Findex instance using an SQLite interface.
 
@@ -198,7 +198,7 @@ class Findex:
         """
     @staticmethod
     def new_with_redis_interface(
-        key: Key, label: str, entry_url: str, chain_url: Optional[str]=None
+        key: Key, label: str, entry_url: str, chain_url: Optional[str] = None
     ) -> Findex:
         """Instantiate a new Findex instance using a Redis interface.
 
@@ -206,8 +206,18 @@ class Findex:
             Findex
         """
     @staticmethod
-    def new_with_rest_interface(label: str, token: str, entry_url: str,
-                                chain_url: Optional[str]=None) -> Findex:
+    def new_with_findex_cloud_interface(
+        label: str, token: str, entry_url: str, chain_url: Optional[str] = None
+    ) -> Findex:
+        """Instantiate a new Findex instance using a REST interface.
+
+        Returns:
+            Findex
+        """
+    @staticmethod
+    def new_with_rest_interface(
+        key: Key, label: str, entry_url: str, chain_url: Optional[str] = None
+    ) -> Findex:
         """Instantiate a new Findex instance using a REST interface.
 
         Returns:
@@ -218,7 +228,7 @@ class Findex:
         key: Key,
         label: str,
         entry_callbacks: PythonCallbacks,
-        chain_callbacks: Optional[PythonCallbacks]=None,
+        chain_callbacks: Optional[PythonCallbacks] = None,
     ) -> Findex:
         """Instantiate a new Findex instance using a custom interface.
 

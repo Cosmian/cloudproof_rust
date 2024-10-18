@@ -17,8 +17,12 @@ use crate::db_interfaces::custom::python::{PythonChainBackend, PythonEntryBacken
 use crate::db_interfaces::custom::wasm::{WasmChainBackend, WasmEntryBackend};
 #[cfg(feature = "redis-interface")]
 use crate::db_interfaces::redis::{RedisChainBackend, RedisEntryBackend};
+#[cfg(feature = "findex-cloud")]
+use crate::db_interfaces::rest::{
+    FindexCloudChainBackend, FindexCloudEntryBackend, FindexCloudParameters,
+};
 #[cfg(feature = "rest-interface")]
-use crate::db_interfaces::rest::{RestChainBackend, RestEntryBackend, RestParameters};
+use crate::db_interfaces::rest::{RestChainBackend, RestEntryBackend};
 #[cfg(feature = "sqlite-interface")]
 use crate::db_interfaces::sqlite::{SqlChainBackend, SqlEntryBackend};
 use crate::{db_interfaces::DbInterfaceError, Configuration};
@@ -70,6 +74,15 @@ pub enum InstantiatedFindex {
         >,
     ),
 
+    #[cfg(feature = "findex-cloud")]
+    FindexCloud(
+        Findex<
+            DbInterfaceError,
+            EntryTable<ENTRY_LENGTH, FindexCloudEntryBackend>,
+            ChainTable<LINK_LENGTH, FindexCloudChainBackend>,
+        >,
+    ),
+
     #[cfg(feature = "rest-interface")]
     Rest(
         Findex<
@@ -96,13 +109,29 @@ impl InstantiatedFindex {
                 ChainTable::setup(RedisChainBackend::connect(&chain_params).await?),
             )),
 
+            #[cfg(feature = "findex-cloud")]
+            Configuration::FindexCloud(token, entry_url, chain_url) => {
+                Self::FindexCloud(Findex::new(
+                    EntryTable::setup(FindexCloudEntryBackend::new(FindexCloudParameters::new(
+                        token.clone(),
+                        entry_url,
+                    ))),
+                    ChainTable::setup(FindexCloudChainBackend::new(FindexCloudParameters::new(
+                        token, chain_url,
+                    ))),
+                ))
+            }
+
             #[cfg(feature = "rest-interface")]
-            Configuration::Rest(token, entry_url, chain_url) => Self::Rest(Findex::new(
-                EntryTable::setup(RestEntryBackend::new(RestParameters::new(
-                    token.clone(),
-                    entry_url,
-                ))),
-                ChainTable::setup(RestChainBackend::new(RestParameters::new(token, chain_url))),
+            Configuration::Rest(client, entry_url, chain_url) => Self::Rest(Findex::new(
+                EntryTable::setup(RestEntryBackend {
+                    client: client.clone(),
+                    url: entry_url,
+                }),
+                ChainTable::setup(RestChainBackend {
+                    client,
+                    url: chain_url,
+                }),
             )),
 
             #[cfg(feature = "ffi")]
@@ -141,6 +170,8 @@ impl InstantiatedFindex {
             Self::Python(findex) => findex.keygen(),
             #[cfg(feature = "wasm")]
             Self::Wasm(findex) => findex.keygen(),
+            #[cfg(feature = "findex-cloud")]
+            Self::FindexCloud(findex) => findex.keygen(),
             #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => findex.keygen(),
         }
@@ -158,6 +189,8 @@ impl InstantiatedFindex {
         interrupt: &Interrupt,
     ) -> Result<KeywordToDataMap, FindexError<DbInterfaceError>> {
         match self {
+            #[cfg(feature = "findex-cloud")]
+            Self::FindexCloud(findex) => findex.search(key, label, keywords, interrupt).await,
             #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => findex.search(key, label, keywords, interrupt).await,
             #[cfg(feature = "ffi")]
@@ -191,6 +224,8 @@ impl InstantiatedFindex {
             Self::Python(findex) => findex.add(key, label, additions).await,
             #[cfg(feature = "wasm")]
             Self::Wasm(findex) => findex.add(key, label, additions).await,
+            #[cfg(feature = "findex-cloud")]
+            Self::FindexCloud(findex) => findex.add(key, label, additions).await,
             #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => findex.add(key, label, additions).await,
         }
@@ -214,6 +249,8 @@ impl InstantiatedFindex {
             Self::Python(findex) => findex.delete(key, label, deletions).await,
             #[cfg(feature = "wasm")]
             Self::Wasm(findex) => findex.delete(key, label, deletions).await,
+            #[cfg(feature = "findex-cloud")]
+            Self::FindexCloud(findex) => findex.delete(key, label, deletions).await,
             #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => findex.delete(key, label, deletions).await,
         }
@@ -287,6 +324,19 @@ impl InstantiatedFindex {
             }
             #[cfg(feature = "wasm")]
             Self::Wasm(findex) => {
+                findex
+                    .compact(
+                        old_key,
+                        new_key,
+                        old_label,
+                        new_label,
+                        compacting_rate,
+                        data_filter,
+                    )
+                    .await
+            }
+            #[cfg(feature = "findex-cloud")]
+            Self::FindexCloud(findex) => {
                 findex
                     .compact(
                         old_key,
