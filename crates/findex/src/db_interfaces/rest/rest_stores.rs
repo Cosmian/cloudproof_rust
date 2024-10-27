@@ -70,9 +70,7 @@ impl DbInterface<ENTRY_LENGTH> for RestEntryBackend {
         tokens: Tokens,
     ) -> Result<TokenWithEncryptedValueList<ENTRY_LENGTH>, Self::Error> {
         let bytes = serialize_token_set(&tokens)?;
-        let res = self
-            .post((CallbackPrefix::FetchEntry as u8).try_into()?, &bytes)
-            .await?;
+        let res = self.post(CallbackPrefix::FetchEntry, &bytes).await?;
         deserialize_edx_lines(&res)
             .map_err(Self::Error::from)
             .map(Into::into)
@@ -104,9 +102,7 @@ impl DbInterface<ENTRY_LENGTH> for RestEntryBackend {
 
     async fn delete(&self, tokens: Tokens) -> Result<(), Self::Error> {
         let bytes = serialize_token_set(&tokens)?;
-        let _ = self
-            .post((CallbackPrefix::DeleteEntry as u8).try_into()?, &bytes)
-            .await?;
+        let _ = self.post(CallbackPrefix::DeleteEntry, &bytes).await?;
         Ok(())
     }
 }
@@ -170,9 +166,7 @@ impl DbInterface<LINK_LENGTH> for RestChainBackend {
         tokens: Tokens,
     ) -> Result<TokenWithEncryptedValueList<LINK_LENGTH>, Self::Error> {
         let bytes = serialize_token_set(&tokens)?;
-        let res = self
-            .post((CallbackPrefix::FetchEntry as u8 + 1).try_into()?, &bytes)
-            .await?;
+        let res = self.post(CallbackPrefix::FetchChain, &bytes).await?;
         deserialize_edx_lines(&res)
             .map_err(Self::Error::from)
             .map(Into::into)
@@ -204,9 +198,7 @@ impl DbInterface<LINK_LENGTH> for RestChainBackend {
 
     async fn delete(&self, tokens: Tokens) -> Result<(), Self::Error> {
         let bytes = serialize_token_set(&tokens)?;
-        let _ = self
-            .post((CallbackPrefix::DeleteEntry as u8 + 1).try_into()?, &bytes)
-            .await?;
+        let _ = self.post(CallbackPrefix::DeleteChain, &bytes).await?;
         Ok(())
     }
 }

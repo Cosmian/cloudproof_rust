@@ -71,6 +71,7 @@ base64 = { workspace = true, optional = true }
 cosmian_crypto_core = { workspace = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
 cosmian_findex = { git = "https://www.github.com/Cosmian/findex", branch = "fix/missing_some_structs_serialization" }
+# cosmian_findex = { path = "../../../findex" }
 futures = { version = "0.3.30", optional = true }
 js-sys = { workspace = true, optional = true }
 lazy_static = { version = "1.4.0", optional = true }
