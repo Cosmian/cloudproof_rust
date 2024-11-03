@@ -123,14 +123,16 @@ impl InstantiatedFindex {
             }
 
             #[cfg(feature = "rest-interface")]
-            Configuration::Rest(client, entry_url, chain_url) => Self::Rest(Findex::new(
+            Configuration::Rest(client, entry_url, chain_url, index_id) => Self::Rest(Findex::new(
                 EntryTable::setup(RestEntryBackend {
                     client: client.clone(),
                     url: entry_url,
+                    index_id: index_id.clone(),
                 }),
                 ChainTable::setup(RestChainBackend {
                     client,
                     url: chain_url,
+                    index_id,
                 }),
             )),
 

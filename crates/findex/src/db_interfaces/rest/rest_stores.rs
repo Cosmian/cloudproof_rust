@@ -16,6 +16,7 @@ use crate::{
 pub struct RestEntryBackend {
     pub client: Client,
     pub url: String,
+    pub index_id: String,
 }
 
 impl RestEntryBackend {
@@ -24,7 +25,14 @@ impl RestEntryBackend {
         callback: CallbackPrefix,
         body: &[u8],
     ) -> Result<Vec<u8>, DbInterfaceError> {
-        let url = { format!("{}/indexes/{}", &self.url, callback.get_uri(),) };
+        let url = {
+            format!(
+                "{}/indexes/{}/{}",
+                &self.url,
+                self.index_id,
+                callback.get_uri(),
+            )
+        };
         let response = self
             .client
             .post(url)
@@ -111,6 +119,7 @@ impl DbInterface<ENTRY_LENGTH> for RestEntryBackend {
 pub struct RestChainBackend {
     pub client: Client,
     pub url: String,
+    pub index_id: String,
 }
 
 impl RestChainBackend {
@@ -119,7 +128,14 @@ impl RestChainBackend {
         callback: CallbackPrefix,
         body: &[u8],
     ) -> Result<Vec<u8>, DbInterfaceError> {
-        let url = { format!("{}/indexes/{}", &self.url, callback.get_uri(),) };
+        let url = {
+            format!(
+                "{}/indexes/{}/{}",
+                &self.url,
+                self.index_id,
+                callback.get_uri(),
+            )
+        };
 
         let response = self
             .client

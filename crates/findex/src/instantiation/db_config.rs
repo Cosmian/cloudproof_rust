@@ -21,9 +21,9 @@ pub enum Configuration {
     FindexCloud(AuthorizationToken, String, String),
 
     /// REST DB interface requires an authorization token and a server URL for
-    /// the Entry and the Chain tables.
+    /// the Entry and the Chain tables and the index ID.
     #[cfg(feature = "rest-interface")]
-    Rest(Client, String, String),
+    Rest(Client, String, String, String),
 
     /// FFI DB interface requests FFI functions corresponding to the APIs used
     /// by the Entry/Chain tables.

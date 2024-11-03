@@ -154,6 +154,7 @@ impl Findex {
     pub fn new_with_rest_interface(
         key: &KeyPy,
         label: String,
+        index_id: String,
         entry_url: String,
         chain_url: Option<String>,
     ) -> PyResult<Self> {
@@ -165,7 +166,8 @@ impl Findex {
             runtime.block_on(InstantiatedFindex::new(Configuration::Rest(
                 reqwest::Client::new(),
                 entry_url.clone(),
-                chain_url.unwrap_or(entry_url)
+                chain_url.unwrap_or(entry_url),
+                index_id,
             ))),
             "error instantiating Findex with REST backend"
         );

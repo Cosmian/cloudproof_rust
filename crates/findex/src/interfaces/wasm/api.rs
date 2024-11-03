@@ -67,8 +67,9 @@ impl WasmFindex {
     pub async fn new_with_rest_interface(
         entry_url: String,
         chain_url: String,
+        index_id: String,
     ) -> Result<WasmFindex, JsError> {
-        let config = Configuration::Rest(reqwest::Client::new(), entry_url, chain_url);
+        let config = Configuration::Rest(reqwest::Client::new(), entry_url, chain_url, index_id);
 
         InstantiatedFindex::new(config)
             .await
