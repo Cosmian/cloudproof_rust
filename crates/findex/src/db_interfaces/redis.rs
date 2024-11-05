@@ -7,14 +7,14 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use redis::{Commands, Connection, Script, ToRedisArgs};
+use redis::{aio::ConnectionManager, AsyncCommands, Commands, Script, ToRedisArgs};
 
 use crate::db_interfaces::DbInterfaceError;
 use findex::MemoryADT;
 
 #[derive(Clone)]
 pub struct RedisBackend<Address: Hash + Eq, const WORD_LENGTH: usize> {
-    connection: Arc<Mutex<Connection>>,
+    connection: ConnectionManager,
     // TODO : send script to redis and keep only the hash for invocations
     write_script: Script,
     _marker_adr: PhantomData<Address>,
@@ -59,12 +59,7 @@ impl<Address: Hash + Eq, const WORD_LENGTH: usize> RedisBackend<Address, WORD_LE
     pub async fn connect(url: &str) -> Result<Self, DbInterfaceError> {
         Ok(Self {
             connection: match redis::Client::open(url) {
-                Ok(client) => match client.get_connection() {
-                    Ok(con) => Arc::new(Mutex::new(con)),
-                    Err(e) => {
-                        panic!("Failed to connect to Redis: {}", e);
-                    }
-                },
+                Ok(client) => Arc::new(Mutex::new(client.get_connection_manager().await?)),
                 Err(e) => panic!("Error creating redis client: {:?}", e),
             },
             write_script: Script::new(GUARDED_WRITE_LUA_SCRIPT),
@@ -75,31 +70,24 @@ impl<Address: Hash + Eq, const WORD_LENGTH: usize> RedisBackend<Address, WORD_LE
     // TODO : manager is not compatible with the return types of memoryADT
     // should we keep it ?
     /// Connects to a Redis server with a `ConnectionManager`.
-    // pub async fn connect_with_manager(
-    //     manager: ConnectionManager,
-    // ) -> Result<Self, DbInterfaceError> {
-    //     Ok(Self {
-    //         connection: Arc::new(Mutex::new(manager)),
-    //         write_script: Script::new(GUARDED_WRITE_LUA_SCRIPT),
-    //         _marker_adr: PhantomData,
-    //         _marker_value: PhantomData,
-    //     })
-    // }
+    pub async fn connect_with_manager(
+        manager: ConnectionManager,
+    ) -> Result<Self, DbInterfaceError> {
+        Ok(Self {
+            connection: Arc::new(Mutex::new(manager)),
+            write_script: Script::new(GUARDED_WRITE_LUA_SCRIPT),
+            _marker_adr: PhantomData,
+        })
+    }
 
     /// Clear all indexes
     ///
     /// # Warning
     /// This is definitive
-    // pub async fn clear_indexes(&self) -> Result<(), DbInterfaceError> {
-    //     redis::cmd("FLUSHDB")
-    //         .query_async::<()>(&mut self.connection.lock().expect(POISONED_LOCK_ERROR_MSG) // explicitly setting <()> solves the following problem https://github.com/rust-lang/rust/issues/123748
-    //         .await?;
-    //     Ok(())
-    // }
-
-    pub fn clear_indexes(&self) -> Result<(), redis::RedisError> {
-        let safe_connection = &mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
-        redis::cmd("FLUSHDB").exec(safe_connection)?;
+    pub async fn clear_indexes(&self) -> Result<(), DbInterfaceError> {
+        redis::cmd("FLUSHDB")
+            .query_async::<()>(&mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG)) // explicitly setting <()> solves the following problem https://github.com/rust-lang/rust/issues/123748
+            .await?;
         Ok(())
     }
 }
@@ -132,12 +120,16 @@ impl<Address: Send + Sync + Hash + Eq + Debug + Clone + ToRedisArgs, const WORD_
         &self,
         addresses: Vec<Address>,
     ) -> Result<Vec<Option<Self::Word>>, Self::Error> {
-        let safe_connection = &mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
-        let refs: Vec<&Address> = addresses.iter().collect::<Vec<&Address>>(); // Redis MGET requires references to the values
-        safe_connection
-            .mget::<_, Vec<_>>(&refs)
-            .map_err(Self::Error::from)
+        // let safe_connection = self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
+        // let mut lol = safe_connection.clone();
+        // std::mem::drop(safe_connection);
+        let refs: Vec<&Address> = addresses.iter().collect();
+        let value = self.clone().connection.mget::<_, Vec<_>>(&refs).await?;
+        Ok(value)
+        // safe_connection.mget(key)
     }
+
+    // client.get_multiplexed_async_connection()
 
     async fn guarded_write(
         &self,
