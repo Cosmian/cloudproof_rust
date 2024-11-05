@@ -55,7 +55,7 @@ wasm = [
   "serialization",
 ]
 
-redis-interface = ["rand_chacha",]
+redis-interface = ["rand_core", "rand_chacha", "redis"]
 rest-interface = [
   "base64",
   "cosmian_crypto_core/ser",
@@ -76,7 +76,7 @@ base64 = { workspace = true, optional = true }
 cosmian_crypto_core = { workspace = true }
 cosmian_ffi_utils = { workspace = true, optional = true }
 cosmian_findex = "6.0.0"
-findex = { git = "https://www.github.com/Cosmian/findex", branch = "eprint" }
+findex = { git = "https://www.github.com/Cosmian/findex", rev = "7f9ef11bb72b16cd64a436336d36db7e503d23ea"}
 futures = { version = "0.3.30", optional = true }
 js-sys = { workspace = true, optional = true }
 lazy_static = { version = "1.4.0", optional = true }
@@ -89,7 +89,7 @@ redis = { version="0.27.5", features = [
   "script",
   "tokio-comp",
   "connection-manager",
-]}
+], optional = true}
 reqwest = { version = "0.11.24", default-features = false, optional = true }
 rusqlite = { version = "0.31.0", features = ["bundled"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
