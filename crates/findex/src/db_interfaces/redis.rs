@@ -186,7 +186,6 @@ mod tests {
 
     #[actix_rt::test]
     #[serial]
-    #[ignore]
     async fn test_read_write() -> Result<(), DbInterfaceError> {
         // L'idée c'est de vérifier qu'une modification est rejetée si le gard n'est pas le bon.
 
@@ -237,6 +236,7 @@ mod tests {
     // TODO legacy test, à revoir
     #[actix_rt::test]
     #[serial]
+    #[ignore]
     async fn test_redis_backend() {
         log_init();
         trace!("Test Redis backend.");
