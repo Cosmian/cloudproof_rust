@@ -4,10 +4,11 @@ use std::{
     fmt::{self, Debug, Display},
     hash::Hash,
     marker::PhantomData,
+    ops::Deref,
     sync::{Arc, Mutex},
 };
 
-use redis::{Commands, Connection, Script, ToRedisArgs};
+use redis::{Commands, Connection, Script};
 
 use crate::db_interfaces::DbInterfaceError;
 use findex::MemoryADT;
@@ -121,8 +122,11 @@ impl Display for RedisMemoryError {
     }
 }
 
-impl<Address: Send + Sync + Hash + Eq + Debug + Clone + ToRedisArgs, const WORD_LENGTH: usize>
-    MemoryADT for RedisBackend<Address, WORD_LENGTH>
+impl<
+        Address: Send + Sync + Hash + Eq + Debug + Clone + Deref<Target = [u8; ADDRESS_LENGTH]>,
+        const ADDRESS_LENGTH: usize,
+        const WORD_LENGTH: usize,
+    > MemoryADT for RedisBackend<Address, WORD_LENGTH>
 {
     type Address = Address;
     type Error = RedisMemoryError;
@@ -133,7 +137,8 @@ impl<Address: Send + Sync + Hash + Eq + Debug + Clone + ToRedisArgs, const WORD_
         addresses: Vec<Address>,
     ) -> Result<Vec<Option<Self::Word>>, Self::Error> {
         let safe_connection = &mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
-        let refs: Vec<&Address> = addresses.iter().collect::<Vec<&Address>>(); // Redis MGET requires references to the values
+        let refs: Vec<&[u8; ADDRESS_LENGTH]> =
+            addresses.iter().map(|address| address.deref()).collect();
         safe_connection
             .mget::<_, Vec<_>>(&refs)
             .map_err(Self::Error::from)
@@ -149,7 +154,7 @@ impl<Address: Send + Sync + Hash + Eq + Debug + Clone + ToRedisArgs, const WORD_
 
         let mut script_invocation = self.write_script.prepare_invoke();
 
-        script_invocation.arg(guard_address);
+        script_invocation.arg(&*guard_address);
         if let Some(byte_array) = guard_value {
             script_invocation.arg(&byte_array);
         } else {
@@ -157,7 +162,7 @@ impl<Address: Send + Sync + Hash + Eq + Debug + Clone + ToRedisArgs, const WORD_
         }
         script_invocation.arg(bindings.len());
         for (address, word) in bindings {
-            script_invocation.arg(address).arg(&word);
+            script_invocation.arg(&*address).arg(&word);
         }
 
         script_invocation
@@ -169,12 +174,13 @@ impl<Address: Send + Sync + Hash + Eq + Debug + Clone + ToRedisArgs, const WORD_
 #[cfg(test)]
 mod tests {
 
+    use findex::{
+        test_guarded_write_concurrent, test_single_write_and_read, test_wrong_guard, Address,
+    };
     use futures::executor::block_on;
     use serial_test::serial;
-    use tracing::trace;
 
     use super::*;
-    use crate::{db_interfaces::tests::test_backend, logger::log_init, Configuration};
 
     pub fn get_redis_url() -> String {
         if let Ok(var_env) = std::env::var("REDIS_HOST") {
@@ -186,69 +192,54 @@ mod tests {
 
     #[actix_rt::test]
     #[serial]
-    async fn test_read_write() -> Result<(), DbInterfaceError> {
-        // L'idée c'est de vérifier qu'une modification est rejetée si le gard n'est pas le bon.
+    async fn test_db_flush() -> Result<(), DbInterfaceError> {
+        let memory = RedisBackend::<Address<16>, 16>::connect(&get_redis_url())
+            .await
+            .unwrap();
+        let addr = Address::from([1; 16]);
+        let word = [2; 16];
 
-        let memory = RedisBackend::<u8, 1>::connect(&get_redis_url())
+        block_on(memory.guarded_write((addr.clone(), None), vec![(addr.clone(), word)])).unwrap();
+
+        let result = block_on(memory.batch_read(vec![addr.clone()])).unwrap();
+        assert_eq!(result, vec![Some([2; 16])]);
+        memory.clear_indexes().unwrap();
+
+        let result = block_on(memory.batch_read(vec![addr])).unwrap();
+        assert_eq!(result, vec![None]);
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    #[serial]
+    async fn test_rw_seq() -> Result<(), DbInterfaceError> {
+        let memory = RedisBackend::<Address<16>, 16>::connect(&get_redis_url())
             .await
             .unwrap();
         memory.clear_indexes().unwrap();
-
-        assert_eq!(
-            block_on(memory.guarded_write((0, None), vec![(6, [9])])).unwrap(),
-            None
-        );
-
-        assert_eq!(
-            block_on(memory.guarded_write((0, None), vec![(0, [2]), (1, [1]), (2, [1])])).unwrap(),
-            None
-        );
-
-        assert_eq!(
-            block_on(memory.guarded_write((0, None), vec![(0, [4]), (3, [2]), (4, [2])])).unwrap(),
-            Some([2]) // should return Some([2]), indicating that the guard (None) failed
-        );
-
-        assert_eq!(
-            block_on(memory.guarded_write((0, Some([2])), vec![(0, [4]), (3, [3]), (4, [3])]))
-                .unwrap(),
-            Some([2])
-        );
-
-        assert_eq!(
-            vec![Some([1]), Some([1]), Some([3]), Some([3])],
-            block_on(memory.batch_read(vec![1, 2, 3, 4])).unwrap(),
-        );
+        block_on(test_single_write_and_read(&memory, rand::random()));
         Ok(())
     }
 
     #[actix_rt::test]
     #[serial]
-    #[ignore]
-    async fn test_parallel() -> Result<(), DbInterfaceError> {
-        // spawner bcp d'acteurs qui frappent sur la db ensemble
-        // check this - branch epub
-        // Concurrently adding data to instances of the same vector should not introduce data loss.
-        //  pub async fn test_vector_concurrent<
+    async fn test_guard_seq() -> Result<(), DbInterfaceError> {
+        let memory = RedisBackend::<Address<16>, 16>::connect(&get_redis_url())
+            .await
+            .unwrap();
+        memory.clear_indexes().unwrap();
+        block_on(test_wrong_guard(&memory, rand::random()));
         Ok(())
     }
 
-    // TODO legacy test, à revoir
     #[actix_rt::test]
     #[serial]
-    #[ignore]
-    async fn test_redis_backend() {
-        log_init();
-        trace!("Test Redis backend.");
-
-        let url = get_redis_url();
-
-        {
-            let memory_to_flush = RedisBackend::<u8, 1>::connect(url.as_str()).await.unwrap();
-            memory_to_flush.clear_indexes().unwrap();
-        }
-
-        let config: Configuration = Configuration::Redis(url.clone());
-        test_backend(config).await;
+    async fn test_rw_ccr() -> Result<(), DbInterfaceError> {
+        let memory = RedisBackend::<Address<16>, 16>::connect(&get_redis_url())
+            .await
+            .unwrap();
+        memory.clear_indexes().unwrap();
+        block_on(test_guarded_write_concurrent(memory, rand::random()));
+        Ok(())
     }
 }
