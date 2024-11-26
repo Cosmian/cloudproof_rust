@@ -228,7 +228,7 @@ pub async fn test_backend(config: Configuration) {
     find_users(&findex, &new_key, &new_label).await;
 }
 
-pub async fn test_non_regression(config: Configuration) {
+pub async fn test_non_regression(_config: Configuration) {
     // let is_non_regression = true;
     // let key = get_key(is_non_regression);
     // let label = get_label(is_non_regression);

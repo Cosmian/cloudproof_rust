@@ -1,5 +1,7 @@
 //! Redis implementation of the Findex backends.
-
+use crate::db_interfaces::DbInterfaceError;
+use findex::MemoryADT;
+use redis::{Commands, Connection};
 use std::{
     fmt::{self, Debug, Display},
     hash::Hash,
@@ -7,12 +9,6 @@ use std::{
     ops::Deref,
     sync::{Arc, Mutex},
 };
-
-use redis::{Commands, Connection, Script};
-use tracing::info;
-
-use crate::db_interfaces::DbInterfaceError;
-use findex::MemoryADT;
 
 #[derive(Clone)]
 pub struct RedisBackend<Address: Hash + Eq, const WORD_LENGTH: usize> {
@@ -30,12 +26,8 @@ const GUARDED_WRITE_LUA_SCRIPT: &str = r#"
 local guard_address = ARGV[1]
 local guard_value = ARGV[2]
 local length = ARGV[3]
-redis.log(redis.LOG_WARNING, "Guard Address: " .. tostring(guard_address))
-redis.log(redis.LOG_WARNING, "Guard Value: " .. tostring(guard_value))
-redis.log(redis.LOG_WARNING, "Length: " .. tostring(length))
 
 local value = redis.call('GET',ARGV[1])
-redis.log(redis.LOG_WARNING, "Current Value: " .. tostring(value))
 
 -- compare the value of the guard to the currently stored value
 if((value==false) or (not(value == false) and (guard_value == value))) then
@@ -97,17 +89,6 @@ impl<Address: Hash + Eq, const WORD_LENGTH: usize> RedisBackend<Address, WORD_LE
     //     })
     // }
 
-    /// Clear all indexes
-    ///
-    /// # Warning
-    /// This is definitive
-    // pub async fn clear_indexes(&self) -> Result<(), DbInterfaceError> {
-    //     redis::cmd("FLUSHDB")
-    //         .query_async::<()>(&mut self.connection.lock().expect(POISONED_LOCK_ERROR_MSG) // explicitly setting <()> solves the following problem https://github.com/rust-lang/rust/issues/123748
-    //         .await?;
-    //     Ok(())
-    // }
-
     pub fn clear_indexes(&self) -> Result<(), redis::RedisError> {
         let safe_connection = &mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
         redis::cmd("FLUSHDB").exec(safe_connection)?;
@@ -161,7 +142,6 @@ impl<
     ) -> Result<Option<Self::Word>, Self::Error> {
         let mut safe_connection = self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
         let (guard_address, guard_value) = guard;
-        println!("{:?}", self.write_script_hash.clone());
         let mut cmd = redis::cmd("EVALSHA")
             .arg(self.write_script_hash.clone())
             .arg(0)
@@ -170,7 +150,7 @@ impl<
         cmd = if let Some(byte_array) = guard_value {
             cmd.arg(&byte_array).arg(bindings.len()).clone()
         } else {
-            cmd.arg(888).arg(bindings.len()).clone()
+            cmd.arg("false".to_string()).arg(bindings.len()).clone()
         };
         for (address, word) in bindings {
             cmd = cmd.arg(&*address).arg(&word).clone();
@@ -192,19 +172,21 @@ mod tests {
 
     pub fn get_redis_url() -> String {
         if let Ok(var_env) = std::env::var("REDIS_HOST") {
-            // TODO revert 6379 server
-            format!("redis://{var_env}:9999")
+            format!("redis://{var_env}:6379")
         } else {
-            "redis://localhost:9999".to_string()
+            "redis://localhost:6379".to_string()
         }
     }
 
-    const ADR_WORD_LENGTH: usize = 16;
+    const TEST_ADR_WORD_LENGTH: usize = 16;
 
-    async fn init_test_redis_db() -> RedisBackend<Address<ADR_WORD_LENGTH>, ADR_WORD_LENGTH> {
-        RedisBackend::<Address<ADR_WORD_LENGTH>, ADR_WORD_LENGTH>::connect(&get_redis_url())
-            .await
-            .unwrap()
+    async fn init_test_redis_db(
+    ) -> RedisBackend<Address<TEST_ADR_WORD_LENGTH>, TEST_ADR_WORD_LENGTH> {
+        RedisBackend::<Address<TEST_ADR_WORD_LENGTH>, TEST_ADR_WORD_LENGTH>::connect(
+            &get_redis_url(),
+        )
+        .await
+        .unwrap()
     }
 
     #[actix_rt::test]
@@ -223,56 +205,6 @@ mod tests {
 
         let result = block_on(memory.batch_read(vec![addr])).unwrap();
         assert_eq!(result, vec![None]);
-        Ok(())
-    }
-
-    #[actix_rt::test]
-    #[serial]
-    #[ignore]
-    async fn checkforhash() -> Result<(), DbInterfaceError> {
-        let memory = init_test_redis_db().await;
-        todo!("test if the script's hash is still valid");
-        Ok(())
-    }
-
-    #[actix_rt::test]
-    #[serial]
-    #[ignore]
-    async fn asba() -> Result<(), DbInterfaceError> {
-        todo!("delete this after dev is finish");
-        let memory = init_test_redis_db().await;
-        let addr = Address::from([1; 16]);
-        let word = [2; 16];
-        memory.clear_indexes().unwrap();
-
-        let mut safe_connection = memory.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
-
-        let asba: String = redis::cmd("SCRIPT")
-            .arg("LOAD")
-            .arg("redis.call('SET', ARGV[1], ARGV[2])")
-            .query(&mut safe_connection)?;
-        println!(
-            "èèèèèèèèè èèèè-------------------------------------------------- \n{:?} ------------------------- \n",
-            asba
-        );
-
-        let (guard_address, guard_value) = (addr.clone(), word);
-
-        let asba: () = redis::cmd("EVALSHA")
-            .arg(asba)
-            .arg(2)
-            .arg(&*guard_address)
-            .arg(&guard_value)
-            .query(&mut safe_connection)?;
-
-        println!(
-            "fdfdfdfdfdfdfdfdfdfdfd----------- \n{:?} ------------------------- \n",
-            asba
-        );
-        // .arg("false".to_string())
-        // .arg(1)
-        // .arg("TEST".to_string())
-        // .arg(888)
         Ok(())
     }
 
