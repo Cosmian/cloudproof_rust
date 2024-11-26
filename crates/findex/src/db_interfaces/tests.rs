@@ -156,34 +156,34 @@ async fn insert_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label)
 
 /// Asserts each user can be retrieved using each field it is indexed for.
 async fn find_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label) {
-    // let users = get_users().unwrap();
+    let users = get_users().unwrap();
 
-    // // Assert results are reachable from each indexing keyword.
-    // for (idx, user) in users.iter().enumerate() {
-    //     trace!("Search indexes.");
+    // Assert results are reachable from each indexing keyword.
+    for (idx, user) in users.iter().enumerate() {
+        trace!("Search indexes.");
 
-    //     let res = findex
-    //         .search(
-    //             key,
-    //             label,
-    //             Keywords::from_iter(
-    //                 user.values()
-    //                     .into_iter()
-    //                     .map(|word| Keyword::from(word.as_bytes())),
-    //             ),
-    //             &|_| async move { Ok(false) },
-    //         )
-    //         .await
-    //         .unwrap();
+        let res = findex
+            .search(
+                key,
+                label,
+                Keywords::from_iter(
+                    user.values()
+                        .into_iter()
+                        .map(|word| Keyword::from(word.as_bytes())),
+                ),
+                &|_| async move { Ok(false) },
+            )
+            .await
+            .unwrap();
 
-    //     for word in user.values() {
-    //         let keyword = Keyword::from(word.as_bytes());
-    //         let data = Data::from((idx as i64).to_be_bytes().as_slice());
-    //         assert!(res.contains_key(&keyword));
-    //         let word_res = res.get(&keyword).unwrap();
-    //         assert!(word_res.contains(&data));
-    //     }
-    // }
+        for word in user.values() {
+            let keyword = Keyword::from(word.as_bytes());
+            let data = Data::from((idx as i64).to_be_bytes().as_slice());
+            assert!(res.contains_key(&keyword));
+            let word_res = res.get(&keyword).unwrap();
+            assert!(word_res.contains(&data));
+        }
+    }
 }
 
 /// This test:
@@ -228,39 +228,39 @@ pub async fn test_backend(config: Configuration) {
     find_users(&findex, &new_key, &new_label).await;
 }
 
-pub async fn test_non_regression(_config: Configuration) {
-    // let is_non_regression = true;
-    // let key = get_key(is_non_regression);
-    // let label = get_label(is_non_regression);
+pub async fn test_non_regression(config: Configuration) {
+    let is_non_regression = true;
+    let key = get_key(is_non_regression);
+    let label = get_label(is_non_regression);
 
-    // let mut expected_results: Vec<i64> =
-    //     serde_json::from_str(include_str!("../../datasets/expected_db_uids.json"))
-    //         .map_err(|e| DbInterfaceError::Serialization(e.to_string()))
-    //         .unwrap();
-    // expected_results.sort_unstable();
+    let mut expected_results: Vec<i64> =
+        serde_json::from_str(include_str!("../../datasets/expected_db_uids.json"))
+            .map_err(|e| DbInterfaceError::Serialization(e.to_string()))
+            .unwrap();
+    expected_results.sort_unstable();
 
-    // let findex = InstantiatedFindex::new(config).await.unwrap();
+    let findex = InstantiatedFindex::new(config).await.unwrap();
 
-    // let keyword = Keyword::from("France".as_bytes());
-    // let results = findex
-    //     .search(
-    //         &key,
-    //         &label,
-    //         Keywords::from_iter([keyword.clone()]),
-    //         &|_| async move { Ok(false) },
-    //     )
-    //     .await
-    //     .unwrap();
+    let keyword = Keyword::from("France".as_bytes());
+    let results = findex
+        .search(
+            &key,
+            &label,
+            Keywords::from_iter([keyword.clone()]),
+            &|_| async move { Ok(false) },
+        )
+        .await
+        .unwrap();
 
-    // let mut results = results
-    //     .get(&keyword)
-    //     .unwrap()
-    //     .iter()
-    //     .map(|data| i64::from_be_bytes(data.as_ref().try_into().unwrap()))
-    //     .collect::<Vec<_>>();
-    // results.sort_unstable();
+    let mut results = results
+        .get(&keyword)
+        .unwrap()
+        .iter()
+        .map(|data| i64::from_be_bytes(data.as_ref().try_into().unwrap()))
+        .collect::<Vec<_>>();
+    results.sort_unstable();
 
-    // assert_eq!(results, expected_results);
+    assert_eq!(results, expected_results);
 }
 
 pub async fn test_generate_non_regression_db(config: Configuration) {

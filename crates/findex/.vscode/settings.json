@@ -1,5 +1,5 @@
 {
-  // change this to chgange the features
+  // change this to change the features
   // "rest-interface"
   "rust-analyzer.cargo.features": [
     "redis-interface"

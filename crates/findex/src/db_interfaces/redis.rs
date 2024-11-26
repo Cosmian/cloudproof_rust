@@ -73,21 +73,6 @@ impl<Address: Hash + Eq, const WORD_LENGTH: usize> RedisBackend<Address, WORD_LE
             _marker_adr: PhantomData,
         })
     }
-    //  Script::new(GUARDED_WRITE_LUA_SCRIPT),
-
-    // TODO : manager is not compatible with the return types of memoryADT
-    // should we keep it ?
-    /// Connects to a Redis server with a `ConnectionManager`.
-    // pub async fn connect_with_manager(
-    //     manager: ConnectionManager,
-    // ) -> Result<Self, DbInterfaceError> {
-    //     Ok(Self {
-    //         connection: Arc::new(Mutex::new(manager)),
-    //         write_script: Script::new(GUARDED_WRITE_LUA_SCRIPT),
-    //         _marker_adr: PhantomData,
-    //         _marker_value: PhantomData,
-    //     })
-    // }
 
     pub fn clear_indexes(&self) -> Result<(), redis::RedisError> {
         let safe_connection = &mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);

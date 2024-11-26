@@ -94,15 +94,15 @@ pub enum InstantiatedFindex {
     ),
 }
 /// Temporary enum for Findex migration
-#[deprecated(
-    since = "7.0.0",
-    note = "This enum is temporary and will be removed after migration to new Findex version"
-)]
-#[derive(Debug)]
-pub enum SearchResult {
-    Old(KeywordToDataMap),
-    Recent(HashMap<Keyword, HashSet<Value>>),
-}
+// #[deprecated(
+//     since = "7.0.0",
+//     note = "This enum is temporary and will be removed after migration to new Findex version"
+// )]
+// #[derive(Debug)]
+// pub enum SearchResult {
+//     Old(KeywordToDataMap),
+//     Recent(HashMap<Keyword, HashSet<Value>>),
+// }
 
 impl InstantiatedFindex {
     /// Wrapper around Findex [`new`](Index::new) for static dispatch.
@@ -182,14 +182,13 @@ impl InstantiatedFindex {
     pub async fn search<
         F: Future<Output = Result<bool, String>>,
         Interrupt: Fn(HashMap<Keyword, HashSet<IndexedValue<Keyword, Data>>>) -> F,
-        K: std::iter::Iterator<Item = Keyword>,
     >(
         &self,
         key: &UserKey,
         label: &Label,
-        keywords: K,
+        keywords: Keywords,
         interrupt: &Interrupt,
-    ) -> Result<SearchResult, FindexError<DbInterfaceError>> {
+    ) -> Result<KeywordToDataMap, FindexError<DbInterfaceError>> {
         match self {
             #[cfg(feature = "rest-interface")]
             Self::Rest(findex) => findex.search(key, label, keywords, interrupt).await,
@@ -200,7 +199,9 @@ impl InstantiatedFindex {
             #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.search(key, label, keywords, interrupt).await,
             #[cfg(feature = "redis-interface")]
-            Self::Redis(findex) => Ok(SearchResult::Recent(findex.search(keywords).await.unwrap())),
+            Self::Redis(findex) => Ok(todo!(
+                "SearchResult::Recent(findex.search(keywords).await.unwrap())"
+            )),
             #[cfg(feature = "wasm")]
             Self::Wasm(findex) => findex.search(key, label, keywords, interrupt).await,
         }
@@ -218,7 +219,7 @@ impl InstantiatedFindex {
             Self::Sqlite(findex) => findex.add(key, label, additions).await,
             #[cfg(feature = "redis-interface")]
             Self::Redis(findex) => {
-                todo!("add me")
+                todo!("TBD")
             }
             #[cfg(feature = "ffi")]
             Self::Ffi(findex) => findex.add(key, label, additions).await,
@@ -242,7 +243,7 @@ impl InstantiatedFindex {
             #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.delete(key, label, deletions).await,
             #[cfg(feature = "redis-interface")]
-            Self::Redis(findex) => todo!("do me"),
+            Self::Redis(findex) => todo!("TBD"),
             #[cfg(feature = "ffi")]
             Self::Ffi(findex) => findex.delete(key, label, deletions).await,
             #[cfg(feature = "python")]
