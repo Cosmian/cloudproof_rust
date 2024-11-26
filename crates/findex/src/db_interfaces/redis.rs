@@ -1,18 +1,19 @@
 //! Redis implementation of the Findex backends.
 use crate::db_interfaces::DbInterfaceError;
 use findex::MemoryADT;
-use redis::{Commands, Connection};
+use redis::{aio::ConnectionManager, AsyncCommands};
 use std::{
     fmt::{self, Debug, Display},
     hash::Hash,
     marker::PhantomData,
     ops::Deref,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
+use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct RedisBackend<Address: Hash + Eq, const WORD_LENGTH: usize> {
-    connection: Arc<Mutex<Connection>>,
+    manager: Arc<Mutex<ConnectionManager>>,
     write_script_hash: String,
     _marker_adr: PhantomData<Address>,
 }
@@ -54,8 +55,8 @@ impl<Address: Hash + Eq, const WORD_LENGTH: usize> Debug for RedisBackend<Addres
 impl<Address: Hash + Eq, const WORD_LENGTH: usize> RedisBackend<Address, WORD_LENGTH> {
     /// Connects to a Redis server using the given URL.
     pub async fn connect(url: &str) -> Result<Self, DbInterfaceError> {
-        let mut connection = match redis::Client::open(url) {
-            Ok(client) => match client.get_connection() {
+        let mut manager = match redis::Client::open(url) {
+            Ok(client) => match ConnectionManager::new(client).await {
                 Ok(con) => con,
                 Err(e) => {
                     panic!("Failed to connect to Redis: {}", e);
@@ -66,9 +67,10 @@ impl<Address: Hash + Eq, const WORD_LENGTH: usize> RedisBackend<Address, WORD_LE
         let write_script_hash = redis::cmd("SCRIPT")
             .arg("LOAD")
             .arg(GUARDED_WRITE_LUA_SCRIPT)
-            .query(&mut connection)?;
+            .query_async(&mut manager)
+            .await?;
         Ok(Self {
-            connection: Arc::new(Mutex::new(connection)),
+            manager: Arc::new(Mutex::new(manager)),
             write_script_hash,
             _marker_adr: PhantomData,
         })
@@ -89,9 +91,16 @@ impl<Address: Hash + Eq, const WORD_LENGTH: usize> RedisBackend<Address, WORD_LE
     //     })
     // }
 
-    pub fn clear_indexes(&self) -> Result<(), redis::RedisError> {
-        let safe_connection = &mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
-        redis::cmd("FLUSHDB").exec(safe_connection)?;
+    // TODO : this function depends on never type fallback being `()`
+    // this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    // for more information, see issue <https://github.com/rust-lang/rust/issues/123748>
+    // specify the types explicitly
+    pub async fn clear_indexes(&self) -> Result<(), redis::RedisError> {
+        let safe_manager = &mut *self.manager.lock().await;
+
+        redis::cmd("FLUSHDB")
+            .query_async(&mut safe_manager.clone())
+            .await?;
         Ok(())
     }
 }
@@ -127,11 +136,12 @@ impl<
         &self,
         addresses: Vec<Address>,
     ) -> Result<Vec<Option<Self::Word>>, Self::Error> {
-        let safe_connection = &mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
+        let safe_manager = &mut *self.manager.lock().await;
         let refs: Vec<&[u8; ADDRESS_LENGTH]> =
             addresses.iter().map(|address| address.deref()).collect();
-        safe_connection
+        safe_manager
             .mget::<_, Vec<_>>(&refs)
+            .await
             .map_err(Self::Error::from)
     }
 
@@ -140,7 +150,7 @@ impl<
         guard: (Self::Address, Option<Self::Word>),
         bindings: Vec<(Self::Address, Self::Word)>,
     ) -> Result<Option<Self::Word>, Self::Error> {
-        let mut safe_connection = self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
+        let safe_manager = &mut *self.manager.lock().await;
         let (guard_address, guard_value) = guard;
         let mut cmd = redis::cmd("EVALSHA")
             .arg(self.write_script_hash.clone())
@@ -155,7 +165,7 @@ impl<
         for (address, word) in bindings {
             cmd = cmd.arg(&*address).arg(&word).clone();
         }
-        cmd.query(&mut safe_connection).map_err(|e| e.into())
+        cmd.query_async(safe_manager).await.map_err(|e| e.into())
     }
 }
 
@@ -172,9 +182,9 @@ mod tests {
 
     pub fn get_redis_url() -> String {
         if let Ok(var_env) = std::env::var("REDIS_HOST") {
-            format!("redis://{var_env}:6379")
+            format!("redis://{var_env}:9999")
         } else {
-            "redis://localhost:6379".to_string()
+            "redis://localhost:9999".to_string()
         }
     }
 
@@ -201,7 +211,7 @@ mod tests {
 
         let result = block_on(memory.batch_read(vec![addr.clone()])).unwrap();
         assert_eq!(result, vec![Some([2; 16])]);
-        memory.clear_indexes().unwrap();
+        memory.clear_indexes().await.unwrap();
 
         let result = block_on(memory.batch_read(vec![addr])).unwrap();
         assert_eq!(result, vec![None]);
@@ -212,7 +222,7 @@ mod tests {
     #[serial]
     async fn test_rw_seq() -> Result<(), DbInterfaceError> {
         let memory = init_test_redis_db().await;
-        memory.clear_indexes().unwrap();
+        memory.clear_indexes().await.unwrap();
         block_on(test_single_write_and_read(&memory, rand::random()));
         Ok(())
     }
@@ -221,7 +231,7 @@ mod tests {
     #[serial]
     async fn test_guard_seq() -> Result<(), DbInterfaceError> {
         let memory = init_test_redis_db().await;
-        memory.clear_indexes().unwrap();
+        memory.clear_indexes().await.unwrap();
         block_on(test_wrong_guard(&memory, rand::random()));
         Ok(())
     }
@@ -230,7 +240,7 @@ mod tests {
     #[serial]
     async fn test_rw_ccr() -> Result<(), DbInterfaceError> {
         let memory = init_test_redis_db().await;
-        memory.clear_indexes().unwrap();
+        memory.clear_indexes().await.unwrap();
         block_on(test_guarded_write_concurrent(memory, rand::random()));
         Ok(())
     }
