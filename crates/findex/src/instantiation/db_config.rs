@@ -35,7 +35,7 @@ pub enum Configuration {
 
     /// Redis DB interface requests an URL to a valid instance.
     #[cfg(feature = "redis-interface")]
-    Redis(String, String),
+    Redis(String),
 
     /// WASM DB interface requests WASM functions corresponding to the APIs used by
     /// the Entry/Chain tables.

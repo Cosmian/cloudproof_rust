@@ -1,332 +1,159 @@
 //! Redis implementation of the Findex backends.
-
-use std::collections::HashMap;
-
-use async_trait::async_trait;
-use cosmian_findex::{
-    CoreError as FindexCoreError, DbInterface, EncryptedValue, Token, TokenToEncryptedValueMap,
-    TokenWithEncryptedValueList, Tokens, ENTRY_LENGTH, LINK_LENGTH,
-};
-use redis::{aio::ConnectionManager, pipe, AsyncCommands, Script};
-use tracing::trace;
-
 use crate::db_interfaces::DbInterfaceError;
+use findex::MemoryADT;
+use redis::{Commands, Connection};
+use std::{
+    fmt::{self, Debug, Display},
+    hash::Hash,
+    marker::PhantomData,
+    ops::Deref,
+    sync::{Arc, Mutex},
+};
 
-/// The length of the prefix of the table name in bytes
-/// 0x00ee for the entry table
-/// 0x00ef for the chain table
-const TABLE_PREFIX_LENGTH: usize = 2;
-
-#[derive(Copy, Clone)]
-enum FindexTable {
-    Entry = 0xee,
-    Chain = 0xef,
+#[derive(Clone)]
+pub struct RedisBackend<Address: Hash + Eq, const WORD_LENGTH: usize> {
+    connection: Arc<Mutex<Connection>>,
+    write_script_hash: String,
+    _marker_adr: PhantomData<Address>,
 }
 
-/// Generate a key for the entry table or chain table
-fn build_key(table: FindexTable, uid: &[u8]) -> Vec<u8> {
-    [&[0x00, table as u8], uid].concat()
-}
+// Args that are passed to the LUA script are, in order:
+// 1. Guard address.
+// 2. Guard value.
+// 3. Vector length.
+// 4+. Vector elements (address, word).
+const GUARDED_WRITE_LUA_SCRIPT: &str = r#"
+local guard_address = ARGV[1]
+local guard_value = ARGV[2]
+local length = ARGV[3]
 
-pub struct RedisEntryBackend {
-    manager: ConnectionManager,
-    upsert_script: Script,
-}
+local value = redis.call('GET',ARGV[1])
 
-impl std::fmt::Debug for RedisEntryBackend {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RedisEntryBackend").finish()
+-- compare the value of the guard to the currently stored value
+if((value==false) or (not(value == false) and (guard_value == value))) then
+    -- guard passed, loop over bindings and insert them
+    for i = 4,(length*2)+3,2
+    do
+        redis.call('SET', ARGV[i], ARGV[i+1])
+    end
+end
+return value
+"#;
+
+const POISONED_LOCK_ERROR_MSG: &str = "Poisoned lock error";
+
+impl<Address: Hash + Eq, const WORD_LENGTH: usize> Debug for RedisBackend<Address, WORD_LENGTH> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RedisMemory")
+            .field("connection", &"<redis::Connection>") // We don't want to debug the actual connection
+            .field("Addr type", &self._marker_adr)
+            .finish()
     }
 }
 
-/// The conditional upsert script used to only update a table if the
-/// indexed value matches ARGV[2]. When the value does not match, the
-/// indexed value is returned.
-const CONDITIONAL_UPSERT_SCRIPT: &str = r"
-        local value=redis.call('GET',ARGV[1])
-        if((value==false) or (not(value == false) and (ARGV[2] == value))) then
-            redis.call('SET', ARGV[1], ARGV[3])
-            return
-        else
-            return value
-        end;
-    ";
-
-impl RedisEntryBackend {
+impl<Address: Hash + Eq, const WORD_LENGTH: usize> RedisBackend<Address, WORD_LENGTH> {
     /// Connects to a Redis server using the given URL.
     pub async fn connect(url: &str) -> Result<Self, DbInterfaceError> {
-        let client = redis::Client::open(url)?;
-        let manager = ConnectionManager::new(client).await?;
-
+        let mut connection = match redis::Client::open(url) {
+            Ok(client) => match client.get_connection() {
+                Ok(con) => con,
+                Err(e) => {
+                    panic!("Failed to connect to Redis: {}", e);
+                }
+            },
+            Err(e) => panic!("Error creating redis client: {:?}", e),
+        };
+        let write_script_hash = redis::cmd("SCRIPT")
+            .arg("LOAD")
+            .arg(GUARDED_WRITE_LUA_SCRIPT)
+            .query(&mut connection)?;
         Ok(Self {
-            manager,
-            upsert_script: Script::new(CONDITIONAL_UPSERT_SCRIPT),
+            connection: Arc::new(Mutex::new(connection)),
+            write_script_hash,
+            _marker_adr: PhantomData,
         })
     }
 
-    /// Connects to a Redis server with a `ConnectionManager`.
-    pub async fn connect_with_manager(
-        manager: ConnectionManager,
-    ) -> Result<Self, DbInterfaceError> {
-        Ok(Self {
-            manager,
-            upsert_script: Script::new(CONDITIONAL_UPSERT_SCRIPT),
-        })
-    }
-
-    /// Clear all indexes
-    ///
-    /// # Warning
-    /// This is definitive
-    pub async fn clear_indexes(&self) -> Result<(), DbInterfaceError> {
-        redis::cmd("FLUSHDB")
-            .query_async(&mut self.manager.clone())
-            .await?;
+    pub fn clear_indexes(&self) -> Result<(), redis::RedisError> {
+        let safe_connection = &mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
+        redis::cmd("FLUSHDB").exec(safe_connection)?;
         Ok(())
     }
 }
 
-#[async_trait(?Send)]
-impl DbInterface<ENTRY_LENGTH> for RedisEntryBackend {
-    type Error = DbInterfaceError;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RedisMemoryError(String);
 
-    async fn dump_tokens(&self) -> Result<Tokens, Self::Error> {
-        let keys: Vec<Vec<u8>> = self
-            .manager
-            .clone()
-            .keys(build_key(FindexTable::Entry, b"*"))
-            .await?;
+impl std::error::Error for RedisMemoryError {}
 
-        trace!("dumping {} keywords (ET+CT)", keys.len());
-
-        keys.iter()
-            .filter_map(|v| {
-                if v[..TABLE_PREFIX_LENGTH] == [0x00, FindexTable::Entry as u8] {
-                    Some(Token::try_from(&v[TABLE_PREFIX_LENGTH..]).map_err(Self::Error::Findex))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    async fn fetch(
-        &self,
-        tokens: Tokens,
-    ) -> Result<TokenWithEncryptedValueList<ENTRY_LENGTH>, Self::Error> {
-        trace!("fetch_entry_table num keywords: {}:", tokens.len());
-
-        if tokens.is_empty() {
-            return Ok(Default::default());
-        }
-
-        // Collect into a vector to fix the order.
-        let uids = tokens.into_iter().collect::<Vec<_>>();
-
-        let redis_keys = uids
-            .iter()
-            .map(|uid| build_key(FindexTable::Entry, uid))
-            .collect::<Vec<_>>();
-
-        let values: Vec<Vec<u8>> = self.manager.clone().mget(redis_keys).await?;
-
-        // Zip and filter empty values out.
-        let res = uids
-            .into_iter()
-            .zip(values)
-            .filter_map(|(k, v)| {
-                if v.is_empty() {
-                    None
-                } else {
-                    Some(EncryptedValue::try_from(v.as_slice()).map(|v| (k, v)))
-                }
-            })
-            .collect::<Result<Vec<_>, FindexCoreError>>()?;
-
-        trace!("fetch_entry_table non empty tuples len: {}", res.len());
-
-        Ok(res.into())
-    }
-
-    async fn upsert(
-        &self,
-        old_values: TokenToEncryptedValueMap<ENTRY_LENGTH>,
-        new_values: TokenToEncryptedValueMap<ENTRY_LENGTH>,
-    ) -> Result<TokenToEncryptedValueMap<ENTRY_LENGTH>, Self::Error> {
-        trace!("upsert_entry_table num keywords {:?}", new_values.len());
-
-        let mut rejected = HashMap::with_capacity(new_values.len());
-        for (uid, new_value) in new_values {
-            let new_value = Vec::from(&new_value);
-            let old_value = old_values.get(&uid).map(Vec::from).unwrap_or_default();
-            let key = build_key(FindexTable::Entry, &uid);
-
-            let indexed_value: Vec<_> = self
-                .upsert_script
-                .arg(key)
-                .arg(old_value)
-                .arg(new_value)
-                .invoke_async(&mut self.manager.clone())
-                .await?;
-
-            if !indexed_value.is_empty() {
-                let encrypted_value = EncryptedValue::try_from(indexed_value.as_slice())?;
-                rejected.insert(uid, encrypted_value);
-            }
-        }
-
-        trace!("upsert_entry_table rejected: {}", rejected.len());
-
-        Ok(rejected.into())
-    }
-
-    async fn insert(
-        &self,
-        items: TokenToEncryptedValueMap<ENTRY_LENGTH>,
-    ) -> Result<(), Self::Error> {
-        let mut pipe = pipe();
-        for (token, value) in &*items {
-            pipe.set(build_key(FindexTable::Entry, token), Vec::from(value));
-        }
-        pipe.atomic()
-            .query_async(&mut self.manager.clone())
-            .await
-            .map_err(Self::Error::from)
-    }
-
-    async fn delete(&self, entry_uids: Tokens) -> Result<(), Self::Error> {
-        let mut pipeline = pipe();
-        for uid in entry_uids {
-            pipeline.del(build_key(FindexTable::Entry, &uid));
-        }
-        pipeline
-            .atomic()
-            .query_async(&mut self.manager.clone())
-            .await
-            .map_err(Self::Error::from)
+impl From<redis::RedisError> for RedisMemoryError {
+    fn from(err: redis::RedisError) -> Self {
+        Self(err.to_string())
     }
 }
 
-pub struct RedisChainBackend(ConnectionManager);
-
-impl std::fmt::Debug for RedisChainBackend {
+impl Display for RedisMemoryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("RedisChainBackend").finish()
+        write!(f, "Redis Memory Error: {}", self.0)
     }
 }
 
-impl RedisChainBackend {
-    /// Connects to a Redis server using the given `url`.
-    pub async fn connect(url: &str) -> Result<Self, DbInterfaceError> {
-        let client = redis::Client::open(url)?;
-        let manager = ConnectionManager::new(client).await?;
-        Ok(Self(manager))
-    }
+impl<
+        Address: Send + Sync + Hash + Eq + Debug + Clone + Deref<Target = [u8; ADDRESS_LENGTH]>,
+        const ADDRESS_LENGTH: usize,
+        const WORD_LENGTH: usize,
+    > MemoryADT for RedisBackend<Address, WORD_LENGTH>
+{
+    type Address = Address;
+    type Error = RedisMemoryError;
+    type Word = [u8; WORD_LENGTH];
 
-    /// Connects to a Redis server with a `ConnectionManager`.
-    pub async fn connect_with_manager(
-        manager: ConnectionManager,
-    ) -> Result<Self, DbInterfaceError> {
-        Ok(Self(manager))
-    }
-
-    /// Clear all indexes
-    ///
-    /// # Warning
-    /// This is definitive
-    pub async fn clear_indexes(&self) -> Result<(), DbInterfaceError> {
-        redis::cmd("FLUSHDB")
-            .query_async(&mut self.0.clone())
-            .await?;
-        Ok(())
-    }
-}
-
-#[async_trait(?Send)]
-impl DbInterface<LINK_LENGTH> for RedisChainBackend {
-    type Error = DbInterfaceError;
-
-    async fn dump_tokens(&self) -> Result<Tokens, Self::Error> {
-        panic!("No token dump is performed for the Chain Table.")
-    }
-
-    async fn fetch(
+    async fn batch_read(
         &self,
-        tokens: Tokens,
-    ) -> Result<TokenWithEncryptedValueList<LINK_LENGTH>, Self::Error> {
-        trace!("fetch_entry_table num keywords: {}:", tokens.len());
-        if tokens.is_empty() {
-            return Ok(Default::default());
-        }
-
-        let uids = tokens.into_iter().collect::<Vec<_>>();
-        let redis_keys = uids
-            .iter()
-            .map(|uid| build_key(FindexTable::Chain, uid))
-            .collect::<Vec<_>>();
-
-        let values: Vec<Vec<u8>> = self.0.clone().mget(redis_keys).await?;
-
-        // Zip and filter empty values out.
-        let res = uids
-            .into_iter()
-            .zip(values)
-            .filter(|(_, v)| !v.is_empty())
-            .map(|(k, v)| Ok((k, EncryptedValue::try_from(v.as_slice())?)))
-            .collect::<Result<Vec<_>, Self::Error>>()?;
-
-        trace!("fetch_entry_table non empty tuples len: {}", res.len());
-
-        Ok(res.into())
-    }
-
-    async fn upsert(
-        &self,
-        _old_values: TokenToEncryptedValueMap<LINK_LENGTH>,
-        _new_values: TokenToEncryptedValueMap<LINK_LENGTH>,
-    ) -> Result<TokenToEncryptedValueMap<LINK_LENGTH>, Self::Error> {
-        panic!("No token upsert is performed for the Chain Table.")
-    }
-
-    async fn insert(
-        &self,
-        items: TokenToEncryptedValueMap<LINK_LENGTH>,
-    ) -> Result<(), Self::Error> {
-        let mut pipe = pipe();
-        for (k, v) in &*items {
-            pipe.set(build_key(FindexTable::Chain, k), Vec::from(v));
-        }
-        pipe.atomic()
-            .query_async(&mut self.0.clone())
-            .await
+        addresses: Vec<Address>,
+    ) -> Result<Vec<Option<Self::Word>>, Self::Error> {
+        let safe_connection = &mut *self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
+        let refs: Vec<&[u8; ADDRESS_LENGTH]> =
+            addresses.iter().map(|address| address.deref()).collect();
+        safe_connection
+            .mget::<_, Vec<_>>(&refs)
             .map_err(Self::Error::from)
     }
 
-    async fn delete(&self, chain_uids: Tokens) -> Result<(), Self::Error> {
-        let mut pipeline = pipe();
-        for uid in chain_uids {
-            pipeline.del(build_key(FindexTable::Chain, &uid));
+    async fn guarded_write(
+        &self,
+        guard: (Self::Address, Option<Self::Word>),
+        bindings: Vec<(Self::Address, Self::Word)>,
+    ) -> Result<Option<Self::Word>, Self::Error> {
+        let mut safe_connection = self.connection.lock().expect(POISONED_LOCK_ERROR_MSG);
+        let (guard_address, guard_value) = guard;
+        let mut cmd = redis::cmd("EVALSHA")
+            .arg(self.write_script_hash.clone())
+            .arg(0)
+            .arg(&*guard_address)
+            .clone(); // Why cloning is necessary : https://stackoverflow.com/questions/64728534/how-to-resolve-creates-a-temporary-variable-which-is-freed-while-still-in-use
+        cmd = if let Some(byte_array) = guard_value {
+            cmd.arg(&byte_array).arg(bindings.len()).clone()
+        } else {
+            cmd.arg("false".to_string()).arg(bindings.len()).clone()
+        };
+        for (address, word) in bindings {
+            cmd = cmd.arg(&*address).arg(&word).clone();
         }
-        pipeline
-            .atomic()
-            .query_async(&mut self.0.clone())
-            .await
-            .map_err(Self::Error::from)
+        cmd.query(&mut safe_connection).map_err(|e| e.into())
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use std::collections::HashSet;
-
-    use cosmian_crypto_core::{CsRng, Nonce};
-    use cosmian_findex::{MAC_LENGTH, NONCE_LENGTH};
-    use rand::{RngCore, SeedableRng};
+    use findex::{
+        test_guarded_write_concurrent, test_single_write_and_read, test_wrong_guard, Address,
+    };
+    use futures::executor::block_on;
     use serial_test::serial;
 
     use super::*;
-    use crate::{db_interfaces::tests::test_backend, logger::log_init, Configuration};
 
     pub fn get_redis_url() -> String {
         if let Ok(var_env) = std::env::var("REDIS_HOST") {
@@ -336,127 +163,60 @@ mod tests {
         }
     }
 
+    const TEST_ADR_WORD_LENGTH: usize = 16;
+
+    async fn init_test_redis_db(
+    ) -> RedisBackend<Address<TEST_ADR_WORD_LENGTH>, TEST_ADR_WORD_LENGTH> {
+        RedisBackend::<Address<TEST_ADR_WORD_LENGTH>, TEST_ADR_WORD_LENGTH>::connect(
+            &get_redis_url(),
+        )
+        .await
+        .unwrap()
+    }
+
     #[actix_rt::test]
     #[serial]
-    async fn test_upsert_conflict() -> Result<(), DbInterfaceError> {
-        log_init();
-        trace!("Test Redis upsert.");
+    async fn test_db_flush() -> Result<(), DbInterfaceError> {
+        let memory = init_test_redis_db().await;
 
-        let mut rng = CsRng::from_entropy();
+        let addr = Address::from([1; 16]);
+        let word = [2; 16];
 
-        // Generate 333 random UIDs.
-        let mut uids = HashSet::with_capacity(333);
-        while uids.len() < 333 {
-            let mut uid = [0_u8; Token::LENGTH];
-            rng.fill_bytes(&mut uid);
-            uids.insert(uid);
-        }
-        let uids = uids.into_iter().collect::<Vec<_>>();
+        block_on(memory.guarded_write((addr.clone(), None), vec![(addr.clone(), word)])).unwrap();
 
-        let original_value = EncryptedValue {
-            nonce: Nonce::from([0; NONCE_LENGTH]),
-            ciphertext: [1; ENTRY_LENGTH],
-            tag: [0; MAC_LENGTH],
-        };
-        let changed_value = EncryptedValue {
-            nonce: Nonce::from([0; NONCE_LENGTH]),
-            ciphertext: [2; ENTRY_LENGTH],
-            tag: [0; MAC_LENGTH],
-        };
-        let new_value = EncryptedValue {
-            nonce: Nonce::from([0; NONCE_LENGTH]),
-            ciphertext: [2; ENTRY_LENGTH],
-            tag: [0; MAC_LENGTH],
-        };
+        let result = block_on(memory.batch_read(vec![addr.clone()])).unwrap();
+        assert_eq!(result, vec![Some([2; 16])]);
+        memory.clear_indexes().unwrap();
 
-        let url = get_redis_url();
-        let et = RedisEntryBackend::connect(&url).await?;
-        et.clear_indexes().await?;
-
-        // First user upserts `original_value` to all the UIDs.
-        let rejected = et
-            .upsert(
-                HashMap::new().into(),
-                uids.iter()
-                    .map(|k| (Token::from(*k), original_value.clone()))
-                    .collect(),
-            )
-            .await?;
-        assert!(rejected.is_empty());
-
-        let et_length = et.dump_tokens().await?.len();
-        trace!("Entry Table length: {et_length}");
-
-        // Another user upserts `changed_value` to 111 UIDs.
-        let rejected = et
-            .upsert(
-                uids.iter()
-                    .map(|k| (Token::from(*k), original_value.clone()))
-                    .collect(),
-                uids.iter()
-                    .enumerate()
-                    .map(|(idx, k)| {
-                        if idx % 3 == 0 {
-                            (Token::from(*k), changed_value.clone())
-                        } else {
-                            (Token::from(*k), original_value.clone())
-                        }
-                    })
-                    .collect(),
-            )
-            .await?;
-        assert!(rejected.is_empty());
-
-        let et_length = et.dump_tokens().await?.len();
-        println!("Entry Table length: {et_length}");
-
-        // The first user upserts `new_value` to all the UIDs from `original_value`. 111
-        // UIDs should conflict.
-        let rejected = et
-            .upsert(
-                uids.iter()
-                    .map(|k| (Token::from(*k), original_value.clone()))
-                    .collect(),
-                uids.iter()
-                    .map(|k| (Token::from(*k), new_value.clone()))
-                    .collect(),
-            )
-            .await?;
-        assert_eq!(111, rejected.len());
-        for prev_value in rejected.values() {
-            assert_eq!(prev_value, &changed_value);
-        }
-
-        // The firs user upserts `new_value` to the 111 rejected UIDs from
-        // `changed_value`.
-        let rejected = et
-            .upsert(
-                rejected.clone(),
-                rejected.keys().map(|k| (*k, new_value.clone())).collect(),
-            )
-            .await?;
-        assert_eq!(0, rejected.len());
-
+        let result = block_on(memory.batch_read(vec![addr])).unwrap();
+        assert_eq!(result, vec![None]);
         Ok(())
     }
 
     #[actix_rt::test]
     #[serial]
-    async fn test_redis_backend() {
-        log_init();
-        trace!("Test Redis backend.");
+    async fn test_rw_seq() -> Result<(), DbInterfaceError> {
+        let memory = init_test_redis_db().await;
+        memory.clear_indexes().unwrap();
+        block_on(test_single_write_and_read(&memory, rand::random()));
+        Ok(())
+    }
 
-        let url = get_redis_url();
+    #[actix_rt::test]
+    #[serial]
+    async fn test_guard_seq() -> Result<(), DbInterfaceError> {
+        let memory = init_test_redis_db().await;
+        memory.clear_indexes().unwrap();
+        block_on(test_wrong_guard(&memory, rand::random()));
+        Ok(())
+    }
 
-        // Empty the Redis to prevent old ciphertexts to cause error during compacting.
-        let client = redis::Client::open(url.as_str()).unwrap();
-        let mut manager = ConnectionManager::new(client).await.unwrap();
-        redis::cmd("FLUSHDB")
-            .query_async::<_, ()>(&mut manager)
-            .await
-            .unwrap();
-
-        let config = Configuration::Redis(url.clone(), url.clone());
-        test_backend(config).await;
+    #[actix_rt::test]
+    #[serial]
+    async fn test_rw_ccr() -> Result<(), DbInterfaceError> {
+        let memory = init_test_redis_db().await;
+        memory.clear_indexes().unwrap();
+        block_on(test_guarded_write_concurrent(memory, rand::random()));
+        Ok(())
     }
 }

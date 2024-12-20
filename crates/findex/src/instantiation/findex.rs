@@ -1,13 +1,24 @@
 use std::{
     collections::{HashMap, HashSet},
+    convert::Infallible,
     future::Future,
 };
 
+use cosmian_crypto_core::RandomFixedSizeCBytes;
 use cosmian_findex::{
     ChainTable, Data, DxEnc, EntryTable, Error as FindexError, Findex, Index, IndexedValue,
     IndexedValueToKeywordsMap, Keyword, KeywordToDataMap, Keywords, Label, UserKey, ENTRY_LENGTH,
     LINK_LENGTH,
 };
+
+use findex::{
+    dummy_decode, dummy_encode, Address, Findex as Findex_v7, IndexADT, Secret, Value,
+    ADDRESS_LENGTH,
+};
+use rand_chacha::ChaChaRng;
+use tracing::error;
+
+const WORD_LENGTH: usize = 16;
 
 #[cfg(feature = "ffi")]
 use crate::db_interfaces::custom::ffi::{FfiChainBackend, FfiEntryBackend};
@@ -16,12 +27,14 @@ use crate::db_interfaces::custom::python::{PythonChainBackend, PythonEntryBacken
 #[cfg(feature = "wasm")]
 use crate::db_interfaces::custom::wasm::{WasmChainBackend, WasmEntryBackend};
 #[cfg(feature = "redis-interface")]
-use crate::db_interfaces::redis::{RedisChainBackend, RedisEntryBackend};
+use crate::db_interfaces::redis::RedisBackend;
 #[cfg(feature = "rest-interface")]
 use crate::db_interfaces::rest::{RestChainBackend, RestEntryBackend, RestParameters};
 #[cfg(feature = "sqlite-interface")]
 use crate::db_interfaces::sqlite::{SqlChainBackend, SqlEntryBackend};
 use crate::{db_interfaces::DbInterfaceError, Configuration};
+#[cfg(feature = "redis-interface")]
+use rand_core::SeedableRng;
 
 /// Wrapper around Findex instantiations used for static dispatch.
 #[derive(Debug)]
@@ -37,10 +50,11 @@ pub enum InstantiatedFindex {
 
     #[cfg(feature = "redis-interface")]
     Redis(
-        Findex<
-            DbInterfaceError,
-            EntryTable<ENTRY_LENGTH, RedisEntryBackend>,
-            ChainTable<LINK_LENGTH, RedisChainBackend>,
+        Findex_v7<
+            WORD_LENGTH,
+            Value,
+            Infallible,
+            RedisBackend<Address<ADDRESS_LENGTH>, WORD_LENGTH>,
         >,
     ),
 
@@ -79,6 +93,16 @@ pub enum InstantiatedFindex {
         >,
     ),
 }
+/// Temporary enum for Findex migration
+// #[deprecated(
+//     since = "7.0.0",
+//     note = "This enum is temporary and will be removed after migration to new Findex version"
+// )]
+// #[derive(Debug)]
+// pub enum SearchResult {
+//     Old(KeywordToDataMap),
+//     Recent(HashMap<Keyword, HashSet<Value>>),
+// }
 
 impl InstantiatedFindex {
     /// Wrapper around Findex [`new`](Index::new) for static dispatch.
@@ -91,9 +115,12 @@ impl InstantiatedFindex {
             )),
 
             #[cfg(feature = "redis-interface")]
-            Configuration::Redis(entry_params, chain_params) => Self::Redis(Findex::new(
-                EntryTable::setup(RedisEntryBackend::connect(&entry_params).await?),
-                ChainTable::setup(RedisChainBackend::connect(&chain_params).await?),
+            Configuration::Redis(entry_params) => Self::Redis(Findex_v7::new(
+                Secret::random(&mut ChaChaRng::from_entropy()),
+                RedisBackend::<Address<ADDRESS_LENGTH>, WORD_LENGTH>::connect(&entry_params)
+                    .await?,
+                dummy_encode::<WORD_LENGTH, _>,
+                dummy_decode,
             )),
 
             #[cfg(feature = "rest-interface")]
@@ -127,14 +154,19 @@ impl InstantiatedFindex {
         Ok(findex)
     }
 
-    /// Wrapper around Findex [`keygen`](Index::keygen) for static dispatch.
-    #[must_use]
+    #[deprecated(
+        since = "7.0.0",
+        note = "keygen is no longer supported in the new Findex version. This is a temporary placeholder until removal."
+    )]
     pub fn keygen(&self) -> UserKey {
         match self {
             #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.keygen(),
             #[cfg(feature = "redis-interface")]
-            Self::Redis(findex) => findex.keygen(),
+            Self::Redis(findex) => {
+                error!("Keygen is deprecated and not supported in the new Findex version.");
+                UserKey::new(&mut ChaChaRng::from_entropy())
+            }
             #[cfg(feature = "ffi")]
             Self::Ffi(findex) => findex.keygen(),
             #[cfg(feature = "python")]
@@ -167,7 +199,9 @@ impl InstantiatedFindex {
             #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.search(key, label, keywords, interrupt).await,
             #[cfg(feature = "redis-interface")]
-            Self::Redis(findex) => findex.search(key, label, keywords, interrupt).await,
+            Self::Redis(findex) => Ok(todo!(
+                "SearchResult::Recent(findex.search(keywords).await.unwrap())"
+            )),
             #[cfg(feature = "wasm")]
             Self::Wasm(findex) => findex.search(key, label, keywords, interrupt).await,
         }
@@ -184,7 +218,9 @@ impl InstantiatedFindex {
             #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.add(key, label, additions).await,
             #[cfg(feature = "redis-interface")]
-            Self::Redis(findex) => findex.add(key, label, additions).await,
+            Self::Redis(findex) => {
+                todo!("TBD")
+            }
             #[cfg(feature = "ffi")]
             Self::Ffi(findex) => findex.add(key, label, additions).await,
             #[cfg(feature = "python")]
@@ -207,7 +243,7 @@ impl InstantiatedFindex {
             #[cfg(feature = "sqlite-interface")]
             Self::Sqlite(findex) => findex.delete(key, label, deletions).await,
             #[cfg(feature = "redis-interface")]
-            Self::Redis(findex) => findex.delete(key, label, deletions).await,
+            Self::Redis(findex) => todo!("TBD"),
             #[cfg(feature = "ffi")]
             Self::Ffi(findex) => findex.delete(key, label, deletions).await,
             #[cfg(feature = "python")]
@@ -219,7 +255,10 @@ impl InstantiatedFindex {
         }
     }
 
-    /// Wrapper around Findex [`compact`](Findex::compact) for static dispatch.
+    #[deprecated(
+        since = "7.0.0",
+        note = "compact is no longer supported in the new Findex version. This is a temporary placeholder until removal."
+    )]
     pub async fn compact<
         F: Future<Output = Result<HashSet<Data>, String>>,
         Filter: Fn(HashSet<Data>) -> F,
@@ -247,17 +286,9 @@ impl InstantiatedFindex {
                     .await
             }
             #[cfg(feature = "redis-interface")]
-            Self::Redis(findex) => {
-                findex
-                    .compact(
-                        old_key,
-                        new_key,
-                        old_label,
-                        new_label,
-                        compacting_rate,
-                        data_filter,
-                    )
-                    .await
+            Self::Redis(_findex) => {
+                error!("This is not supposed to be called on Redis.");
+                Ok(())
             }
             #[cfg(feature = "ffi")]
             Self::Ffi(findex) => {
