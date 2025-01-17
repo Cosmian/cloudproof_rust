@@ -81,8 +81,8 @@ fn get_users() -> Result<Vec<User>, DbInterfaceError> {
         .map_err(|e| DbInterfaceError::Serialization(e.to_string()))
 }
 
-/// Generate the key used in the tests. In case the test is a non-regression, the key from
-/// `dataset` is used. Otherwise a new random key is generated.
+/// Generate the key used in the tests. In case the test is a non-regression,
+/// the key from `dataset` is used. Otherwise a new random key is generated.
 fn get_key(is_non_regression: bool) -> UserKey {
     if is_non_regression {
         let bytes = general_purpose::STANDARD
@@ -194,7 +194,8 @@ async fn find_users(findex: &InstantiatedFindex, key: &UserKey, label: &Label) {
 /// 3. Asserts that compact operations can be run on the backend.
 /// 4. Asserts that the correctness of the search as defined in step 2.
 ///
-/// The `.db` file produced by this test should be okay to use in the non-regression test.
+/// The `.db` file produced by this test should be okay to use in the
+/// non-regression test.
 pub async fn test_backend(config: Configuration) {
     let is_non_regression = false;
 

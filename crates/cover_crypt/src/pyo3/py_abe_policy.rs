@@ -148,7 +148,7 @@ impl PolicyAxis {
     ///
     /// Returns:
     ///     bool
-    pub fn is_hierarchical(&self) -> bool {
+    pub const fn is_hierarchical(&self) -> bool {
         self.0.hierarchical
     }
 

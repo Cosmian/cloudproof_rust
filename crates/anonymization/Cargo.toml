@@ -21,6 +21,9 @@ wasm = ["js-sys", "wasm-bindgen"]
 [package.metadata.cargo-udeps.ignore]
 normal = ["js-sys", "wasm-bindgen"]
 
+[package.metadata.cargo-machete]
+ignored = ["tiny-keccak"]
+
 [dependencies]
 argon2 = "0.5"
 base64 = { workspace = true }

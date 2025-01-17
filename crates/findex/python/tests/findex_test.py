@@ -119,7 +119,9 @@ def define_custom_db_interface(is_with_test: bool = False):
             if old_value == current_value:
                 table[uid] = new_value
             elif not current_value:
-                raise ValueError('The current value needs to be defined as long as the old value is defined ')
+                raise ValueError(
+                    'The current value needs to be defined as long as the old value is defined '
+                )
             else:
                 res[uid] = current_value
         return res
@@ -187,7 +189,7 @@ class TestFindex(unittest.TestCase):
     def setUp(self) -> None:
         # Create structures needed by Findex
         self.findex_key = Key.random()
-        self.label = "My label."
+        self.label = 'My label.'
 
         self.db = {
             1: ['Martin', 'Sheperd'],
@@ -238,11 +240,17 @@ class TestFindex(unittest.TestCase):
                 self.label,
                 redis_url,
             ),
-            'rest': Findex.new_with_rest_interface(self.label,
-                                                   str(token),
-                                                   rest_server_url),
+            'findex-cloud': Findex.new_with_findex_cloud_interface(
+                self.label, str(token), rest_server_url
+            ),
+            'rest': Findex.new_with_findex_cloud_interface(
+                self.label, str(token), rest_server_url
+            ),
             'custom': Findex.new_with_custom_interface(
-                self.findex_key, self.label, in_memory_db_interface, in_memory_db_interface
+                self.findex_key,
+                self.label,
+                in_memory_db_interface,
+                in_memory_db_interface,
             ),
         }
 
@@ -343,9 +351,9 @@ class TestFindex(unittest.TestCase):
             instance.add(indexed_values_and_keywords)
 
             # removing 2nd db line
-            new_label = "My renewed label"
+            new_label = 'My renewed label'
 
-            filtered_locations = { Location.from_int(2) }
+            filtered_locations = {Location.from_int(2)}
 
             def filter_obsolete_data(dataset: Set[Location]):
                 res = set()

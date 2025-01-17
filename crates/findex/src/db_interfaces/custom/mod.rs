@@ -14,7 +14,7 @@ macro_rules! impl_custom_backend {
     ($backend_type:ident, $callback_type:ident, $value_length:ident) => {
         impl $backend_type {
             #[must_use]
-            pub fn new(backend: $callback_type) -> Self {
+            pub const fn new(backend: $callback_type) -> Self {
                 Self(backend)
             }
         }

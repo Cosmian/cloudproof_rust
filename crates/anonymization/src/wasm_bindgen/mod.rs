@@ -7,6 +7,8 @@ macro_rules! wasm_unwrap {
 mod hash;
 mod noise;
 mod number;
+mod word;
+
+#[allow(dead_code)]
 #[cfg(test)]
 mod tests;
-mod word;

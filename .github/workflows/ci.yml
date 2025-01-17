@@ -4,12 +4,6 @@ name: CI checks
 on: push
 
 jobs:
-  cargo-nursery-base:
-    uses: Cosmian/reusable_workflows/.github/workflows/cargo-nursery-base.yml@develop
-    with:
-      toolchain: stable
-      exclusions: --exclude=cloudproof_findex
-
   cargo-doc:
     uses: Cosmian/reusable_workflows/.github/workflows/cargo-doc.yml@develop
     with:

@@ -15,16 +15,38 @@ use crate::db_interfaces::DbInterfaceError;
 /// The length of the prefix of the table name in bytes
 /// 0x00ee for the entry table
 /// 0x00ef for the chain table
-const TABLE_PREFIX_LENGTH: usize = 2;
+pub const TABLE_PREFIX_LENGTH: usize = 2;
 
-#[derive(Copy, Clone)]
-enum FindexTable {
+#[repr(u8)]
+#[derive(Copy, Clone, Debug)]
+pub enum FindexTable {
     Entry = 0xee,
     Chain = 0xef,
 }
 
+impl From<FindexTable> for u8 {
+    fn from(table: FindexTable) -> Self {
+        table as Self
+    }
+}
+
+impl TryFrom<u8> for FindexTable {
+    type Error = FindexCoreError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0xee => Ok(Self::Entry),
+            0xef => Ok(Self::Chain),
+            _ => Err(FindexCoreError::Conversion(format!(
+                "{value} is not a valid table"
+            ))),
+        }
+    }
+}
+
 /// Generate a key for the entry table or chain table
-fn build_key(table: FindexTable, uid: &[u8]) -> Vec<u8> {
+#[must_use]
+pub fn build_key(table: FindexTable, uid: &[u8]) -> Vec<u8> {
     [&[0x00, table as u8], uid].concat()
 }
 
@@ -78,6 +100,7 @@ impl RedisEntryBackend {
     ///
     /// # Warning
     /// This is definitive
+    #[allow(dependency_on_unit_never_type_fallback)]
     pub async fn clear_indexes(&self) -> Result<(), DbInterfaceError> {
         redis::cmd("FLUSHDB")
             .query_async(&mut self.manager.clone())
@@ -234,6 +257,7 @@ impl RedisChainBackend {
     ///
     /// # Warning
     /// This is definitive
+    #[allow(dependency_on_unit_never_type_fallback)]
     pub async fn clear_indexes(&self) -> Result<(), DbInterfaceError> {
         redis::cmd("FLUSHDB")
             .query_async(&mut self.0.clone())

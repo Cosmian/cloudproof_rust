@@ -3,7 +3,7 @@
 
 mod error;
 
-#[cfg(feature = "rest-interface")]
+#[cfg(any(feature = "findex-cloud", feature = "rest-interface"))]
 pub mod rest;
 
 #[cfg(any(feature = "wasm", feature = "python", feature = "ffi",))]
@@ -21,6 +21,7 @@ pub mod sqlite;
         feature = "ffi",
         feature = "python",
         feature = "redis-interface",
+        feature = "findex-cloud",
         feature = "rest-interface",
         feature = "sqlite-interface",
         feature = "wasm",

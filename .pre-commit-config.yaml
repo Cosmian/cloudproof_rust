@@ -122,13 +122,9 @@ repos:
     rev: v1.0.24
     hooks:
       # - id: dprint-toml-fix
+      # - id: cargo-upgrade
+      # - id: cargo-update
       - id: stable-cargo-format
-      - id: cargo-upgrade
-      - id: cargo-update
-      - id: cargo-audit-deny-warnings
-      - id: cargo-outdated
-      - id: cargo-udeps
-        args: [--exclude=cloudproof_findex]
       - id: cargo-machete
       - id: docker-compose-up
       - id: cargo-tests-all

@@ -267,7 +267,7 @@ impl Integer {
     /// The number of digits of the max value
     /// that is the same as the `radix^digits - 1`
     #[must_use]
-    pub fn digits(&self) -> usize {
+    pub const fn digits(&self) -> usize {
         self.digits
     }
 }
