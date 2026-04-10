@@ -18,11 +18,11 @@
     "Upserts"
   ],
   "rust-analyzer.cargo.features": [
-    "cloud",
+    // "cloud",
     "ffi",
-    "python",
+    // "python",
     "findex-redis",
     "findex-sqlite",
-    "wasm_bindgen"
+    // "wasm_bindgen"
   ]
 }
