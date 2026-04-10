@@ -1,7 +1,7 @@
 mod alphabet;
 pub use alphabet::Alphabet;
 
-pub mod ff1;
+pub(crate) mod ff1;
 
 mod integer;
 pub use integer::Integer;

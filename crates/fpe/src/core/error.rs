@@ -27,6 +27,8 @@ impl Display for AnoError {
     }
 }
 
+impl std::error::Error for AnoError {}
+
 /// Return early with an error if a condition is not satisfied.
 ///
 /// This macro is equivalent to `if !$cond { return Err(From::from($err)); }`.
@@ -53,17 +55,17 @@ macro_rules! ano_ensure {
 #[macro_export]
 macro_rules! ano_error {
     ($msg:literal $(,)?) => {
-        $crate::error::AnoError::Generic($msg.to_owned())
+        $crate::core::error::AnoError::Generic($msg.to_owned())
     };
     ($err:expr $(,)?) => ({
-        $crate::error::AnoError::Generic($err.to_string())
+        $crate::core::error::AnoError::Generic($err.to_string())
     });
     ($fmt:expr, $($arg:tt)*) => {
-        $crate::error::AnoError::Generic(format!($fmt, $($arg)*))
+        $crate::core::error::AnoError::Generic(format!($fmt, $($arg)*))
     };
 }
 
-/// Return early with an error if a condition is not satisfied.
+/// Return early with an error unconditionally.
 #[macro_export]
 macro_rules! ano_bail {
     ($msg:literal $(,)?) => {

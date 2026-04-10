@@ -10,7 +10,7 @@ pub const RECOMMENDED_THRESHOLD: usize = 1_000_000;
 
 /// Minimum length of the plaintext for FPE to be secure.
 pub fn min_plaintext_length(alphabet_len: usize) -> usize {
-    ((RECOMMENDED_THRESHOLD as f32).log(alphabet_len as f32)).ceil() as usize
+    ((RECOMMENDED_THRESHOLD as f64).log(alphabet_len as f64)).ceil() as usize
 }
 
 /// The `Alphabet` structure contains information about the usable characters
@@ -136,15 +136,17 @@ impl Alphabet {
     /// reinserts non-alphabet characters at their original positions.
     fn debase(
         &self,
-        mut stripped_input: Vec<u16>,
+        stripped_input: Vec<u16>,
         non_alphabet_chars: &HashMap<usize, char>,
     ) -> Result<String, AnoError> {
-        let mut result = vec![];
+        let mut result = Vec::with_capacity(stripped_input.len() + non_alphabet_chars.len());
+        let mut alphabet_idx = 0;
         for i in 0..stripped_input.len() + non_alphabet_chars.len() {
             result.push(if let Some(c) = non_alphabet_chars.get(&i) {
                 *c
             } else {
-                let position = stripped_input.remove(0);
+                let position = stripped_input[alphabet_idx];
+                alphabet_idx += 1;
                 self.char_from_position(position).ok_or_else(|| {
                     AnoError::FPE(format!(
                         "index {} out of bounds for alphabet of size {}",
@@ -227,6 +229,9 @@ impl Alphabet {
     /// Returns an error if the ciphertext contains characters not in the
     /// alphabet, or if the decryption fails.
     pub fn decrypt(&self, key: &[u8], tweak: &[u8], ciphertext: &str) -> Result<String, AnoError> {
+        if key.len() != KEY_LENGTH {
+            return Err(AnoError::KeySize(key.len(), KEY_LENGTH));
+        }
         let (stripped_input, non_alphabet_chars) = self.rebase(ciphertext);
 
         let fpe_ff = FF1h::<Aes256>::new(key, self.alphabet_len() as u32)

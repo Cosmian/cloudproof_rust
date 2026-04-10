@@ -41,28 +41,16 @@ impl Integer {
     /// Returns an error if `radix` is not between 2 and 16 inclusive or if
     /// the calculation of the maximum value fails.
     pub fn instantiate(radix: u32, digits: usize) -> Result<Self, AnoError> {
-        let min_digits = match radix {
-            2 => 20,
-            3 => 13,
-            4 => 10,
-            5 => 9,
-            6 => 8,
-            7 => 8,
-            8 => 7,
-            9 => 7,
-            10 => 6,
-            11 => 6,
-            12 => 6,
-            13 => 6,
-            14 => 6,
-            15 => 6,
-            16 => 5,
-            _ => {
-                return Err(AnoError::FPE(format!(
-                    "Radix must be between 2 and 16 inclusive, got {radix}"
-                )));
-            }
-        };
+        if !(2..=16).contains(&radix) {
+            return Err(AnoError::FPE(format!(
+                "Radix must be between 2 and 16 inclusive, got {radix}"
+            )));
+        }
+
+        // Derive the minimum digit count from the FF1 algorithm's own constraint,
+        // keeping a single source of truth instead of a duplicated lookup table.
+        let min_digits = crate::core::ff1::radix_min_len(radix)
+            .map_err(|e| AnoError::FPE(e.to_string()))?;
 
         if digits < min_digits {
             return Err(AnoError::FPE(format!(

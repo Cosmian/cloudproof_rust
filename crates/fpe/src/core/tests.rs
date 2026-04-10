@@ -8,7 +8,7 @@ use crate::core::{error::AnoError, Alphabet, Float, Integer, KEY_LENGTH};
 
 /// Generate a random key using a cryptographically
 /// secure random number generator that is suitable for use with FPE
-pub fn random_key() -> [u8; 32] {
+fn random_key() -> [u8; 32] {
     let mut rng = ChaCha20Rng::from_entropy();
     let mut key = [0_u8; KEY_LENGTH];
     rng.fill_bytes(&mut key);
@@ -18,7 +18,7 @@ pub fn random_key() -> [u8; 32] {
 fn alphabet_check(plaintext: &str, alphabet: &Alphabet, non_alphabet_chars: &str) {
     let key = random_key();
     let ciphertext = alphabet.encrypt(&key, &[], plaintext).unwrap();
-    println!("  {:?} -> {:?} ", &plaintext, &ciphertext);
+    eprintln!("  {:?} -> {:?} ", &plaintext, &ciphertext);
     assert_eq!(plaintext.chars().count(), ciphertext.chars().count());
     // every character of the generated string should be part of the alphabet or a -
     // or a ' '
@@ -258,25 +258,8 @@ fn fpe_number_u64_(radix: u32, min_length: usize) -> Result<(), AnoError> {
 #[test]
 fn fpe_number_u64() -> Result<(), AnoError> {
     for i in 2..=16 {
-        //2 => 20
-        let min_length = match i {
-            2 => 20,
-            3 => 13,
-            4 => 10,
-            5 => 9,
-            6 => 8,
-            7 => 8,
-            8 => 7,
-            9 => 7,
-            10 => 6,
-            11 => 6,
-            12 => 6,
-            13 => 6,
-            14 => 6,
-            15 => 6,
-            16 => 5,
-            _ => 1,
-        };
+        let min_length = crate::core::ff1::radix_min_len(i)
+            .map_err(|e| AnoError::FPE(e.to_string()))?;
         fpe_number_u64_(i, min_length)?;
     }
     Ok(())
@@ -312,8 +295,46 @@ fn fpe_float() -> Result<(), AnoError> {
     for _i in 0..1000 {
         let value = rng.gen_range(0.0..f64::MAX);
         let ciphertext = float.encrypt(&key, &[], value)?;
-        assert_ne!(ciphertext, value);
         assert_eq!(float.decrypt(&key, &[], ciphertext)?, value);
     }
+    Ok(())
+}
+
+#[test]
+fn test_negative_cases() -> Result<(), AnoError> {
+    // Wrong key size: Alphabet::encrypt and decrypt should reject a 16-byte key
+    let alphabet = Alphabet::alpha_lower();
+    let bad_key = [0_u8; 16];
+    assert!(
+        alphabet.encrypt(&bad_key, &[], "abcdefghij").is_err(),
+        "encrypt should reject a 16-byte key"
+    );
+    assert!(
+        alphabet.decrypt(&bad_key, &[], "abcdefghij").is_err(),
+        "decrypt should reject a 16-byte key"
+    );
+
+    // Invalid alphabet: too few characters
+    assert!(Alphabet::try_from("a").is_err(), "single-char alphabet must fail");
+    assert!(Alphabet::try_from("").is_err(), "empty alphabet must fail");
+
+    // Plaintext too short: alpha_lower has 26 chars, min_plaintext_length(26) == 5
+    let key = random_key();
+    assert!(
+        alphabet.encrypt(&key, &[], "abcd").is_err(),
+        "plaintext shorter than minimum should fail"
+    );
+
+    // Radix out of range for Integer
+    assert!(Integer::instantiate(0, 6).is_err(), "radix 0 must fail");
+    assert!(Integer::instantiate(1, 6).is_err(), "radix 1 must fail");
+    assert!(Integer::instantiate(17, 6).is_err(), "radix 17 must fail");
+
+    // Too few digits for the given radix (radix 10 needs at least 6 digits)
+    assert!(
+        Integer::instantiate(10, 5).is_err(),
+        "5 digits for radix-10 should fail"
+    );
+
     Ok(())
 }

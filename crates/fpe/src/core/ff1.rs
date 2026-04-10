@@ -23,6 +23,8 @@ impl std::error::Error for InvalidRadix {}
 pub enum FF1Error {
     InvalidRadix(InvalidRadix),
     InvalidKeyLength,
+    InsufficientFeistelRounds,
+    InvalidBlockSize,
 }
 
 impl From<InvalidRadix> for FF1Error {
@@ -37,6 +39,12 @@ impl fmt::Display for FF1Error {
             FF1Error::InvalidRadix(e) => e.fmt(f),
             FF1Error::InvalidKeyLength => {
                 write!(f, "Invalid key length for the chosen cipher")
+            }
+            FF1Error::InsufficientFeistelRounds => {
+                write!(f, "FF1fr requires at least 8 Feistel rounds")
+            }
+            FF1Error::InvalidBlockSize => {
+                write!(f, "FF1 requires a 128-bit (16-byte) block cipher (NIST SP 800-38G §4.3)")
             }
         }
     }
@@ -221,7 +229,7 @@ impl<CIPH: BlockCipher + BlockEncrypt + Clone> Prf<CIPH> {
     }
 
     fn output(&self) -> &Block<CIPH> {
-        assert_eq!(self.offset, 0);
+        debug_assert_eq!(self.offset, 0, "output() called before block boundary");
         &self.buf[0]
     }
 }
@@ -254,16 +262,12 @@ pub struct FF1fr<const FEISTEL_ROUNDS: u8, CIPH: BlockCipher> {
 
 impl<const FEISTEL_ROUNDS: u8, CIPH: BlockCipher + KeyInit> FF1fr<FEISTEL_ROUNDS, CIPH> {
     pub fn new(key: &[u8], radix: u32) -> Result<Self, FF1Error> {
-        assert!(
-            FEISTEL_ROUNDS >= 8,
-            "FF1fr requires at least 8 Feistel rounds; got FEISTEL_ROUNDS = {}",
-            FEISTEL_ROUNDS
-        );
-        assert_eq!(
-            CIPH::BlockSize::USIZE,
-            16,
-            "FF1 requires a 128-bit (16-byte) block cipher (NIST SP 800-38G §4.3)"
-        );
+        if FEISTEL_ROUNDS < 8 {
+            return Err(FF1Error::InsufficientFeistelRounds);
+        }
+        if CIPH::BlockSize::USIZE != 16 {
+            return Err(FF1Error::InvalidBlockSize);
+        }
         let ciph = CIPH::new_from_slice(key).map_err(|_| FF1Error::InvalidKeyLength)?;
         let radix = Radix::from_u32(radix)?;
         Ok(FF1fr { ciph, radix })
@@ -399,6 +403,14 @@ fn pow(x: u32, e: usize) -> BigUint {
     num_traits::pow::pow(BigUint::from(x), e)
 }
 
+/// Returns the minimum numeral-string length required by FF1 for `radix`.
+/// Mirrors the logic in `Radix::from_u32` without exposing the internal type.
+pub(crate) fn radix_min_len(radix: u32) -> Result<usize, InvalidRadix> {
+    Ok(match Radix::from_u32(radix)? {
+        Radix::Any { min_len, .. } | Radix::PowerTwo { min_len, .. } => min_len as usize,
+    })
+}
+
 impl Numeral for BigUint {
     type Bytes = Vec<u8>;
 
@@ -426,7 +438,8 @@ impl Numeral for BigUint {
             c += &modulus;
             c %= modulus;
         }
-        c.to_biguint().unwrap()
+        // SAFETY: c is guaranteed non-negative after the modulo correction above
+        c.to_biguint().expect("value is non-negative after modulo correction")
     }
 }
 
