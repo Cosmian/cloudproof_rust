@@ -2,11 +2,12 @@ use argon2::Argon2;
 use base64::{engine::general_purpose, Engine as _};
 use cosmian_crypto_core::reexport::tiny_keccak::{Hasher as _, Sha3};
 use sha2::{Digest, Sha256};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::{ano_error, core::AnoError};
 
 // Available hashing methods
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub enum HashMethod {
     /// Represents the SHA2 hash method with an optional salt.
     SHA2(Option<Vec<u8>>),
@@ -35,6 +36,7 @@ impl HashMethod {
     }
 }
 
+#[derive(ZeroizeOnDrop)]
 pub struct Hasher {
     method: HashMethod, // The selected hash method
 }

@@ -55,8 +55,11 @@ pub struct NumberScaler(NumberScalerRust);
 #[pymethods]
 impl NumberScaler {
     #[new]
-    pub fn new(mean: f64, std_dev: f64, scale: f64, translation: f64) -> Self {
-        Self(NumberScalerRust::new(mean, std_dev, scale, translation))
+    pub fn new(mean: f64, std_dev: f64, scale: f64, translation: f64) -> PyResult<Self> {
+        Ok(Self(pyo3_unwrap!(
+            NumberScalerRust::new(mean, std_dev, scale, translation),
+            "Error initializing NumberScaler"
+        )))
     }
 
     pub fn apply_on_float(&self, data: f64) -> f64 {

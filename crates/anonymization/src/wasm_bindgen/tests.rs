@@ -183,7 +183,7 @@ fn test_correlated_noise_gaussian_f64() -> Result<(), JsValue> {
     let values = vec![1.0, 1.0, 1.0];
     let factors = vec![1.0, 2.0, 4.0];
     let noisy_values =
-        noise_generator.apply_correlated_noise_on_floats(values.clone(), factors.clone());
+        noise_generator.apply_correlated_noise_on_floats(values.clone(), factors.clone())?;
     assert_relative_eq!(
         (noisy_values[0] - values[0]) * factors[1],
         (noisy_values[1] - values[1]) * factors[0],
@@ -205,7 +205,7 @@ fn test_correlated_noise_laplace_i64() -> Result<(), JsValue> {
     let mut noise_generator = NoiseGeneratorWithParameters::new("Laplace", 10.0, 2.0)?;
     let values = vec![1, 1, 1];
     let factors = vec![1.0, 2.0, 4.0];
-    let noisy_values = noise_generator.apply_correlated_noise_on_ints(values, factors);
+    let noisy_values = noise_generator.apply_correlated_noise_on_ints(values, factors)?;
     // Ordering only holds if noise is positive
     assert!(noisy_values[0] <= noisy_values[1]);
     assert!(noisy_values[1] <= noisy_values[2]);
@@ -368,21 +368,23 @@ fn test_date_aggregation() -> Result<(), JsValue> {
 }
 
 #[wasm_bindgen_test]
-fn test_float_scale() {
-    let float_scaler = NumberScaler::new(10.0, 5.0, 2.0, -50.0);
+fn test_float_scale() -> Result<(), JsValue> {
+    let float_scaler = NumberScaler::new(10.0, 5.0, 2.0, -50.0)?;
 
     let n1 = float_scaler.apply_on_float(20.0);
     let n2 = float_scaler.apply_on_float(19.5);
 
     assert!(n1 > n2);
+    Ok(())
 }
 
 #[wasm_bindgen_test]
-fn test_int_scale() {
-    let int_scaler = NumberScaler::new(10.0, 5.0, 20.0, -50.0);
+fn test_int_scale() -> Result<(), JsValue> {
+    let int_scaler = NumberScaler::new(10.0, 5.0, 20.0, -50.0)?;
 
     let n1 = int_scaler.apply_on_int(20);
     let n2 = int_scaler.apply_on_int(19);
 
     assert!(n1 >= n2);
+    Ok(())
 }

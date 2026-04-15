@@ -55,8 +55,16 @@ pub struct NumberScaler(NumberScalerRust);
 #[wasm_bindgen]
 impl NumberScaler {
     #[wasm_bindgen(constructor)]
-    pub fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Self {
-        Self(NumberScalerRust::new(mean, std_deviation, scale, translate))
+    pub fn new(
+        mean: f64,
+        std_deviation: f64,
+        scale: f64,
+        translate: f64,
+    ) -> Result<NumberScaler, JsValue> {
+        Ok(Self(wasm_unwrap!(
+            NumberScalerRust::new(mean, std_deviation, scale, translate),
+            "Error initializing NumberScaler"
+        )))
     }
 
     pub fn apply_on_float(&self, data: f64) -> f64 {

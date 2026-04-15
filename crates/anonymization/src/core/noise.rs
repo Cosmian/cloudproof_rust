@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 use chrono::{DateTime, TimeZone};
 use cosmian_crypto_core::{reexport::rand_core::SeedableRng, CsRng};
 use rand::{CryptoRng, Rng};
@@ -43,7 +41,7 @@ where
 /// use rand::prelude::*;
 /// use rand_distr::Distribution;
 ///
-/// let laplace = Laplace::new(0.0, 1.0);
+/// let laplace = Laplace::new(0.0, 1.0).expect("beta is positive");
 /// let mut rng = thread_rng();
 ///
 /// let v = laplace.sample(&mut rng);
@@ -59,9 +57,14 @@ impl<F: Float> Laplace<F> {
     /// # Arguments
     ///
     /// * `mean` - The mean of the Laplace distribution.
-    /// * `beta` - The scale parameter of the Laplace distribution.
-    pub const fn new(mean: F, beta: F) -> Self {
-        Self { mean, beta }
+    /// * `beta` - The scale parameter of the Laplace distribution. Must be strictly positive.
+    pub fn new(mean: F, beta: F) -> Result<Self, AnoError> {
+        if beta <= F::zero() {
+            return Err(ano_error!(
+                "Laplace beta must be strictly positive (got a non-positive value)."
+            ));
+        }
+        Ok(Self { mean, beta })
     }
 }
 
@@ -75,7 +78,16 @@ where
     ///
     /// * `rng` - The random number generator used to generate the number.
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> F {
-        let p = rng.gen();
+        // Clamp p away from 0 to prevent ln(0) = -inf.
+        // rng.gen() samples [0, 1); p == 0 is possible but astronomically rare.
+        let p: F = {
+            let raw: F = rng.gen();
+            if raw == F::zero() {
+                F::epsilon()
+            } else {
+                raw
+            }
+        };
         if rng.gen_bool(0.5) {
             self.mean - self.beta * F::ln(F::one() - p)
         } else {
@@ -90,7 +102,7 @@ where
     rand_distr::StandardNormal: rand_distr::Distribution<F>,
 {
     method: NoiseMethod<F>,
-    rng: Arc<Mutex<CsRng>>,
+    rng: CsRng,
 }
 
 impl<F> NoiseGenerator<F>
@@ -119,14 +131,17 @@ where
             "Gaussian" => Ok(NoiseMethod::Gaussian(Normal::new(mean, std_dev)?)),
             "Laplace" => {
                 // σ = β * sqrt(2)
-                let beta = std_dev / F::from(2).unwrap().sqrt();
-                Ok(NoiseMethod::Laplace(Laplace::<F>::new(mean, beta)))
+                let beta = std_dev
+                    / F::from(2)
+                        .ok_or_else(|| ano_error!("Internal float conversion error."))?
+                        .sqrt();
+                Ok(NoiseMethod::Laplace(Laplace::<F>::new(mean, beta)?))
             }
             _ => Err(ano_error!("{method_name} is not a supported distribution.")),
         }?;
         Ok(Self {
             method,
-            rng: Arc::new(Mutex::new(CsRng::from_entropy())),
+            rng: CsRng::from_entropy(),
         })
     }
 
@@ -149,26 +164,33 @@ where
             return Err(ano_error!("Min bound must be inferior to Max bound."));
         }
 
+        let two = F::from(2).ok_or_else(|| ano_error!("Internal float conversion error."))?;
+
         // Select the appropriate distribution method
         let method = match method_name {
             "Gaussian" => {
-                let mean = (max_bound + min_bound) / F::from(2).unwrap();
+                let mean = (max_bound + min_bound) / two;
                 // 5σ => 99.99994% of values will be in the bounds
-                let std_dev = (mean - min_bound) / F::from(5).unwrap();
+                let std_dev = (mean - min_bound)
+                    / F::from(5).ok_or_else(|| ano_error!("Internal float conversion error."))?;
                 Ok(NoiseMethod::Gaussian(Normal::new(mean, std_dev)?))
             }
             "Laplace" => {
-                let mean = (max_bound + min_bound) / F::from(2).unwrap();
+                let mean = (max_bound + min_bound) / two;
                 // confidence interval at 1-a: μ ± β * ln(1/a)
-                let beta = (mean - min_bound) / -F::ln(F::from(0.00005).unwrap());
-                Ok(NoiseMethod::Laplace(Laplace::<F>::new(mean, beta)))
+                let beta = (mean - min_bound)
+                    / -F::ln(
+                        F::from(0.00005_f64)
+                            .ok_or_else(|| ano_error!("Internal float conversion error."))?,
+                    );
+                Ok(NoiseMethod::Laplace(Laplace::<F>::new(mean, beta)?))
             }
             "Uniform" => Ok(NoiseMethod::Uniform(Uniform::new(min_bound, max_bound))),
             _ => Err(ano_error!("No supported distribution {}.", method_name)),
         }?;
         Ok(Self {
             method,
-            rng: Arc::new(Mutex::new(CsRng::from_entropy())),
+            rng: CsRng::from_entropy(),
         })
     }
 
@@ -182,12 +204,8 @@ where
     ///
     /// Original data with added noise
     pub fn apply_on_float(&mut self, data: F) -> F {
-        // Sample noise
-        let noise = {
-            let mut rng = self.rng.lock().expect("failed locking the RNG.");
-            self.method.sample(&mut *rng)
-        };
-        // Add noise to the raw data
+        // Sample noise and add it to the raw data
+        let noise = self.method.sample(&mut self.rng);
         data + noise
     }
 
@@ -203,18 +221,25 @@ where
     /// # Returns
     ///
     /// A vector containing the original data with added noise
-    pub fn apply_correlated_noise_on_floats(&mut self, data: &[F], factors: &[F]) -> Vec<F> {
-        // Sample noise once
-        let noise = {
-            let mut rng = self.rng.lock().expect("failed locking the RNG.");
-            self.method.sample(&mut *rng)
-        };
-
-        // Add noise to the raw data, scaled by the corresponding factor
-        data.iter()
+    pub fn apply_correlated_noise_on_floats(
+        &mut self,
+        data: &[F],
+        factors: &[F],
+    ) -> Result<Vec<F>, AnoError> {
+        if data.len() != factors.len() {
+            return Err(ano_error!(
+                "data and factors must have the same length ({} vs {}).",
+                data.len(),
+                factors.len()
+            ));
+        }
+        // Sample noise once and scale per entry
+        let noise = self.method.sample(&mut self.rng);
+        Ok(data
+            .iter()
             .zip(factors.iter())
             .map(|(val, factor)| noise.mul_add(*factor, *val))
-            .collect()
+            .collect())
     }
 }
 
@@ -245,12 +270,17 @@ impl NoiseGenerator<f64> {
     /// # Returns
     ///
     /// A vector containing the original data with added noise
-    pub fn apply_correlated_noise_on_ints(&mut self, data: &[i64], factors: &[f64]) -> Vec<i64> {
+    pub fn apply_correlated_noise_on_ints(
+        &mut self,
+        data: &[i64],
+        factors: &[f64],
+    ) -> Result<Vec<i64>, AnoError> {
         let input_floats: Vec<f64> = data.iter().map(|val: &i64| *val as f64).collect();
-        self.apply_correlated_noise_on_floats(&input_floats, factors)
+        Ok(self
+            .apply_correlated_noise_on_floats(&input_floats, factors)?
             .iter()
             .map(|val| val.round() as i64)
-            .collect()
+            .collect())
     }
 
     /// Applies the selected noise method on a given date string.
@@ -301,7 +331,7 @@ impl NoiseGenerator<f64> {
             }
         }
 
-        self.apply_correlated_noise_on_ints(&timestamps, factors)
+        self.apply_correlated_noise_on_ints(&timestamps, factors)?
             .into_iter()
             .enumerate()
             .map(|(i, val)| datetime_to_rfc3339(timezones[i].timestamp_opt(val, 0), data[i]))

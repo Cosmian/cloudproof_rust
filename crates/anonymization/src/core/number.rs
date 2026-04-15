@@ -34,6 +34,13 @@ impl NumberAggregator {
                 f64::MAX_10_EXP,
             ));
         }
+        // Prevent very negative exponents that would allocate huge strings in format!
+        if power_of_ten_exponent < -(f64::MAX_10_EXP) {
+            return Err(ano_error!(
+                "Exponent must be greater than {}, given {power_of_ten_exponent}.",
+                -(f64::MAX_10_EXP),
+            ));
+        }
         Ok(Self {
             power_of_ten_exponent,
         })
@@ -156,17 +163,21 @@ impl NumberScaler {
     /// # Arguments
     ///
     /// * `mean`: The mean of the data distribution.
-    /// * `std_deviation`: The standard deviation of the data distribution.
+    /// * `std_deviation`: The standard deviation of the data distribution. Must be non-zero.
     /// * `scale`: The scaling factor.
     /// * `translate`: The translation factor.
-    #[must_use]
-    pub const fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Self {
-        Self {
+    pub fn new(mean: f64, std_deviation: f64, scale: f64, translate: f64) -> Result<Self, AnoError> {
+        if std_deviation == 0.0 {
+            return Err(ano_error!(
+                "Standard deviation must be non-zero to avoid division by zero."
+            ));
+        }
+        Ok(Self {
             mean,
             std_deviation,
             scale,
             translate,
-        }
+        })
     }
 
     /// Applies the scaling and translation on a floating-point number.

@@ -9,6 +9,8 @@ use super::AnoError;
 pub struct WordTokenizer {
     /// A mapping of words to random tokens.
     word_token_mapping: HashMap<String, String>,
+    /// Pre-compiled pattern used to extract word tokens from text.
+    word_pattern: Regex,
 }
 
 impl WordTokenizer {
@@ -29,6 +31,8 @@ impl WordTokenizer {
         }
         Ok(Self {
             word_token_mapping: mapping,
+            // SAFETY: the literal `r"\b\w+\b"` is a verified constant; this can never fail.
+            word_pattern: Regex::new(r"\b\w+\b").expect("hardcoded regex is valid"),
         })
     }
 
@@ -43,8 +47,7 @@ impl WordTokenizer {
     /// Texts containing tokens in place of sensitive words.
     #[must_use]
     pub fn apply(&self, data: &str) -> String {
-        let re = Regex::new(r"\b\w+\b").unwrap();
-        let result = re.replace_all(data, |caps: &regex::Captures| {
+        let result = self.word_pattern.replace_all(data, |caps: &regex::Captures| {
             match self.word_token_mapping.get(&caps[0].to_lowercase()) {
                 Some(token) => token.to_string(),
                 None => caps[0].to_string(),
@@ -57,6 +60,8 @@ impl WordTokenizer {
 pub struct WordMasker {
     /// A set of words to be masked in the text.
     word_list: HashSet<String>,
+    /// Pre-compiled pattern used to extract word tokens from text.
+    word_pattern: Regex,
 }
 const MASK: &str = "XXXX";
 
@@ -71,6 +76,8 @@ impl WordMasker {
     pub fn new(words_to_block: &[&str]) -> Self {
         Self {
             word_list: words_to_block.iter().map(|s| s.to_lowercase()).collect(),
+            // SAFETY: the literal `r"\b\w+\b"` is a verified constant; this can never fail.
+            word_pattern: Regex::new(r"\b\w+\b").expect("hardcoded regex is valid"),
         }
     }
 
@@ -85,8 +92,7 @@ impl WordMasker {
     /// Text without the sensitive words.
     #[must_use]
     pub fn apply(&self, data: &str) -> String {
-        let re = Regex::new(r"\b\w+\b").unwrap();
-        let result = re.replace_all(data, |caps: &regex::Captures| {
+        let result = self.word_pattern.replace_all(data, |caps: &regex::Captures| {
             if self.word_list.contains(&caps[0].to_lowercase()) {
                 MASK.to_string()
             } else {

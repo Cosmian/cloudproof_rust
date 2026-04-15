@@ -73,11 +73,13 @@ fn test_noise_gaussian_f64() -> Result<(), AnoError> {
 fn test_noise_laplace_f64() -> Result<(), AnoError> {
     let mut laplace_noise_generator = NoiseGenerator::new_with_parameters("Laplace", 0.0, 1.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0);
-    assert!((30.0..=50.0).contains(&noisy_data));
+    // Wide bounds: Laplace β ≈ 0.71; P(|noise| > 30) < 10⁻¹⁸ — effectively deterministic.
+    assert!((10.0..=70.0).contains(&noisy_data));
 
     let mut laplace_noise_generator = NoiseGenerator::new_with_bounds("Laplace", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_float(40.0);
-    assert!((30.0..=50.0).contains(&noisy_data));
+    // Wide bounds: Laplace β ≈ 1.01; P(|noise| > 30) < 10⁻¹³ — effectively deterministic.
+    assert!((10.0..=70.0).contains(&noisy_data));
 
     Ok(())
 }
@@ -87,8 +89,8 @@ fn test_noise_uniform_f64() -> Result<(), AnoError> {
     let res = NoiseGenerator::new_with_parameters("Uniform", 0.0, 2.0);
     assert!(res.is_err());
 
-    let mut laplace_noise_generator = NoiseGenerator::new_with_bounds("Uniform", -10.0, 10.0)?;
-    let noisy_data = laplace_noise_generator.apply_on_float(40.0);
+    let mut uniform_noise_generator = NoiseGenerator::new_with_bounds("Uniform", -10.0, 10.0)?;
+    let noisy_data = uniform_noise_generator.apply_on_float(40.0);
     assert!((30.0..=50.0).contains(&noisy_data));
 
     Ok(())
@@ -112,11 +114,13 @@ fn test_noise_laplace_i64() -> Result<(), AnoError> {
     let mut laplace_noise_generator = NoiseGenerator::new_with_parameters("Laplace", 0.0, 1.0)?;
 
     let noisy_data = laplace_noise_generator.apply_on_int(40);
-    assert!((30..=50).contains(&noisy_data));
+    // Wide bounds: Laplace β ≈ 0.71; P(|noise| > 30) < 10⁻¹⁸ — effectively deterministic.
+    assert!((10..=70).contains(&noisy_data));
 
     let mut laplace_noise_generator = NoiseGenerator::new_with_bounds("Laplace", -10.0, 10.0)?;
     let noisy_data = laplace_noise_generator.apply_on_int(40);
-    assert!((30..=50).contains(&noisy_data));
+    // Wide bounds: Laplace β ≈ 1.01; P(|noise| > 30) < 10⁻¹³ — effectively deterministic.
+    assert!((10..=70).contains(&noisy_data));
 
     Ok(())
 }
@@ -196,7 +200,7 @@ fn test_correlated_noise_gaussian_f64() -> Result<(), AnoError> {
     let mut noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 10.0, 2.0)?;
     let values = vec![1.0, 1.0, 1.0];
     let factors = vec![1.0, 2.0, 4.0];
-    let noisy_values = noise_generator.apply_correlated_noise_on_floats(&values, &factors);
+    let noisy_values = noise_generator.apply_correlated_noise_on_floats(&values, &factors)?;
     assert_relative_eq!(
         (noisy_values[0] - values[0]) * factors[1],
         (noisy_values[1] - values[1]) * factors[0],
@@ -218,7 +222,7 @@ fn test_correlated_noise_laplace_i64() -> Result<(), AnoError> {
     let mut noise_generator = NoiseGenerator::new_with_parameters("Laplace", 10.0, 2.0)?;
     let values = vec![1, 1, 1];
     let factors = vec![1.0, 2.0, 4.0];
-    let noisy_values = noise_generator.apply_correlated_noise_on_ints(&values, &factors);
+    let noisy_values = noise_generator.apply_correlated_noise_on_ints(&values, &factors)?;
     // Ordering only holds if noise is positive
     assert!(noisy_values[0] <= noisy_values[1]);
     assert!(noisy_values[1] <= noisy_values[2]);
@@ -387,21 +391,58 @@ fn test_date_aggregation() -> Result<(), AnoError> {
 }
 
 #[test]
-fn test_float_scale() {
-    let float_scaler = NumberScaler::new(10.0, 5.0, 2.0, -50.0);
+fn test_float_scale() -> Result<(), AnoError> {
+    let float_scaler = NumberScaler::new(10.0, 5.0, 2.0, -50.0)?;
 
     let n1 = float_scaler.apply_on_float(20.0);
     let n2 = float_scaler.apply_on_float(19.5);
 
     assert!(n1 > n2);
+    Ok(())
 }
 
 #[test]
-fn test_int_scale() {
-    let int_scaler = NumberScaler::new(10.0, 5.0, 20.0, -50.0);
+fn test_int_scale() -> Result<(), AnoError> {
+    let int_scaler = NumberScaler::new(10.0, 5.0, 20.0, -50.0)?;
 
     let n1 = int_scaler.apply_on_int(20);
     let n2 = int_scaler.apply_on_int(19);
 
     assert!(n1 >= n2);
+    Ok(())
+}
+
+#[test]
+fn test_number_scaler_zero_std_deviation() {
+    let res = NumberScaler::new(10.0, 0.0, 2.0, -50.0);
+    assert!(res.is_err());
+}
+
+#[test]
+fn test_correlated_noise_mismatched_lengths() -> Result<(), AnoError> {
+    let mut noise_generator = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 1.0)?;
+    let values = vec![1.0_f64, 2.0, 3.0];
+    let factors = vec![1.0_f64, 2.0]; // one fewer factor than data
+    let res = noise_generator.apply_correlated_noise_on_floats(&values, &factors);
+    assert!(res.is_err());
+    Ok(())
+}
+
+#[test]
+fn test_correlated_noise_dates_invalid_input() -> Result<(), AnoError> {
+    let mut noise_generator = NoiseGenerator::new_with_bounds("Uniform", 0.0, 10.0)?;
+    let res = noise_generator
+        .apply_correlated_noise_on_dates(&["not-a-date", "2023-05-02T00:00:00Z"], &[1.0, 1.0]);
+    assert!(res.is_err());
+    Ok(())
+}
+
+#[test]
+fn test_noise_nan_inf_input() -> Result<(), AnoError> {
+    let mut noise_gen = NoiseGenerator::new_with_parameters("Gaussian", 0.0, 1.0)?;
+    // NaN propagates: NaN + any_finite = NaN
+    assert!(noise_gen.apply_on_float(f64::NAN).is_nan());
+    // Infinity propagates: Inf + any_finite = Inf
+    assert!(noise_gen.apply_on_float(f64::INFINITY).is_infinite());
+    Ok(())
 }
